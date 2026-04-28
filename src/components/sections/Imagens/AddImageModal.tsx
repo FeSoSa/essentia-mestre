@@ -1,0 +1,66 @@
+'use client';
+
+import { useState } from 'react';
+import { X } from 'lucide-react';
+import { api } from '@/lib/api';
+import { useStore } from '@/store';
+import Button from '@/components/ui/Button';
+import type { ImageEntry } from '@/store/types';
+
+export default function AddImageModal({ onClose }: { onClose: () => void }) {
+  const [title, setTitle] = useState('');
+  const [url, setUrl]     = useState('');
+  const [loading, setLoading] = useState(false);
+  const { addImage } = useStore();
+
+  async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setLoading(true);
+    try {
+      const res = await api.post<ImageEntry>('/images', { title, url });
+      addImage(res.data);
+      onClose();
+    } catch {}
+    finally { setLoading(false); }
+  }
+
+  const label = "text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5 block";
+
+  return (
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-md shadow-2xl">
+
+        <div className="flex items-center justify-between px-6 py-4 border-b border-e-border">
+          <h3 className="font-semibold text-e-text">Nova Imagem</h3>
+          <button onClick={onClose} className="text-e-faint hover:text-e-text cursor-pointer transition-colors p-1 rounded-lg hover:bg-e-card">
+            <X size={16} />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="p-6 flex flex-col gap-4">
+          <div>
+            <label className={label}>Título</label>
+            <input type="text" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Ex: Mapa da Dungeon" required />
+          </div>
+          <div>
+            <label className={label}>URL da imagem</label>
+            <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" required />
+          </div>
+          {url && (
+            <div className="rounded-xl overflow-hidden border border-e-border">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src={url} alt="preview" className="w-full h-40 object-cover block" />
+            </div>
+          )}
+          <div className="grid grid-cols-2 gap-3 pt-1">
+            <Button type="button" variant="ghost"   size="md" className="w-full" onClick={onClose}>Cancelar</Button>
+            <Button type="submit" variant="primary" size="md" className="w-full" disabled={loading}>
+              {loading ? 'Salvando…' : 'Adicionar'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
