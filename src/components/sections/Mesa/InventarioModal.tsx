@@ -12,6 +12,7 @@ import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
 import type { Player, Item } from '@/store/types';
 import { EQUIPMENT_CATALOG, type CatalogEntry, type EquipSlot } from '@/lib/equipmentCatalog';
+import { rarityColor, RARITY_LABELS, type Rarity } from '@/lib/rarity';
 
 // ── Icon system ────────────────────────────────────────────────────────────────
 
@@ -723,11 +724,10 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                         }}
                         className={`w-full h-full rounded-xl border flex flex-col items-center justify-center gap-1 p-2 transition-colors ${
                           item
-                            ? isActive
-                              ? 'bg-e-card border-e-accent cursor-pointer'
-                              : 'bg-e-card border-e-border hover:border-e-border2 cursor-pointer'
+                            ? 'bg-e-card cursor-pointer'
                             : 'bg-e-bg border-e-border cursor-default'
                         }`}
+                        style={item ? { borderColor: isActive ? '#a3e635' : (rarityColor(item.rarity) ?? '#52525b') } : undefined}
                       >
                         {item ? (
                           <>
@@ -755,7 +755,14 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                           <div className="fixed inset-0 z-20" onClick={() => setActiveSlot(null)} />
                           <div className="absolute z-30 top-full mt-1 left-0 w-48 bg-e-surface border border-e-border rounded-xl shadow-2xl p-2 flex flex-col gap-1">
                             <div className="px-2 py-1.5 border-b border-e-border mb-1">
-                              <p className="text-xs font-semibold text-e-text">{item.name}</p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-xs font-semibold" style={{ color: rarityColor(item.rarity) ?? '#fafafa' }}>{item.name}</p>
+                                {item.rarity && (
+                                  <span className="text-[8px] font-bold uppercase tracking-wider" style={{ color: rarityColor(item.rarity) }}>
+                                    {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
+                                  </span>
+                                )}
+                              </div>
                               {item.desc && <p className="text-[10px] text-e-sub mt-0.5 leading-snug">{item.desc}</p>}
                               {item.type === 'weapon' && item.damageDice && (
                                 <p className="text-[10px] text-e-faint mt-0.5">

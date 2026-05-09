@@ -46,20 +46,24 @@ export interface Item {
   // Shared equip fields (weapon | armor | accessory)
   attributeBonus?: Record<string, number>;
   equipSlot?: string; // 'mainHand'|'offHand'|'armor'|'amulet'|'ring'|'utility'
+  rarity?: string;
 }
 
 export interface WeaponEquip {
   id: string; name: string; weaponType: string;
   damageBase: number; damageDice: Dice; damageAttribute: string;
   attributeBonus?: Record<string, number>;
+  rarity?: string;
 }
 export interface ArmorEquip {
   id: string; name: string; damageReduction: number;
   attributeBonus?: Record<string, number>;
   armorWeight?: string;
+  rarity?: string;
 }
 export interface AccessoryEquip {
   id: string; name: string; attributeBonus?: Record<string, number>;
+  rarity?: string;
 }
 export interface Equipment {
   mainHand?: WeaponEquip; offHand?: WeaponEquip;
@@ -133,6 +137,7 @@ export interface FastAction {
 
 export interface ClassPerks {
   hasPressureBar: boolean;
+  unarmedDamage?: string;
 }
 
 export interface ClassKit {
@@ -170,6 +175,7 @@ export interface ItemCatalog {
   damageAttribute?: string; properties?: string;
   damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
+  rarity?: string; twoHanded?: boolean;
 }
 
 export interface EnemyAttributes { strength: number; agility: number; intelligence: number; defense: number; }

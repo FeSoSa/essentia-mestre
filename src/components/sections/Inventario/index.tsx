@@ -7,6 +7,7 @@ import { useStore, usePlayers } from '@/store';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import type { Player, Equipment, Item } from '@/store/types';
+import { rarityColor, RARITY_LABELS, type Rarity } from '@/lib/rarity';
 
 /* ── helpers ─────────────────────────────────────────────────── */
 function equipSlots(eq: Equipment) {
@@ -113,7 +114,7 @@ export default function Inventario() {
                             {slotIcon(key)}
                             <div className="min-w-0">
                               <p className="text-xs text-e-faint leading-none mb-1">{label}</p>
-                              <p className="text-sm font-medium text-e-text truncate">{item!.name}</p>
+                              <p className="text-sm font-medium truncate" style={{ color: rarityColor((item as any).rarity) ?? '#fafafa' }}>{item!.name}</p>
                               {'damageBase' in item! && (
                                 <p className="text-xs text-e-sub mt-0.5">
                                   {(item as { damageBase: number; damageDice: { quantity: number; die: string } }).damageBase}+{(item as { damageDice: { quantity: number; die: string } }).damageDice.quantity}{(item as { damageDice: { quantity: number; die: string } }).damageDice.die}
@@ -140,8 +141,13 @@ export default function Inventario() {
                       <div className="flex flex-col gap-1.5">
                         {(player.items ?? []).map((item: Item) => (
                           <div key={item.id} className="flex items-center gap-2.5 bg-e-card rounded-lg px-3 py-2">
-                            <span className="text-sm font-medium text-e-text flex-1 truncate">{item.name}</span>
+                            <span className="text-sm font-medium flex-1 truncate" style={{ color: rarityColor(item.rarity) ?? '#fafafa' }}>{item.name}</span>
                             <span className="text-xs font-mono text-e-sub shrink-0">×{item.qty}</span>
+                            {item.rarity && (
+                              <span className="text-[9px] font-bold uppercase tracking-wider shrink-0" style={{ color: rarityColor(item.rarity) }}>
+                                {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
+                              </span>
+                            )}
                             <span className={`text-[9px] font-bold uppercase tracking-wider border px-1.5 py-0.5 rounded shrink-0 ${itemTypeBadge(item.type)}`}>
                               {item.type}
                             </span>

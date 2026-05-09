@@ -47,6 +47,7 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
   );
 
   const [hasPressureBar, setHasPressureBar] = useState(kit?.perks?.hasPressureBar ?? false);
+  const [unarmedDamage, setUnarmedDamage] = useState(kit?.perks?.unarmedDamage ?? '');
 
   const [loading, setLoading] = useState(false);
 
@@ -84,7 +85,7 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
       };
     });
 
-    const perks: ClassPerks = { hasPressureBar };
+    const perks: ClassPerks = { hasPressureBar, unarmedDamage: unarmedDamage.trim() || undefined };
 
     const body = {
       skillClass: skillClass.trim(),
@@ -144,6 +145,16 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
               <p className="text-[11px] text-e-faint">Habilita o recurso de pressão (ex: Intenso)</p>
             </div>
           </label>
+          <div className="flex flex-col gap-1.5">
+            <label className={lbl}>Dano desarmado</label>
+            <input
+              value={unarmedDamage}
+              onChange={(e) => setUnarmedDamage(e.target.value)}
+              className={inp}
+              placeholder="ex: 1d4+FOR, 1d6+AGI…"
+            />
+            <p className="text-[11px] text-e-faint">Fórmula de dano sem arma equipada</p>
+          </div>
         </div>
 
         {/* Atributos iniciais */}

@@ -42,7 +42,8 @@ import {
 import { STATUS_ICONS, getStatusIcon } from "@/lib/statusIcons";
 import { useEffectPresetsStore, type EffectPreset } from "@/store/effectPresetsStore";
 import type { AutoEffect } from "@/store/types";
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { createPortal } from "react-dom";
 
 // ── Icon system (mirrors InventarioModal) ────────────────────────────────────
 
@@ -249,12 +250,24 @@ function IconSelect({
   onChange: (v: string) => void;
 }) {
   const [open, setOpen] = useState(false);
-  const SelectedIcon = ICON_MAP[value] ?? Package;
+  const [pos, setPos]   = useState({ top: 0, left: 0, width: 0 });
+  const btnRef          = useRef<HTMLButtonElement>(null);
+  const SelectedIcon    = ICON_MAP[value] ?? Package;
+
+  function handleOpen() {
+    if (btnRef.current) {
+      const r = btnRef.current.getBoundingClientRect();
+      setPos({ top: r.bottom + 4, left: r.left, width: r.width });
+    }
+    setOpen((v) => !v);
+  }
+
   return (
-    <div className="relative">
+    <div>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((v) => !v)}
+        onClick={handleOpen}
         className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
       >
         <SelectedIcon size={13} className="text-e-sub shrink-0" />
@@ -264,27 +277,34 @@ function IconSelect({
           className={`text-e-faint shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
         />
       </button>
-      {open && (
-        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-44 overflow-y-auto">
-          {Object.entries(ICON_MAP).map(([name, Icon]) => (
-            <button
-              key={name}
-              type="button"
-              onClick={() => {
-                onChange(name);
-                setOpen(false);
-              }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
-                name === value
-                  ? "bg-e-accent/10 text-e-accent"
-                  : "hover:bg-e-card text-e-text"
-              }`}
-            >
-              <Icon size={13} className="shrink-0" />
-              <span>{name}</span>
-            </button>
-          ))}
-        </div>
+      {open && createPortal(
+        <>
+          <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
+          <div
+            className="fixed z-[9999] bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-44 overflow-y-auto"
+            style={{ top: pos.top, left: pos.left, width: pos.width }}
+          >
+            {Object.entries(ICON_MAP).map(([name, Icon]) => (
+              <button
+                key={name}
+                type="button"
+                onClick={() => {
+                  onChange(name);
+                  setOpen(false);
+                }}
+                className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
+                  name === value
+                    ? "bg-e-accent/10 text-e-accent"
+                    : "hover:bg-e-card text-e-text"
+                }`}
+              >
+                <Icon size={13} className="shrink-0" />
+                <span>{name}</span>
+              </button>
+            ))}
+          </div>
+        </>,
+        document.body
       )}
     </div>
   );
