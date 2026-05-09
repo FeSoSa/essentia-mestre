@@ -20,7 +20,7 @@ export default function InitiativeList() {
               active ? 'bg-e-accent/12 border-e-accent/40 ring-1 ring-e-accent/20' : 'bg-e-card border-e-border',
             ].join(' ')}>
             <span className="text-xs font-mono text-e-faint w-4 text-center shrink-0">{i + 1}</span>
-            <span className={`flex-1 text-sm font-medium truncate ${active ? 'text-e-text' : 'text-e-sub'}`}>
+            <span className={`flex-1 min-w-0 text-sm font-medium truncate ${active ? 'text-zinc-100' : 'text-zinc-400'}`}>
               {entry.name}
             </span>
             <div className="flex items-center gap-1 shrink-0">

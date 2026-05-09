@@ -3,12 +3,13 @@
 import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance } from '@/store/types';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest } from '@/store/types';
 
 export function useSocket() {
   const {
     setPlayers, setPlayer, appendLog,
     setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses,
+    addSobrecargaRequest,
   } = useStore();
 
   useEffect(() => {
@@ -64,6 +65,12 @@ export function useSocket() {
       client.subscribe('/topic/combat/bosses', (msg) => {
         const bosses: BossInstance[] = JSON.parse(msg.body);
         setBosses(bosses);
+      });
+
+      // Pedidos de Sobrecarga
+      client.subscribe('/topic/sobrecarga-request', (msg) => {
+        const req: SobrecargaRequest = JSON.parse(msg.body);
+        addSobrecargaRequest(req);
       });
     };
 

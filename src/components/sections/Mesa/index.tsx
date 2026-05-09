@@ -10,6 +10,8 @@ import PlayerCard from './PlayerCard';
 import AcaoRapidaModal from './AcaoRapidaModal';
 import EnemyColumn from './EnemyColumn';
 import AddEnemyModal from './AddEnemyModal';
+import InitiativeEditorModal from '@/components/sections/Turno/InitiativeEditorModal';
+import type { InitiativeEntry } from '@/store/types';
 
 export default function Mesa() {
   const players = usePlayers();
@@ -18,8 +20,9 @@ export default function Mesa() {
   const bosses  = useBosses();
   const { setPlayers, currentTurn, setCurrentTurn, initiative, setInitiative } = useStore();
   const [loading,   setLoading]   = useState(false);
-  const [showAcao,  setShowAcao]  = useState(false);
-  const [showAddEnemy, setShowAddEnemy] = useState(false);
+  const [showAcao,       setShowAcao]       = useState(false);
+  const [showAddEnemy,   setShowAddEnemy]   = useState(false);
+  const [showInitEditor, setShowInitEditor] = useState(false);
   const [essencias, setEssencias] = useState<Essencia[]>([]);
 
   useEffect(() => {
@@ -39,13 +42,10 @@ export default function Mesa() {
     finally { setLoading(false); }
   }
 
-  async function rollInitiative() {
-    if (players.length === 0) return;
-    const rolled = players
-      .map((p) => ({ playerId: p.id, name: p.char.name, value: Math.ceil(Math.random() * 20) }))
-      .sort((a, b) => b.value - a.value);
-    setInitiative(rolled);
-    await api.put('/master/initiative', rolled).catch(() => {});
+  async function confirmInitiative(entries: InitiativeEntry[]) {
+    setInitiative(entries);
+    setShowInitEditor(false);
+    await api.put('/master/initiative', entries).catch(() => {});
   }
 
   async function reset() {
@@ -76,8 +76,8 @@ export default function Mesa() {
         )}
 
         <div className="flex gap-2 ml-auto">
-          <Button variant="subtle" size="sm" disabled={players.length === 0} onClick={rollInitiative} className="gap-1.5">
-            <Dices size={14} /> Rolar
+          <Button variant="subtle" size="sm" onClick={() => setShowInitEditor(true)} className="gap-1.5">
+            <Dices size={14} /> {initiative.length > 0 ? 'Iniciativa' : 'Rolar'}
           </Button>
           <Button variant="danger" size="sm" disabled={currentTurn === 0 && initiative.length === 0} onClick={reset} className="gap-1.5">
             <RotateCcw size={13} /> Reset
@@ -122,6 +122,15 @@ export default function Mesa() {
 
       {showAcao && <AcaoRapidaModal onClose={() => setShowAcao(false)} />}
       {showAddEnemy && <AddEnemyModal onClose={() => setShowAddEnemy(false)} />}
+      {showInitEditor && (
+        <InitiativeEditorModal
+          players={players}
+          enemies={enemies}
+          bosses={bosses}
+          onConfirm={confirmInitiative}
+          onClose={() => setShowInitEditor(false)}
+        />
+      )}
     </div>
   );
 }

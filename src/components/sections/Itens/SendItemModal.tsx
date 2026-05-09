@@ -1,7 +1,25 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown } from 'lucide-react';
+import {
+  ChevronDown,
+  Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
+  Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
+  Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
+  type LucideIcon,
+} from 'lucide-react';
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
+  Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
+  Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
+};
+
+function ItemIcon({ name }: { name: string }) {
+  if (name.startsWith('img:')) return <img src={name.slice(4)} alt="" width={14} height={14} className="object-cover rounded" />;
+  const Icon = ICON_MAP[name] ?? Package;
+  return <Icon size={14} />;
+}
 import { api } from '@/lib/api';
 import { usePlayers } from '@/store';
 import type { ItemCatalog } from '@/store/types';
@@ -37,7 +55,7 @@ export default function SendItemModal({ item, onClose }: Props) {
       <div className="w-80 rounded-xl border border-e-border bg-e-surface flex flex-col gap-4 p-5 text-e-text">
         <div className="flex items-center justify-between">
           <h2 className="font-bold text-sm">
-            Enviar — {item.icon && <span className="mr-1">{item.icon}</span>}{item.name}
+            Enviar — {item.icon && <span className="mr-1 inline-flex items-center"><ItemIcon name={item.icon} /></span>}{item.name}
           </h2>
           <button onClick={onClose} className="opacity-50 hover:opacity-100 text-sm">✕</button>
         </div>

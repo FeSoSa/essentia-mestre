@@ -12,11 +12,11 @@ export default function Jogadores() {
   const players = usePlayers();
   const { setPlayers, removePlayer } = useStore();
   const [showCreate, setShowCreate] = useState(false);
-  const [editPlayer, setEditPlayer] = useState<Player | null>(null);
+  const [editPlayerId, setEditPlayerId] = useState<string | null>(null);
+  const editPlayer = editPlayerId ? (players.find(p => p.id === editPlayerId) ?? null) : null;
   const [expPlayerId, setExpPlayerId] = useState<string | null>(null);
   const [expAmount, setExpAmount] = useState(0);
   const [deleting, setDeleting] = useState<string | null>(null);
-
   useEffect(() => {
     api.get<Player[]>('/master/players').then((r) => setPlayers(r.data)).catch(() => {});
   }, [setPlayers]);
@@ -50,19 +50,43 @@ export default function Jogadores() {
       ) : (
         <div className="flex flex-col gap-2">
           {players.map((p) => (
-            <div key={p.id} className="grid grid-cols-[1fr_auto_auto] items-center gap-4 bg-e-surface border border-e-border rounded-xl px-5 py-4 hover:border-e-border2 transition-colors">
-              <div className="min-w-0">
+            <div key={p.id} className="flex items-center gap-4 bg-e-surface border border-e-border rounded-xl px-5 py-4 hover:border-e-border2 transition-colors">
+              {/* Info */}
+              <div className="flex-1 min-w-0">
                 <p className="font-semibold text-e-text truncate">{p.char.name}</p>
-                <p className="text-sm text-e-sub mt-0.5">{p.char.race} · {p.char.skillClass} · Nv {p.char.level}</p>
+                <p className="text-xs text-e-sub mt-0.5">{p.char.race} · {p.char.skillClass} · Nv {p.char.level}</p>
               </div>
-              <code className="text-xs text-e-accent bg-e-accent/10 border border-e-accent/15 px-2.5 py-1.5 rounded-lg font-mono whitespace-nowrap">
+
+              {/* Código */}
+              <code className="text-xs text-e-accent bg-e-accent/10 border border-e-accent/15 px-2.5 py-1.5 rounded-lg font-mono whitespace-nowrap hidden sm:block">
                 {p.code}
               </code>
-              <div className="flex items-center gap-1.5 shrink-0">
-                <Button variant="gold"   size="sm" onClick={() => setExpPlayerId(p.id)}>EXP</Button>
-                <Button variant="ghost"  size="sm" onClick={() => setEditPlayer(p)}>Editar</Button>
+
+              {/* Ações */}
+              <div className="flex items-center gap-1 shrink-0">
+                <Button variant="gold"  size="sm" onClick={() => setExpPlayerId(p.id)}>EXP</Button>
+                <Button variant="ghost" size="sm" onClick={() => setEditPlayerId(p.id)}>Editar</Button>
+
+                <div className="w-px h-5 bg-e-border mx-1" />
+
+                <button
+                  title="Recalcular éter, PV, Fluxo"
+                  onClick={async () => { try { await api.post(`/master/players/${p.id}/recalculate`); } catch {} }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-e-faint hover:text-e-text hover:bg-e-card transition-colors text-sm"
+                >⟳</button>
+                <button
+                  title="Resetar atributos ao inicial do kit"
+                  onClick={async () => {
+                    if (!confirm(`Resetar atributos de ${p.char.name} ao inicial do kit?`)) return;
+                    try { await api.post(`/master/players/${p.id}/reset-attributes`); } catch {}
+                  }}
+                  className="w-7 h-7 rounded-lg flex items-center justify-center text-e-faint hover:text-e-text hover:bg-e-card transition-colors text-sm"
+                >↺</button>
+
+                <div className="w-px h-5 bg-e-border mx-1" />
+
                 <Button variant="danger" size="sm" disabled={deleting === p.id} onClick={() => handleDelete(p.id)}>
-                  {deleting === p.id ? '…' : 'Deletar'}
+                  {deleting === p.id ? '…' : 'Excluir'}
                 </Button>
               </div>
             </div>
@@ -91,7 +115,7 @@ export default function Jogadores() {
       )}
 
       {showCreate && <CharacterModal onClose={() => setShowCreate(false)} />}
-      {editPlayer && <CharacterModal player={editPlayer} onClose={() => setEditPlayer(null)} />}
+      {editPlayer && <CharacterModal player={editPlayer} onClose={() => setEditPlayerId(null)} />}
     </div>
   );
 }

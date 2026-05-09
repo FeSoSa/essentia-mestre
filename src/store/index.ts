@@ -4,6 +4,7 @@ import { create } from 'zustand';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
+  SobrecargaRequest,
 } from './types';
 
 interface RootState {
@@ -44,6 +45,11 @@ interface RootState {
   bosses: BossInstance[];
   setBosses: (b: BossInstance[]) => void;
   removeBoss: (instanceId: string) => void;
+
+  sobrecargaRequests: SobrecargaRequest[];
+  addSobrecargaRequest: (r: SobrecargaRequest) => void;
+  removeSobrecargaRequest: (playerId: string) => void;
+  unlockSobrecarga: (playerId: string, unlocked: boolean) => void;
 }
 
 export const useStore = create<RootState>((set) => ({
@@ -110,6 +116,23 @@ export const useStore = create<RootState>((set) => ({
   setBosses: (bosses) => set({ bosses }),
   removeBoss: (instanceId) =>
     set((s) => ({ bosses: s.bosses.filter((b) => b.instanceId !== instanceId) })),
+
+  sobrecargaRequests: [],
+  addSobrecargaRequest: (r) =>
+    set((s) => ({
+      sobrecargaRequests: [
+        ...s.sobrecargaRequests.filter((x) => x.playerId !== r.playerId),
+        r,
+      ],
+    })),
+  removeSobrecargaRequest: (playerId) =>
+    set((s) => ({ sobrecargaRequests: s.sobrecargaRequests.filter((r) => r.playerId !== playerId) })),
+  unlockSobrecarga: (playerId, unlocked) =>
+    set((s) => ({
+      players: s.players.map((p) =>
+        p.id === playerId ? { ...p, sobrecargaDesbloqueada: unlocked } : p
+      ),
+    })),
 }));
 
 export const usePlayers    = () => useStore((s) => s.players);

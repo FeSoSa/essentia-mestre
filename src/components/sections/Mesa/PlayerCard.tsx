@@ -1,27 +1,19 @@
 'use client';
 
 import { useState } from 'react';
-import {
-  CircleDollarSign, Flame, Droplets, Leaf, Wind, Zap, Clock,
-  Skull, Sparkles, Circle, type LucideIcon,
-} from 'lucide-react';
+import { CircleDollarSign, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { Essencia, Player, PlayerAttributes } from '@/store/types';
-import { getStatusIcon } from '@/lib/statusIcons';
+import { getStatusIcon, STATUS_ICONS } from '@/lib/statusIcons';
 import ResourceBar from './ResourceBar';
 import DetalhesModal from './DetalhesModal';
 import StatusEffectModal from './StatusEffectModal';
 
-const ESSENCIA_BG: Record<string, string> = {
-  fogo: '#3a1005', água: '#0a2a40', terra: '#2a1a05',
-  ar: '#1a2a1a', tempestade: '#1a1a3a', tempo: '#2a1a40',
-  caos: '#3a0a0a', ordem: '#1a1a2a', vazio: '#0a0a0a',
-};
-
-const ESSENCIA_ICON: Record<string, LucideIcon> = {
-  fogo: Flame, água: Droplets, terra: Leaf, ar: Wind,
-  tempestade: Zap, tempo: Clock, caos: Skull, ordem: Sparkles, vazio: Circle,
+const TYPE_COLOR: Record<string, string> = {
+  Grande:  '#d4a84e',
+  Mitica:  '#a855f7',
+  Derivada:'#4ade80',
 };
 
 const ATTRS: [string, keyof PlayerAttributes][] = [
@@ -153,19 +145,28 @@ export default function PlayerCard({
             </div>
           </div>
 
-          {/* ── Right column — essências + status effects ── */}
+          {/* ── Right column — desvios + essências + status effects ── */}
           {hasRightCol && (
             <div className="w-8 flex flex-col items-center gap-1.5 shrink-0 pt-1">
+              {/* Desvio pips */}
+              {(player.desviosRestantes ?? 0) >= 0 && (
+                <div className="flex flex-col items-center gap-0.5 mb-0.5">
+                  {[0,1,2].map((i) => (
+                    <div key={i} className={`w-2 h-2 rounded-full ${i < (player.desviosRestantes ?? 0) ? 'bg-e-danger' : 'bg-e-border'}`} />
+                  ))}
+                </div>
+              )}
               {obtidas.map((ob) => {
-                const ess     = essencias.find(e => e.id === ob.essenciaId);
-                const typeKey = (ess?.type ?? '').toLowerCase();
-                const bg      = ESSENCIA_BG[typeKey] ?? '#1a1a1a';
-                const EssIcon = ESSENCIA_ICON[typeKey] ?? Sparkles;
+                const ess      = essencias.find(e => e.id === ob.essenciaId);
+                const accent   = ess?.color || TYPE_COLOR[ess?.type ?? ''] || '#71717a';
+                const IconComp = ess?.icon ? STATUS_ICONS.find(i => i.name === ess.icon)?.Icon : null;
                 return (
                   <div key={ob.essenciaId} title={ess?.name ?? ob.essenciaId}
-                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border border-white/5"
-                    style={{ backgroundColor: bg }}>
-                    <EssIcon size={13} className="text-white/70" />
+                    className="w-7 h-7 rounded-full flex items-center justify-center shrink-0 border"
+                    style={{ backgroundColor: accent + '22', borderColor: accent + '66' }}>
+                    {IconComp
+                      ? <IconComp size={13} style={{ color: accent }} />
+                      : <Sparkles size={13} style={{ color: accent }} />}
                   </div>
                 );
               })}
@@ -176,14 +177,17 @@ export default function PlayerCard({
 
               {statusEffects.map((ef) => {
                 const IconComp = getStatusIcon(ef.icon);
+                const accent   = ef.color || '#71717a';
                 return (
                   <button key={ef.id} onClick={() => setModal('status')} title={ef.name}
-                    className="relative w-7 h-7 rounded-full bg-e-card border border-e-border flex items-center justify-center hover:border-e-border2 transition-colors cursor-pointer shrink-0">
+                    className="relative w-7 h-7 rounded-full flex items-center justify-center cursor-pointer shrink-0 transition-opacity hover:opacity-80 border"
+                    style={{ backgroundColor: accent + '22', borderColor: accent + '66' }}>
                     {IconComp
-                      ? <IconComp size={13} className="text-e-sub" />
-                      : <span className="text-[10px]">{ef.icon}</span>}
+                      ? <IconComp size={13} style={{ color: accent }} />
+                      : <Sparkles size={13} style={{ color: accent }} />}
                     {ef.durationTurns !== -1 && (
-                      <span className="absolute -bottom-1 -right-0.5 text-[8px] font-black text-e-text bg-e-surface rounded-full px-0.5 leading-none min-w-[12px] text-center border border-e-border">
+                      <span className="absolute -bottom-1 -right-0.5 text-[8px] font-black bg-e-surface rounded-full px-0.5 leading-none min-w-[12px] text-center border border-e-border"
+                        style={{ color: accent }}>
                         {ef.durationTurns}
                       </span>
                     )}

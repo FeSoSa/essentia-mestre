@@ -164,6 +164,7 @@ export default function ItemModal({ item, defaultType, onClose, onSaved }: Props
   const [diceQty,         setDiceQty]         = useState(item?.damageDice?.quantity ?? 1);
   const [diceDie,         setDiceDie]         = useState(item?.damageDice?.die      ?? 'd6');
   const [damageAttribute, setDamageAttribute] = useState(item?.damageAttribute ?? 'strength');
+  const [armorWeight,     setArmorWeight]     = useState(item?.armorWeight ?? '');
 
   // Attribute bonuses — armors pre-populate 'defense'
   const [bonuses, setBonuses] = useState<[string, number][]>(() => {
@@ -214,8 +215,8 @@ export default function ItemModal({ item, defaultType, onClose, onSaved }: Props
       body.properties      = properties || undefined;
     }
     if (type === 'armor') {
-      // damageReduction mirrors the DEF bonus for backend compatibility
       body.damageReduction = attrBonus?.defense ?? 0;
+      body.armorWeight = armorWeight || undefined;
     }
     try {
       const res = editing
@@ -331,7 +332,29 @@ export default function ItemModal({ item, defaultType, onClose, onSaved }: Props
             </div>
           </div>
         )}
-        {/* armor always goes to 'armor' slot — no selector needed */}
+        {/* Peso de armadura */}
+        {type === 'armor' && (
+          <div>
+            <label className={lbl}>Peso</label>
+            <div className="flex gap-2">
+              {[
+                { v: 'leve',  label: 'Leve',  hint: '1d20' },
+                { v: 'média', label: 'Média', hint: 'Desvantagem' },
+                { v: 'pesada',label: 'Pesada',hint: 'Sem desvio' },
+              ].map(({ v, label, hint }) => (
+                <button key={v} type="button" onClick={() => setArmorWeight(v)}
+                  className={`flex-1 flex flex-col items-center py-2 px-1 rounded-xl border text-xs font-medium transition-colors cursor-pointer gap-0.5 ${
+                    armorWeight === v
+                      ? 'bg-e-accent/15 border-e-accent text-e-accent'
+                      : 'border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub'
+                  }`}>
+                  <span>{label}</span>
+                  <span className="text-[10px] opacity-60">{hint}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Attribute bonus (includes DEF for armor) ── */}
         {hasEquip && (

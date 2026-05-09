@@ -4,14 +4,19 @@ import { useState } from 'react';
 import { Dices, RotateCcw, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore, usePlayers } from '@/store';
+import type { InitiativeEntry } from '@/store/types';
 import Button from '@/components/ui/Button';
 import InitiativeList from './InitiativeList';
+import InitiativeEditorModal from './InitiativeEditorModal';
 import SessionLog from './SessionLog';
 
 export default function Turno() {
   const { currentTurn, setCurrentTurn, initiative, setInitiative } = useStore();
   const players = usePlayers();
+  const enemies = useStore(s => s.enemies);
+  const bosses  = useStore(s => s.bosses);
   const [loading, setLoading] = useState(false);
+  const [showEditor, setShowEditor] = useState(false);
 
   async function nextTurn() {
     setLoading(true);
@@ -23,14 +28,10 @@ export default function Turno() {
     } finally { setLoading(false); }
   }
 
-  async function rollInitiative() {
-    if (players.length === 0) return;
-    const rolled = players
-      .map((p) => ({ playerId: p.id, name: p.char.name, value: Math.ceil(Math.random() * 20) }))
-      .sort((a, b) => b.value - a.value);
-    setInitiative(rolled);
-    // Salva no backend
-    await api.put('/master/initiative', rolled).catch(() => {});
+  async function confirmInitiative(entries: InitiativeEntry[]) {
+    setInitiative(entries);
+    setShowEditor(false);
+    await api.put('/master/initiative', entries).catch(() => {});
   }
 
   async function reset() {
@@ -59,9 +60,9 @@ export default function Turno() {
           <ChevronRight size={18} />
           {loading ? 'Avançando…' : 'Próximo'}
         </Button>
-        <Button variant="subtle" size="lg" disabled={players.length === 0} onClick={rollInitiative} className="gap-2">
+        <Button variant="subtle" size="lg" onClick={() => setShowEditor(true)} className="gap-2">
           <Dices size={18} />
-          Rolar Iniciativa
+          {initiative.length > 0 ? 'Editar Iniciativa' : 'Rolar Iniciativa'}
         </Button>
         <Button variant="danger" size="lg" disabled={currentTurn === 0 && initiative.length === 0} onClick={reset} className="gap-2">
           <RotateCcw size={16} />
@@ -71,7 +72,7 @@ export default function Turno() {
 
       {initiative.length === 0 && (
         <div className="shrink-0 px-4 py-3 rounded-xl border border-dashed border-e-border text-sm text-e-faint text-center">
-          Clique em <span className="text-e-text font-medium">Rolar Iniciativa</span> para sortear com d20
+          Clique em <span className="text-e-text font-medium">Rolar Iniciativa</span> para montar a ordem de combate
         </div>
       )}
 
@@ -87,6 +88,16 @@ export default function Turno() {
         </div>
         <SessionLog />
       </div>
+
+      {showEditor && (
+        <InitiativeEditorModal
+          players={players}
+          enemies={enemies}
+          bosses={bosses}
+          onConfirm={confirmInitiative}
+          onClose={() => setShowEditor(false)}
+        />
+      )}
     </div>
   );
 }

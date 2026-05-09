@@ -24,6 +24,10 @@ const TAB_DEFAULT_TYPE: Record<Tab, string> = {
   itens:     'normal',
 };
 
+const TAB_LABELS: Record<Tab, string> = {
+  armas: 'Armas', armaduras: 'Armaduras', itens: 'Itens',
+};
+
 export default function Itens() {
   const [items,   setItems]   = useState<ItemCatalog[]>([]);
   const [tab,     setTab]     = useState<Tab>('armas');
@@ -59,7 +63,7 @@ export default function Itens() {
     <div className="p-6 max-w-6xl mx-auto">
       <SectionHeader
         title="Itens"
-        subtitle="Catálogo de armas, armaduras e itens do mestre"
+        subtitle="Catálogo de armas, armaduras e itens"
         action={
           <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
             <Plus size={14} /> Novo item
@@ -67,11 +71,10 @@ export default function Itens() {
         }
       />
 
-      {/* Tabs */}
       <div className="flex gap-1 rounded-lg p-1 mb-6 w-fit bg-e-surface">
-        {(['armas', 'armaduras', 'itens'] as Tab[]).map((t) => (
+        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
           <button key={t} onClick={() => setTab(t)} className={tabCls(t)}>
-            {t.charAt(0).toUpperCase() + t.slice(1)}
+            {TAB_LABELS[t]}
           </button>
         ))}
       </div>
@@ -102,11 +105,7 @@ export default function Itens() {
         />
       )}
       {editing && (
-        <ItemModal
-          item={editing}
-          onClose={() => setEditing(undefined)}
-          onSaved={handleSaved}
-        />
+        <ItemModal item={editing} onClose={() => setEditing(undefined)} onSaved={handleSaved} />
       )}
       {sending && (
         <SendItemModal item={sending} onClose={() => setSending(undefined)} />

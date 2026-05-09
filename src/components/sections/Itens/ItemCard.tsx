@@ -1,7 +1,27 @@
 'use client';
 
-import { Pencil, Trash2, Send } from 'lucide-react';
+import {
+  Pencil, Trash2, Send,
+  Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
+  Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
+  Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
+  type LucideIcon,
+} from 'lucide-react';
 import type { ItemCatalog } from '@/store/types';
+
+const ICON_MAP: Record<string, LucideIcon> = {
+  Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
+  Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
+  Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
+};
+
+function ItemIcon({ name, size = 18 }: { name: string; size?: number }) {
+  if (name.startsWith('img:')) {
+    return <img src={name.slice(4)} alt="" width={size} height={size} className="object-cover rounded" />;
+  }
+  const Icon = ICON_MAP[name] ?? Package;
+  return <Icon size={size} />;
+}
 
 interface Props {
   item: ItemCatalog;
@@ -34,8 +54,8 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
     <div className="rounded-lg border border-e-border bg-e-surface p-3 flex flex-col gap-2">
       <div className="flex items-start gap-2">
         {item.icon && (
-          <span className="text-xl w-8 h-8 flex items-center justify-center rounded bg-e-card shrink-0">
-            {item.icon}
+          <span className="w-8 h-8 flex items-center justify-center rounded bg-e-card text-e-sub shrink-0">
+            <ItemIcon name={item.icon} size={18} />
           </span>
         )}
         <div className="flex-1 min-w-0">

@@ -1,4 +1,4 @@
-export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'itens' | 'bestiario' | 'log';
+export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'log';
 
 /* ── Backend models ─────────────────────────────────────────── */
 
@@ -8,6 +8,7 @@ export interface CharInfo {
   name: string; skillClass: string; subClass?: string;
   race: string; level: number;
   slotsClass: number; slotsFree: number; slotsTotal: number;
+  portraitUrl?: string;
 }
 
 export interface PlayerAttributes {
@@ -30,7 +31,7 @@ export interface AutoEffect {
 }
 
 export interface StatusEffect {
-  id: string; name: string; desc: string; icon?: string;
+  id: string; name: string; desc: string; icon?: string; color?: string;
   durationTurns: number; effects: AutoEffect[];
 }
 
@@ -39,8 +40,9 @@ export interface Item {
   // Weapon fields (type === 'weapon')
   weaponType?: string; damageBase?: number; damageDice?: Dice;
   damageAttribute?: string; properties?: string;
-  // Armor field (type === 'armor')
+  // Armor field
   damageReduction?: number;
+  armorWeight?: string; // "leve" | "média" | "pesada"
   // Shared equip fields (weapon | armor | accessory)
   attributeBonus?: Record<string, number>;
   equipSlot?: string; // 'mainHand'|'offHand'|'armor'|'amulet'|'ring'|'utility'
@@ -54,6 +56,7 @@ export interface WeaponEquip {
 export interface ArmorEquip {
   id: string; name: string; damageReduction: number;
   attributeBonus?: Record<string, number>;
+  armorWeight?: string;
 }
 export interface AccessoryEquip {
   id: string; name: string; attributeBonus?: Record<string, number>;
@@ -71,6 +74,7 @@ export interface PendingRequest {
 export interface Essencia {
   id: string; name: string; type: string; desc: string;
   attributeBonus: Record<string, number>; skillIds: string[];
+  icon?: string; color?: string;
 }
 
 export interface EssenciaObtida {
@@ -89,12 +93,30 @@ export interface Player {
   pendingRequests?: PendingRequest[];
   essenciasObtidas?: EssenciaObtida[];
   gold: number;
+  sobrecargaDesbloqueada?: boolean;
+  sobrecargaAtiva?: boolean;
+  sobrecargaNivel?: number;
+  desviosRestantes?: number;
+  customBars?: CustomBar[];
+}
+
+export interface CustomBar {
+  id: string; name: string; color: string; current: number; max: number;
+}
+
+export interface SobrecargaRequest {
+  playerId: string;
+  playerName: string;
+  nivel: number;
+  cd: number;
+  sabMod: number;
 }
 
 export interface InitiativeEntry { playerId: string; name: string; value: number; }
 
 export interface LogEntry {
   playerId: string; text: string; time: string; timestamp: string;
+  type?: string;
 }
 
 export interface ImageEntry {
@@ -109,11 +131,16 @@ export interface FastAction {
   answers: Record<string, string>;
 }
 
+export interface ClassPerks {
+  hasPressureBar: boolean;
+}
+
 export interface ClassKit {
   id: string; skillClass: string;
   starterAttributes: PlayerAttributes;
   starterEquipment: unknown; starterItems: Item[];
   starterSlots: Slot[]; starterSkillIds: string[];
+  perks: ClassPerks;
 }
 
 export interface Maestria {
@@ -141,7 +168,7 @@ export interface ItemCatalog {
   id: string; name: string; desc: string; type: string; icon?: string;
   weaponType?: string; damageBase?: number; damageDice?: Dice;
   damageAttribute?: string; properties?: string;
-  damageReduction?: number;
+  damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
 }
 

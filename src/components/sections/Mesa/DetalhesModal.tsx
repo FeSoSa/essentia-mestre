@@ -26,6 +26,8 @@ import {
   Key,
   Link,
   Package,
+  Pencil,
+  Plus,
   Shield,
   Sparkles,
   Star,
@@ -37,6 +39,9 @@ import {
   Zap,
   type LucideIcon,
 } from "lucide-react";
+import { STATUS_ICONS, getStatusIcon } from "@/lib/statusIcons";
+import { useEffectPresetsStore, type EffectPreset } from "@/store/effectPresetsStore";
+import type { AutoEffect } from "@/store/types";
 import { useEffect, useState } from "react";
 
 // ── Icon system (mirrors InventarioModal) ────────────────────────────────────
@@ -782,6 +787,7 @@ function InventarioPanel({
                   name: item.name,
                   damageReduction: item.damageReduction ?? 0,
                   attributeBonus: item.attributeBonus,
+                  armorWeight: item.armorWeight,
                 },
               }
             : {
@@ -853,8 +859,8 @@ function InventarioPanel({
             ? {
                 ...base,
                 icon: "Shield",
-                damageReduction: (entry.item as { damageReduction?: number })
-                  .damageReduction,
+                damageReduction: (entry.item as { damageReduction?: number }).damageReduction,
+                armorWeight: (entry.item as { armorWeight?: string }).armorWeight,
                 attributeBonus: entry.item.attributeBonus,
               }
             : {
@@ -1277,19 +1283,11 @@ function HabilidadesPanel({
 }) {
   const [skills, setSkills] = useState<SkillTreeEntry[]>([]);
   const [loadingSkills, setLoadingSkills] = useState(true);
-  const [essencias, setEssencias] = useState<Essencia[]>([]);
-  const [sidePanel, setSidePanel] = useState<"essencia" | "habilidade" | null>(
-    null,
-  );
-  const [selectedEssId, setSelectedEssId] = useState<string | null>(null);
   const [selectedSkillId, setSelectedSkillId] = useState<string | null>(null);
+  const [skillSearch, setSkillSearch] = useState('');
+  const [skillTypeFilter, setSkillTypeFilter] = useState<string>('all');
   const [unlocking, setUnlocking] = useState(false);
   const [savingMaestria, setSavingMaestria] = useState<string | null>(null);
-  const [processingEss, setProcessingEss] = useState<string | null>(null);
-
-  const obtained = new Set(
-    (player.essenciasObtidas ?? []).map((e) => e.essenciaId),
-  );
 
   async function fetchSkills() {
     setLoadingSkills(true);
@@ -1312,38 +1310,7 @@ function HabilidadesPanel({
         setLoadingSkills(false);
       })
       .catch(() => setLoadingSkills(false));
-    api
-      .get<Essencia[]>("/master/essencias")
-      .then((r) => setEssencias(r.data))
-      .catch(() => {});
   }, [player.id]);
-
-  async function grantEssencia(essenciaId: string) {
-    setProcessingEss(essenciaId);
-    try {
-      const res = await api.post<Player>(
-        `/master/players/${player.id}/essencias`,
-        { essenciaId },
-      );
-      onUpdate(res.data);
-    } catch {
-    } finally {
-      setProcessingEss(null);
-    }
-  }
-
-  async function removeEssencia(essenciaId: string) {
-    setProcessingEss(essenciaId);
-    try {
-      const res = await api.delete<Player>(
-        `/master/players/${player.id}/essencias/${essenciaId}`,
-      );
-      onUpdate(res.data);
-    } catch {
-    } finally {
-      setProcessingEss(null);
-    }
-  }
 
   async function unlockSkill() {
     if (!selectedSkillId) return;
@@ -1394,143 +1361,89 @@ function HabilidadesPanel({
     essencia: "Essência",
   };
 
+  const allGiveable = [...available, ...skills.filter((e) => e.status === "LOCKED")];
+  const skillTypes = ['all', ...Array.from(new Set(allGiveable.map((e) => e.skill.type).filter(Boolean)))];
+  const filteredSkills = allGiveable.filter((e) => {
+    const matchType = skillTypeFilter === 'all' || e.skill.type === skillTypeFilter;
+    const matchSearch = !skillSearch.trim() || e.skill.name.toLowerCase().includes(skillSearch.toLowerCase());
+    return matchType && matchSearch;
+  });
+  const selectedSkill = available.find((e) => e.skill.id === selectedSkillId);
+
   return (
     <div className="flex-1 overflow-hidden flex">
-      {/* ── Left column ── */}
-      <div className="w-56 shrink-0 border-r border-e-border overflow-y-auto p-4 flex flex-col gap-3">
-        {/* Dar essência */}
-        <button
-          onClick={() =>
-            setSidePanel((v) => (v === "essencia" ? null : "essencia"))
-          }
-          className={`flex items-center gap-2 w-full text-xs px-3 py-2.5 rounded-xl border transition-colors cursor-pointer font-medium ${
-            sidePanel === "essencia"
-              ? "bg-e-accent/10 border-e-accent text-e-accent"
-              : "bg-e-card border-e-border text-e-sub hover:text-e-text hover:border-e-border2"
-          }`}
-        >
-          <Gem size={13} />
-          Dar essência
-        </button>
-        {sidePanel === "essencia" && (
-          <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2.5">
-            <EssenciaSelect
-              essencias={essencias}
-              selectedId={selectedEssId}
-              onSelect={setSelectedEssId}
-            />
-            {selectedEssId &&
-              (() => {
-                const sel = essencias.find((e) => e.id === selectedEssId);
-                if (!sel) return null;
-                const has = obtained.has(sel.id);
-                const busy = processingEss === sel.id;
-                const bonuses = Object.entries(sel.attributeBonus ?? {}).filter(
-                  ([, v]) => v > 0,
-                );
-                return (
-                  <>
-                    <div className="text-xs text-e-faint flex flex-col gap-1">
-                      <p className="text-e-sub leading-snug">
-                        {sel.desc || "—"}
-                      </p>
-                      <p className="text-[10px]">
-                        {ESSENCIA_TYPE_PT[sel.type] ?? sel.type}
-                      </p>
-                      {bonuses.length > 0 && (
-                        <p className="text-[10px] text-e-accent">
-                          {bonuses
-                            .map(
-                              ([k, v]) => `${k.slice(0, 3).toUpperCase()}+${v}`,
-                            )
-                            .join(" ")}
-                        </p>
-                      )}
-                    </div>
-                    {has ? (
-                      <Button
-                        variant="danger"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => removeEssencia(sel.id)}
-                      >
-                        {busy ? "Removendo…" : "Remover"}
-                      </Button>
-                    ) : (
-                      <Button
-                        variant="primary"
-                        size="sm"
-                        disabled={busy}
-                        onClick={() => grantEssencia(sel.id)}
-                      >
-                        {busy ? "Dando…" : "Dar essência"}
-                      </Button>
-                    )}
-                  </>
-                );
-              })()}
-          </div>
-        )}
+      {/* ── Left column: dar habilidade ── */}
+      <div className="w-72 shrink-0 border-r border-e-border flex flex-col">
+        <div className="p-3 border-b border-e-border flex flex-col gap-2 shrink-0">
+          <p className={lbl + " !mb-0"}>Desbloquear habilidade</p>
+          <input
+            value={skillSearch}
+            onChange={(e) => setSkillSearch(e.target.value)}
+            placeholder="Buscar habilidade…"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors"
+          />
+          {skillTypes.length > 1 && (
+            <div className="flex gap-1 flex-wrap">
+              {skillTypes.map((t) => (
+                <button key={t} type="button" onClick={() => setSkillTypeFilter(t)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border font-medium transition-colors cursor-pointer ${
+                    skillTypeFilter === t
+                      ? 'bg-e-accent/15 border-e-accent text-e-accent'
+                      : 'border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub'
+                  }`}>
+                  {t === 'all' ? 'Todas' : (TYPE_PT[t] ?? t)}
+                </button>
+              ))}
+            </div>
+          )}
+        </div>
 
-        {/* Dar habilidade */}
-        <button
-          onClick={() =>
-            setSidePanel((v) => (v === "habilidade" ? null : "habilidade"))
-          }
-          className={`flex items-center gap-2 w-full text-xs px-3 py-2.5 rounded-xl border transition-colors cursor-pointer font-medium ${
-            sidePanel === "habilidade"
-              ? "bg-e-accent/10 border-e-accent text-e-accent"
-              : "bg-e-card border-e-border text-e-sub hover:text-e-text hover:border-e-border2"
-          }`}
-        >
-          <Zap size={13} />
-          Dar habilidade
-        </button>
-        {sidePanel === "habilidade" && (
-          <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2.5">
-            {available.length === 0 &&
-            skills.filter((e) => e.status === "LOCKED").length === 0 ? (
-              <p className="text-[10px] text-e-faint">
-                Nenhuma habilidade disponível.
-              </p>
-            ) : (
-              <>
-                <SkillSelect
-                  available={available}
-                  locked={skills.filter((e) => e.status === "LOCKED")}
-                  selectedId={selectedSkillId}
-                  onSelect={setSelectedSkillId}
-                />
-                {selectedSkillId &&
-                  (() => {
-                    const sel = available.find(
-                      (e) => e.skill.id === selectedSkillId,
-                    );
-                    if (!sel) return null;
-                    return (
-                      <div className="text-xs text-e-faint flex flex-col gap-1">
-                        <p className="text-e-sub leading-snug">
-                          {sel.skill.desc || "—"}
-                        </p>
-                        <p className="text-[10px]">
-                          {TYPE_PT[sel.skill.type] ?? sel.skill.type}
-                          {sel.skill.cooldownTurns > 0
-                            ? ` · ${sel.skill.cooldownTurns}t cooldown`
-                            : ""}
-                        </p>
-                      </div>
-                    );
-                  })()}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  disabled={!selectedSkillId || unlocking}
-                  onClick={unlockSkill}
-                >
-                  {unlocking ? "Desbloqueando…" : "Desbloquear"}
-                </Button>
-              </>
-            )}
+        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+          {filteredSkills.length === 0 ? (
+            <p className="text-xs text-e-faint text-center py-6">Nenhuma habilidade encontrada.</p>
+          ) : filteredSkills.map((e) => {
+            const isLocked = e.status === "LOCKED";
+            const isSelected = e.skill.id === selectedSkillId;
+            return (
+              <button key={e.skill.id} type="button"
+                onClick={() => !isLocked && setSelectedSkillId(id => id === e.skill.id ? null : e.skill.id)}
+                disabled={isLocked}
+                className={`w-full text-left px-3 py-2 rounded-lg border transition-colors ${
+                  isSelected
+                    ? 'bg-e-accent/10 border-e-accent'
+                    : isLocked
+                      ? 'bg-e-bg border-e-border opacity-40 cursor-not-allowed'
+                      : 'bg-e-bg border-e-border hover:border-e-border2 cursor-pointer'
+                }`}
+              >
+                <div className="flex items-center gap-2">
+                  <span className={`flex-1 text-xs font-medium truncate ${isSelected ? 'text-e-accent' : 'text-e-text'}`}>
+                    {e.skill.name}
+                  </span>
+                  {e.skill.ultimate && (
+                    <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 shrink-0">ULT</span>
+                  )}
+                  {isLocked && <span className="text-[9px] text-e-faint shrink-0">🔒</span>}
+                </div>
+                {e.skill.cooldownTurns > 0 && (
+                  <p className="text-[10px] text-e-faint mt-0.5">{e.skill.cooldownTurns}t cooldown</p>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedSkill && (
+          <div className="p-3 border-t border-e-border shrink-0 flex flex-col gap-2">
+            <div className="bg-e-bg rounded-lg p-2.5 flex flex-col gap-1">
+              <p className="text-xs font-semibold text-e-text">{selectedSkill.skill.name}</p>
+              {selectedSkill.skill.desc && (
+                <p className="text-[11px] text-e-faint leading-snug line-clamp-3">{selectedSkill.skill.desc}</p>
+              )}
+            </div>
+            <Button variant="primary" size="sm" disabled={unlocking} onClick={unlockSkill}>
+              {unlocking ? 'Desbloqueando…' : 'Desbloquear'}
+            </Button>
           </div>
         )}
       </div>
@@ -1636,6 +1549,739 @@ function HabilidadesPanel({
   );
 }
 
+// ── EfeitosPanel ─────────────────────────────────────────────────────────────
+
+const EFFECT_TRIGGERS = [
+  { value: 'on_turn_start',      label: 'Início do turno'  },
+  { value: 'on_turn_end',        label: 'Fim do turno'     },
+  { value: 'on_skill_use',       label: 'Ao usar skill'    },
+  { value: 'on_damage_received', label: 'Ao receber dano'  },
+];
+const EFFECT_TYPES = [
+  { value: 'damage_hp',              label: 'Dano HP'            },
+  { value: 'damage_flow',            label: 'Dano Flow'          },
+  { value: 'heal_hp',                label: 'Cura HP'            },
+  { value: 'heal_flow',              label: 'Cura Flow'          },
+  { value: 'modify_attribute',       label: 'Mod. Atributo'      },
+  { value: 'modify_damage_dealt',    label: 'Mod. dano causado'  },
+  { value: 'modify_damage_received', label: 'Mod. dano recebido' },
+];
+
+function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Player) => void }) {
+  const { presets, addPreset, removePreset } = useEffectPresetsStore();
+
+  const [name,        setName]        = useState('');
+  const [icon,        setIcon]        = useState('');
+  const [color,       setColor]       = useState('');
+  const [colorInput,  setColorInput]  = useState('');
+  const [desc,        setDesc]        = useState('');
+  const [duration,    setDuration]    = useState(3);
+  const [permanent,   setPermanent]   = useState(false);
+  const [autoEffects, setAutoEffects] = useState<AutoEffect[]>([]);
+  const [removing,      setRemoving]      = useState<string | null>(null);
+  const [removingAll,   setRemovingAll]   = useState(false);
+  const [removeError,   setRemoveError]   = useState<string | null>(null);
+  const [saving,      setSaving]      = useState(false);
+  const [applying,    setApplying]    = useState<string | null>(null);
+
+  const currentEffects = player.statusEffects ?? [];
+
+  function loadPreset(p: EffectPreset) {
+    setName(p.name);
+    setIcon(p.icon ?? '');
+    setColor(p.color ?? '');
+    setColorInput(p.color ?? '');
+    setDesc(p.desc ?? '');
+    setDuration(p.durationTurns === -1 ? 3 : p.durationTurns);
+    setPermanent(p.durationTurns === -1);
+    setAutoEffects(p.effects);
+  }
+
+  async function applyPreset(p: EffectPreset) {
+    setApplying(p.id);
+    try {
+      const res = await api.post<Player>('/master/status-effect', {
+        playerId: player.id,
+        effect: { id: crypto.randomUUID(), name: p.name, icon: p.icon, desc: p.desc ?? '', durationTurns: p.durationTurns, effects: p.effects },
+      });
+      onUpdate(res.data);
+    } catch {}
+    finally { setApplying(null); }
+  }
+
+  function saveAsPreset() {
+    if (!name.trim()) return;
+    const newPreset: EffectPreset = {
+      id: `custom-${Date.now()}`,
+      name: name.trim(),
+      icon: icon || undefined,
+      color: color || undefined,
+      desc: desc || undefined,
+      durationTurns: permanent ? -1 : duration,
+      effects: autoEffects,
+    };
+    addPreset(newPreset);
+  }
+
+  async function handleAdd(e: React.SyntheticEvent<HTMLFormElement>) {
+    e.preventDefault();
+    setSaving(true);
+    try {
+      const res = await api.post<Player>('/master/status-effect', {
+        playerId: player.id,
+        effect: { id: crypto.randomUUID(), name, icon: icon || undefined, color: color || undefined, desc, durationTurns: permanent ? -1 : duration, effects: autoEffects },
+      });
+      onUpdate(res.data);
+      setName(''); setIcon(''); setColor(''); setColorInput(''); setDesc(''); setDuration(3); setPermanent(false); setAutoEffects([]);
+    } catch {}
+    finally { setSaving(false); }
+  }
+
+  async function handleRemoveAll() {
+    setRemovingAll(true);
+    setRemoveError(null);
+    try {
+      const res = await api.delete<Player>(`/master/players/${player.id}/status-effects`);
+      onUpdate(res.data);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number } })?.response?.status;
+      setRemoveError(`Erro ao remover todos: ${status ?? 'verifique o console'}`);
+    } finally {
+      setRemovingAll(false);
+    }
+  }
+
+  async function handleRemove(effectId: string) {
+    if (!effectId) {
+      setRemoveError('Este efeito foi criado sem ID — vai expirar automaticamente no próximo turno.');
+      return;
+    }
+    setRemoving(effectId);
+    setRemoveError(null);
+    try {
+      const res = await api.delete<Player>(
+        `/master/status-effect/${effectId}`,
+        { data: { playerId: player.id } }
+      );
+      onUpdate(res.data);
+    } catch (err: unknown) {
+      const status = (err as { response?: { status?: number; data?: unknown } })?.response?.status;
+      const data   = (err as { response?: { data?: unknown } })?.response?.data;
+      console.error('[RemoveEffect]', status, data, err);
+      setRemoveError(`Erro ${status ?? 'de rede'}: ${JSON.stringify(data) || 'verifique o console'}`);
+    } finally {
+      setRemoving(null);
+    }
+  }
+
+  const PresetIcon = ({ iconName }: { iconName?: string }) => {
+    if (!iconName) return null;
+    const entry = STATUS_ICONS.find((s) => s.name === iconName);
+    if (!entry) return null;
+    return <entry.Icon size={13} className="shrink-0" />;
+  };
+
+  return (
+    <div className="flex-1 overflow-hidden flex">
+      {/* ── Left column ── */}
+      <div className="w-72 shrink-0 border-r border-e-border overflow-y-auto p-4 flex flex-col gap-4">
+
+        {/* Predefinidos */}
+        <div>
+          <p className={lbl}>Predefinidos</p>
+          <div className="flex flex-col gap-1">
+            {presets.map((p) => {
+              const isApplying = applying === p.id;
+              return (
+                <div key={p.id} className="flex items-center gap-1 group">
+                  <button
+                    onClick={() => applyPreset(p)}
+                    disabled={isApplying}
+                    title="Aplicar diretamente"
+                    className="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-e-card border border-e-border hover:border-e-border2 text-left transition-colors cursor-pointer disabled:opacity-50"
+                  >
+                    <PresetIcon iconName={p.icon} />
+                    <span className="flex-1 text-xs font-medium text-e-text truncate">{p.name}</span>
+                    <span className="text-[10px] text-e-faint shrink-0">
+                      {p.durationTurns === -1 ? '∞' : `${p.durationTurns}t`}
+                    </span>
+                    {isApplying
+                      ? <span className="text-[10px] text-e-faint">…</span>
+                      : <span className="text-[10px] text-e-accent opacity-0 group-hover:opacity-100 transition-opacity shrink-0">▶</span>
+                    }
+                  </button>
+                  <button
+                    onClick={() => loadPreset(p)}
+                    title="Editar no formulário"
+                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-text hover:bg-e-card transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                  >
+                    <Pencil size={11} />
+                  </button>
+                  <button
+                    onClick={() => removePreset(p.id)}
+                    title="Remover predefinido"
+                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-danger hover:bg-e-card transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                  >
+                    <Trash2 size={11} />
+                  </button>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Efeitos ativos */}
+        <div>
+          <div className="flex items-center justify-between">
+            <p className={lbl + " !mb-0"}>Ativos ({currentEffects.length})</p>
+            {currentEffects.length > 0 && (
+              <button
+                onClick={handleRemoveAll}
+                disabled={removingAll}
+                className="text-[10px] text-e-danger hover:text-e-danger/80 disabled:opacity-40 cursor-pointer transition-colors"
+              >
+                {removingAll ? 'Removendo…' : 'Remover todos'}
+              </button>
+            )}
+          </div>
+          {removeError && (
+            <p className="text-[10px] text-e-danger bg-e-danger/10 border border-e-danger/30 rounded-lg px-2 py-1.5 mb-2 break-all">
+              {removeError}
+            </p>
+          )}
+          {currentEffects.length === 0 ? (
+            <p className="text-xs text-e-faint italic">Nenhum efeito ativo.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {currentEffects.map((ef) => {
+                const IconComp = getStatusIcon(ef.icon);
+                return (
+                  <div key={ef.id || ef.name} className="flex items-center gap-2 bg-e-card border border-e-border rounded-xl px-3 py-2">
+                    {IconComp
+                      ? <IconComp size={13} className="text-e-sub shrink-0" />
+                      : ef.icon ? <span className="text-sm shrink-0">{ef.icon}</span> : null}
+                    <span className="flex-1 text-xs font-medium text-e-text truncate">{ef.name}</span>
+                    <span className="text-[10px] font-mono text-e-sub shrink-0">
+                      {ef.durationTurns === -1 ? '∞' : `${ef.durationTurns}t`}
+                    </span>
+                    <button
+                      onClick={() => handleRemove(ef.id)}
+                      disabled={removing === ef.id}
+                      className="p-1 rounded hover:bg-e-danger/20 text-e-faint hover:text-e-danger disabled:opacity-40 cursor-pointer transition-colors shrink-0"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* ── Right: form ── */}
+      <div className="flex-1 overflow-y-auto p-4">
+        <form onSubmit={handleAdd} className="flex flex-col gap-4 max-w-lg">
+          <p className={lbl}>Personalizado</p>
+
+          <div>
+            <label className={lbl}>Nome</label>
+            <input type="text" value={name} onChange={(e) => setName(e.target.value)}
+              placeholder="Ex: Maldição do Ancião" required />
+          </div>
+
+          <div>
+            <label className={lbl}>Descrição</label>
+            <textarea value={desc} onChange={(e) => setDesc(e.target.value)}
+              placeholder="O que este efeito faz ao personagem…" rows={2}
+              className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text resize-none outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint" />
+          </div>
+
+          <div>
+            <label className={lbl}>Ícone</label>
+            <div className="grid grid-cols-9 gap-1.5">
+              {STATUS_ICONS.map(({ name: n, Icon }) => (
+                <button key={n} type="button" title={n}
+                  onClick={() => setIcon(icon === n ? '' : n)}
+                  className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center ${
+                    icon === n
+                      ? 'border-e-accent bg-e-accent/10 text-e-accent'
+                      : 'border-e-border hover:border-e-border2 text-e-faint hover:text-e-sub'
+                  }`}
+                  style={icon === n && color ? { borderColor: color, backgroundColor: color + '22', color } : {}}
+                >
+                  <Icon size={14} />
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div>
+            <label className={lbl}>Cor</label>
+            <div className="flex flex-col gap-2">
+              <div className="grid grid-cols-6 gap-1.5">
+                {['#ef4444','#f97316','#facc15','#4ade80','#06b6d4','#3b82f6','#a855f7','#ec4899','#d4a84e','#e2e8f0','#71717a','#7c3aed'].map((c) => (
+                  <button key={c} type="button" onClick={() => { setColor(c); setColorInput(c); }}
+                    className={`h-7 rounded-lg border-2 transition-all cursor-pointer ${color === c ? 'scale-110 border-white/50' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+                <button type="button" onClick={() => { setColor(''); setColorInput(''); }}
+                  className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!color ? 'border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
+                  auto
+                </button>
+              </div>
+              <div className="flex items-center gap-2">
+                <div className="w-7 h-7 rounded-lg border border-e-border shrink-0" style={{ backgroundColor: colorInput || 'transparent' }} />
+                <input type="text" value={colorInput}
+                  onChange={(e) => { setColorInput(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setColor(e.target.value); }}
+                  placeholder="#rrggbb"
+                  className="flex-1 rounded-xl px-3 py-1.5 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint font-mono" />
+              </div>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-4">
+            <label className="flex items-center gap-2 cursor-pointer select-none">
+              <input type="checkbox" checked={permanent} onChange={(e) => setPermanent(e.target.checked)} />
+              <span className="text-sm text-e-sub">Permanente</span>
+            </label>
+            {!permanent && (
+              <div className="flex items-center gap-2">
+                <span className="text-sm text-e-sub shrink-0">Duração:</span>
+                <input type="number" value={duration}
+                  onChange={(e) => setDuration(Number(e.target.value))}
+                  className="!w-20" min={1} />
+                <span className="text-sm text-e-faint">turnos</span>
+              </div>
+            )}
+          </div>
+
+          {autoEffects.length > 0 && (
+            <div className="flex flex-col gap-2">
+              <p className={lbl}>Efeitos automáticos</p>
+              {autoEffects.map((eff, i) => (
+                <div key={i} className="grid grid-cols-2 gap-2 bg-e-card rounded-xl p-3">
+                  <select value={eff.trigger}
+                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, trigger: e.target.value } : ef))}>
+                    {EFFECT_TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <select value={eff.type}
+                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, type: e.target.value } : ef))}>
+                    {EFFECT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                  </select>
+                  <input type="number" placeholder="Valor" value={eff.value ?? 0}
+                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, value: Number(e.target.value) } : ef))} />
+                  <button type="button"
+                    onClick={() => setAutoEffects((p) => p.filter((_, idx) => idx !== i))}
+                    className="text-e-faint hover:text-e-danger text-sm cursor-pointer transition-colors">
+                    Remover
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <button type="button"
+            onClick={() => setAutoEffects((p) => [...p, { trigger: 'on_turn_start', type: 'damage_hp', value: 0 }])}
+            className="flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
+            <Plus size={13} /> Efeito automático
+          </button>
+
+          <div className="flex gap-2">
+            <button type="button"
+              onClick={saveAsPreset}
+              disabled={!name.trim()}
+              title="Salvar como predefinido para uso futuro"
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-e-border text-e-faint hover:text-e-sub hover:border-e-border2 text-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              ☆ Salvar predefinido
+            </button>
+            <button type="submit"
+              disabled={saving || !name.trim()}
+              className="flex-1 py-2.5 rounded-xl bg-e-accent text-e-bg text-sm font-bold hover:opacity-90 disabled:opacity-40 disabled:cursor-not-allowed transition-opacity cursor-pointer">
+              {saving ? 'Aplicando…' : 'Aplicar'}
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── CustomBarsPanel ───────────────────────────────────────────────────────────
+
+const BAR_COLORS = ['#4ade80','#3b82f6','#a855f7','#f97316','#ef4444','#facc15','#06b6d4','#ec4899','#d4a84e'];
+
+function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Player) => void }) {
+  const bars = player.customBars ?? [];
+  const [adding, setAdding] = useState(false);
+  const [newName, setNewName] = useState('');
+  const [newMax, setNewMax] = useState(10);
+  const [newColor, setNewColor] = useState('#a855f7');
+  const [newColetiva, setNewColetiva] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [removing, setRemoving] = useState<string | null>(null);
+  const [collectiveBars, setCollectiveBars] = useState<{ id: string; name: string; color: string; current: number; max: number }[]>([]);
+  const [removingCol, setRemovingCol] = useState<string | null>(null);
+
+  useEffect(() => {
+    api.get<typeof collectiveBars>('/master/collective-bars').then((r) => setCollectiveBars(r.data)).catch(() => {});
+  }, []);
+
+  async function handleAdd() {
+    if (!newName.trim()) return;
+    setSaving(true);
+    try {
+      if (newColetiva) {
+        const res = await api.post<typeof collectiveBars>('/master/collective-bars', {
+          name: newName.trim(), color: newColor, current: 0, max: newMax,
+        });
+        setCollectiveBars(res.data);
+      } else {
+        const res = await api.post<Player>(`/master/players/${player.id}/custom-bars`, {
+          name: newName.trim(), color: newColor, current: 0, max: newMax,
+        });
+        onUpdate(res.data);
+      }
+      setNewName(''); setNewMax(10); setNewColetiva(false); setAdding(false);
+    } catch {} finally { setSaving(false); }
+  }
+
+  async function handleAdjustCol(barId: string, field: 'current' | 'max', val: number) {
+    const bar = collectiveBars.find(b => b.id === barId);
+    if (!bar) return;
+    try {
+      const res = await api.put<typeof collectiveBars>(`/master/collective-bars/${barId}`, {
+        current: field === 'current' ? val : bar.current,
+        max: field === 'max' ? val : bar.max,
+      });
+      setCollectiveBars(res.data);
+    } catch {}
+  }
+
+  async function handleRemoveCol(barId: string) {
+    setRemovingCol(barId);
+    try {
+      const res = await api.delete<typeof collectiveBars>(`/master/collective-bars/${barId}`);
+      setCollectiveBars(res.data);
+    } catch {} finally { setRemovingCol(null); }
+  }
+
+  async function handleAdjust(barId: string, field: 'current' | 'max', val: number) {
+    const bar = bars.find(b => b.id === barId);
+    if (!bar) return;
+    try {
+      const res = await api.put<Player>(`/master/players/${player.id}/custom-bars/${barId}`, {
+        current: field === 'current' ? val : bar.current,
+        max: field === 'max' ? val : bar.max,
+      });
+      onUpdate(res.data);
+    } catch {}
+  }
+
+  async function handleRemove(barId: string) {
+    setRemoving(barId);
+    try {
+      const res = await api.delete<Player>(`/master/players/${player.id}/custom-bars/${barId}`);
+      onUpdate(res.data);
+    } catch {} finally { setRemoving(null); }
+  }
+
+  return (
+    <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
+      <StatusBar player={player} />
+
+      {/* Barras coletivas */}
+      {collectiveBars.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <p className={lbl + ' flex items-center gap-2'}>
+            Barras coletivas
+            <span className="text-[9px] bg-blue-500/20 text-blue-300 rounded-full px-1.5 py-0.5 font-bold normal-case tracking-normal">todos os jogadores</span>
+          </p>
+          {collectiveBars.map((bar) => (
+            <div key={bar.id} className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+              <div className="flex items-center gap-3">
+                <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bar.color }} />
+                <p className="font-semibold text-sm text-e-text flex-1">{bar.name}</p>
+                <button onClick={() => handleRemoveCol(bar.id)} disabled={removingCol === bar.id}
+                  className="p-1.5 rounded-lg text-e-faint hover:text-e-danger hover:bg-e-danger/10 disabled:opacity-40 cursor-pointer transition-colors">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+              <div className="w-full h-2 rounded-full bg-e-border overflow-hidden">
+                <div className="h-full rounded-full transition-all" style={{ width: `${bar.max > 0 ? Math.min(100, (bar.current / bar.max) * 100) : 0}%`, backgroundColor: bar.color }} />
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5 flex-1">
+                  <button onClick={() => handleAdjustCol(bar.id, 'current', Math.max(0, bar.current - 1))}
+                    className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
+                  <input type="number" value={bar.current} min={0} max={bar.max}
+                    onChange={(e) => handleAdjustCol(bar.id, 'current', Number(e.target.value))}
+                    className="!w-16 !text-center !text-sm" />
+                  <button onClick={() => handleAdjustCol(bar.id, 'current', Math.min(bar.max, bar.current + 1))}
+                    className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
+                  <span className="text-xs text-e-faint">/ </span>
+                  <input type="number" value={bar.max} min={1}
+                    onChange={(e) => handleAdjustCol(bar.id, 'max', Math.max(1, Number(e.target.value)))}
+                    className="!w-16 !text-center !text-sm" />
+                </div>
+                <span className="text-xs text-e-faint tabular-nums">{bar.current}/{bar.max}</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {(bars.length > 0 || collectiveBars.length > 0) && <p className={lbl}>Barras pessoais</p>}
+
+      {bars.length === 0 && !adding && (
+        <p className="text-sm text-e-faint text-center py-4">Nenhuma barra pessoal.</p>
+      )}
+
+      {bars.map((bar) => (
+        <div key={bar.id} className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+          <div className="flex items-center gap-3">
+            <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bar.color }} />
+            <p className="font-semibold text-sm text-e-text flex-1">{bar.name}</p>
+            <button onClick={() => handleRemove(bar.id)} disabled={removing === bar.id}
+              className="p-1.5 rounded-lg text-e-faint hover:text-e-danger hover:bg-e-danger/10 disabled:opacity-40 cursor-pointer transition-colors">
+              <Trash2 size={13} />
+            </button>
+          </div>
+          <div className="w-full h-2 rounded-full bg-e-border overflow-hidden">
+            <div className="h-full rounded-full transition-all" style={{ width: `${bar.max > 0 ? Math.min(100, (bar.current / bar.max) * 100) : 0}%`, backgroundColor: bar.color }} />
+          </div>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1.5 flex-1">
+              <button onClick={() => handleAdjust(bar.id, 'current', Math.max(0, bar.current - 1))}
+                className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
+              <input type="number" value={bar.current} min={0} max={bar.max}
+                onChange={(e) => handleAdjust(bar.id, 'current', Number(e.target.value))}
+                className="!w-16 !text-center !text-sm" />
+              <button onClick={() => handleAdjust(bar.id, 'current', Math.min(bar.max, bar.current + 1))}
+                className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
+              <span className="text-xs text-e-faint">/ </span>
+              <input type="number" value={bar.max} min={1}
+                onChange={(e) => handleAdjust(bar.id, 'max', Math.max(1, Number(e.target.value)))}
+                className="!w-16 !text-center !text-sm" />
+            </div>
+            <span className="text-xs text-e-faint tabular-nums">{bar.current}/{bar.max}</span>
+          </div>
+        </div>
+      ))}
+
+      {adding ? (
+        <div className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+          <p className={lbl}>Nova barra</p>
+          <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome da barra (ex: Mana, Energia…)" autoFocus />
+          <div className="flex items-center gap-3">
+            <div className="flex-1">
+              <p className={lbl}>Máximo</p>
+              <input type="number" min={1} value={newMax} onChange={(e) => setNewMax(Number(e.target.value))} className="!text-center" />
+            </div>
+            <div className="flex-1">
+              <p className={lbl}>Cor</p>
+              <div className="flex gap-1 flex-wrap">
+                {BAR_COLORS.map((c) => (
+                  <button key={c} type="button" onClick={() => setNewColor(c)}
+                    className={`w-6 h-6 rounded-lg border-2 cursor-pointer transition-transform ${newColor === c ? 'scale-110 border-white/50' : 'border-transparent hover:scale-105'}`}
+                    style={{ backgroundColor: c }} />
+                ))}
+              </div>
+            </div>
+          </div>
+          <label className="flex items-center gap-2 cursor-pointer select-none">
+            <input type="checkbox" checked={newColetiva} onChange={(e) => setNewColetiva(e.target.checked)}
+              className="w-4 h-4 accent-blue-400" />
+            <span className="text-sm text-e-sub">Barra coletiva</span>
+            <span className="text-[10px] text-e-faint">(visível para todos os jogadores)</span>
+          </label>
+          <div className="flex gap-2">
+            <Button variant="ghost" size="sm" className="flex-1" onClick={() => setAdding(false)}>Cancelar</Button>
+            <Button variant="primary" size="sm" className="flex-1" disabled={!newName.trim() || saving} onClick={handleAdd}>
+              {saving ? 'Criando…' : 'Criar'}
+            </Button>
+          </div>
+        </div>
+      ) : (
+        <button onClick={() => setAdding(true)}
+          className="flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
+          <Plus size={13} /> Adicionar barra
+        </button>
+      )}
+    </div>
+  );
+}
+
+// ── EssenciasPanel ────────────────────────────────────────────────────────────
+
+const TYPE_COLORS_PANEL: Record<string, { border: string; badge: string; text: string }> = {
+  Grande:  { border: '#d4a84e55', badge: '#d4a84e22', text: '#d4a84e' },
+  Mitica:  { border: '#a855f755', badge: '#a855f722', text: '#a855f7' },
+  Derivada:{ border: '#4ade8055', badge: '#4ade8022', text: '#4ade80' },
+};
+
+function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Player) => void }) {
+  const [essencias,    setEssencias]    = useState<Essencia[]>([]);
+  const [selectedId,   setSelectedId]   = useState<string | null>(null);
+  const [processing,   setProcessing]   = useState<string | null>(null);
+  const [essSearch,    setEssSearch]    = useState('');
+
+  useEffect(() => {
+    api.get<Essencia[]>('/master/essencias').then((r) => setEssencias(r.data)).catch(() => {});
+  }, []);
+
+  const obtained = player.essenciasObtidas ?? [];
+  const obtainedIds = new Set(obtained.map((o) => o.essenciaId));
+  const available = essencias.filter((e) => !obtainedIds.has(e.id));
+  const selectedEss = essencias.find((e) => e.id === selectedId);
+
+  const filteredAvailable = available.filter((e) =>
+    !essSearch.trim() || e.name.toLowerCase().includes(essSearch.toLowerCase())
+  );
+
+  async function grantEssencia(essenciaId: string) {
+    setProcessing(essenciaId);
+    try {
+      const res = await api.post<Player>(`/master/players/${player.id}/essencias`, { essenciaId });
+      onUpdate(res.data);
+      setSelectedId(null);
+    } catch {}
+    finally { setProcessing(null); }
+  }
+
+  async function removeEssencia(essenciaId: string) {
+    setProcessing(essenciaId);
+    try {
+      const res = await api.delete<Player>(`/master/players/${player.id}/essencias/${essenciaId}`);
+      onUpdate(res.data);
+    } catch {}
+    finally { setProcessing(null); }
+  }
+
+  return (
+    <div className="flex-1 overflow-hidden flex">
+      {/* ── Left: conceder ── */}
+      <div className="w-72 shrink-0 border-r border-e-border flex flex-col">
+        <div className="p-3 border-b border-e-border shrink-0 flex flex-col gap-2">
+          <p className={lbl + " !mb-0"}>Conceder essência</p>
+          <input
+            value={essSearch}
+            onChange={(e) => setEssSearch(e.target.value)}
+            placeholder="Buscar essência…"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors"
+          />
+        </div>
+
+        <div className="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+          {available.length === 0 ? (
+            <p className="text-xs text-e-faint text-center py-6 italic">Todas as essências já foram concedidas.</p>
+          ) : filteredAvailable.length === 0 ? (
+            <p className="text-xs text-e-faint text-center py-6">Nenhuma essência encontrada.</p>
+          ) : filteredAvailable.map((e) => {
+            const c = TYPE_COLORS_PANEL[e.type] ?? { border: '#71717a55', badge: '#71717a22', text: '#71717a' };
+            const isSelected = e.id === selectedId;
+            const bonuses = Object.entries(e.attributeBonus ?? {}).filter(([, v]) => v !== 0);
+            return (
+              <button key={e.id} type="button"
+                onClick={() => setSelectedId(id => id === e.id ? null : e.id)}
+                className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
+                  isSelected ? 'border-e-accent bg-e-accent/5' : 'border-e-border bg-e-bg hover:border-e-border2'
+                }`}
+                style={isSelected ? {} : { borderLeftColor: c.text + '66', borderLeftWidth: 3 }}
+              >
+                <div className="flex items-center gap-2 mb-1">
+                  <span className={`flex-1 text-xs font-semibold truncate ${isSelected ? 'text-e-accent' : 'text-e-text'}`}>{e.name}</span>
+                  <span className="text-[8px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider shrink-0"
+                    style={{ background: c.badge, color: c.text }}>{e.type}</span>
+                </div>
+                {bonuses.length > 0 && (
+                  <div className="flex gap-1 flex-wrap">
+                    {bonuses.map(([attr, val]) => (
+                      <span key={attr} className="text-[9px] text-e-faint">
+                        {attr.slice(0,3).toUpperCase()}{val > 0 ? '+' : ''}{val}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {selectedEss && (() => {
+          const c = TYPE_COLORS_PANEL[selectedEss.type] ?? { border: '#71717a55', badge: '#71717a22', text: '#71717a' };
+          return (
+            <div className="p-3 border-t border-e-border shrink-0 flex flex-col gap-2">
+              <div className="bg-e-bg rounded-lg p-2.5 flex flex-col gap-1" style={{ borderLeft: `3px solid ${c.text}` }}>
+                <p className="text-xs font-semibold text-e-text">{selectedEss.name}</p>
+                {selectedEss.desc && <p className="text-[11px] text-e-faint leading-snug line-clamp-2">{selectedEss.desc}</p>}
+                {selectedEss.skillIds.length > 0 && (
+                  <p className="text-[10px] text-e-faint">{selectedEss.skillIds.length} habilidade{selectedEss.skillIds.length !== 1 ? 's' : ''} desbloqueada{selectedEss.skillIds.length !== 1 ? 's' : ''}</p>
+                )}
+              </div>
+              <Button variant="primary" size="sm" disabled={processing === selectedEss.id} onClick={() => grantEssencia(selectedEss.id)}>
+                {processing === selectedEss.id ? 'Concedendo…' : 'Conceder'}
+              </Button>
+            </div>
+          );
+        })()}
+      </div>
+
+      {/* ── Right: obtidas ── */}
+      <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
+        <StatusBar player={player} />
+        {obtained.length === 0 ? (
+          <p className="text-sm text-e-faint text-center py-8">Nenhuma essência obtida.</p>
+        ) : (
+          <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>
+            {obtained.map((o) => {
+              const ess = essencias.find((e) => e.id === o.essenciaId);
+              if (!ess) return null;
+              const c = TYPE_COLORS_PANEL[ess.type] ?? { border: '#71717a55', badge: '#71717a22', text: '#71717a' };
+              const bonuses = Object.entries(ess.attributeBonus ?? {}).filter(([, v]) => v !== 0);
+              const busy = processing === o.essenciaId;
+              return (
+                <div key={o.essenciaId} className="rounded-xl border bg-e-card p-3 flex flex-col gap-2" style={{ borderColor: c.border }}>
+                  <div className="flex items-start justify-between gap-2">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-sm text-e-text truncate">{ess.name}</p>
+                      <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider" style={{ background: c.badge, color: c.text }}>
+                        {ess.type}
+                      </span>
+                    </div>
+                    <button
+                      onClick={() => removeEssencia(o.essenciaId)}
+                      disabled={busy}
+                      className="p-1.5 rounded-lg text-e-faint hover:text-e-danger hover:bg-e-danger/10 disabled:opacity-40 cursor-pointer transition-colors shrink-0"
+                    >
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  {ess.desc && <p className="text-xs text-e-faint line-clamp-2">{ess.desc}</p>}
+                  {bonuses.length > 0 && (
+                    <div className="flex gap-1 flex-wrap">
+                      {bonuses.map(([attr, val]) => (
+                        <span key={attr} className="px-1.5 py-0.5 rounded text-[10px] bg-e-bg text-e-text">
+                          {attr.slice(0,3).toUpperCase()} {val > 0 ? '+' : ''}{val}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                  {o.unlockedSkillIds.length > 0 && (
+                    <p className="text-[10px] text-e-faint">
+                      {o.unlockedSkillIds.length} habilidade{o.unlockedSkillIds.length !== 1 ? 's' : ''} desbloqueada{o.unlockedSkillIds.length !== 1 ? 's' : ''}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+
 // ── DetalhesModal (main) ──────────────────────────────────────────────────────
 
 export default function DetalhesModal({
@@ -1646,7 +2292,9 @@ export default function DetalhesModal({
   onClose: () => void;
 }) {
   const { setPlayer } = useStore();
-  const [tab, setTab] = useState<"inventario" | "habilidades">("inventario");
+  const storePlayer = useStore((s) => s.players.find((p) => p.id === player.id));
+  const currentPlayer = storePlayer ?? player;
+  const [tab, setTab] = useState<"inventario" | "habilidades" | "essencias" | "barras" | "efeitos">("inventario");
   const [showXP, setShowXP] = useState(false);
   const [xpAmount, setXpAmount] = useState("");
   const [givingXP, setGivingXP] = useState(false);
@@ -1699,7 +2347,7 @@ export default function DetalhesModal({
           </div>
 
           {/* Gold input */}
-          <GoldControl player={player} onUpdate={setPlayer} />
+          <GoldControl player={currentPlayer} onUpdate={setPlayer} />
 
           {/* XP button + inline form */}
           <div className="flex items-center gap-2 shrink-0">
@@ -1753,7 +2401,7 @@ export default function DetalhesModal({
 
         {/* Tabs */}
         <div className="flex gap-0 border-b border-e-border px-5 shrink-0">
-          {(["inventario", "habilidades"] as const).map((t) => (
+          {(["inventario", "habilidades", "essencias", "barras", "efeitos"] as const).map((t) => (
             <button
               key={t}
               onClick={() => setTab(t)}
@@ -1763,16 +2411,53 @@ export default function DetalhesModal({
                   : "border-transparent text-e-faint hover:text-e-sub"
               }`}
             >
-              {t === "inventario" ? "Inventário" : "Habilidades"}
+              {t === "inventario" ? "Inventário"
+                : t === "habilidades" ? "Habilidades"
+                : t === "barras" ? (
+                  <span className="flex items-center gap-1.5">
+                    Barras
+                    {(currentPlayer.customBars?.length ?? 0) > 0 && (
+                      <span className="text-[9px] font-bold bg-blue-500/20 text-blue-300 rounded-full px-1.5 py-0.5">
+                        {currentPlayer.customBars!.length}
+                      </span>
+                    )}
+                  </span>
+                )
+                : t === "essencias" ? (
+                  <span className="flex items-center gap-1.5">
+                    Essências
+                    {(currentPlayer.essenciasObtidas?.length ?? 0) > 0 && (
+                      <span className="text-[9px] font-bold bg-purple-500/20 text-purple-300 rounded-full px-1.5 py-0.5">
+                        {currentPlayer.essenciasObtidas.length}
+                      </span>
+                    )}
+                  </span>
+                ) : (
+                  <span className="flex items-center gap-1.5">
+                    Efeitos
+                    {(currentPlayer.statusEffects?.length ?? 0) > 0 && (
+                      <span className="text-[9px] font-bold bg-e-accent/20 text-e-accent rounded-full px-1.5 py-0.5">
+                        {currentPlayer.statusEffects.length}
+                      </span>
+                    )}
+                  </span>
+                )
+              }
             </button>
           ))}
         </div>
 
         {/* Panel */}
         {tab === "inventario" ? (
-          <InventarioPanel player={player} onUpdate={setPlayer} />
+          <InventarioPanel player={currentPlayer} onUpdate={setPlayer} />
+        ) : tab === "habilidades" ? (
+          <HabilidadesPanel player={currentPlayer} onUpdate={setPlayer} />
+        ) : tab === "essencias" ? (
+          <EssenciasPanel player={currentPlayer} onUpdate={setPlayer} />
+        ) : tab === "barras" ? (
+          <CustomBarsPanel player={currentPlayer} onUpdate={setPlayer} />
         ) : (
-          <HabilidadesPanel player={player} onUpdate={setPlayer} />
+          <EfeitosPanel player={currentPlayer} onUpdate={setPlayer} />
         )}
       </div>
     </div>

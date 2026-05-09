@@ -6,13 +6,11 @@ import { api } from "@/lib/api";
 import { useStore } from "@/store";
 import Button from "@/components/ui/Button";
 import type { Player, ClassKit, PlayerAttributes } from "@/store/types";
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 
-const CLASSES = ["Guerreiro", "Brutamonte", "Lutador - Forjado", "Lutador - Intenso", "Arcanista", "Artífice"];
-const CLASS_KIT_KEY: Record<string, string> = {
-  "Lutador - Forjado": "Forjado",
-  "Lutador - Intenso": "Intenso",
-};
 const RACES = ["Humano", "Elfo", "Anão", "Gnomo", "Wix", "Nakudama"];
+
+const DEFAULT_SLOTS_FREE = 6;
 
 const ATTR_LABELS: [keyof PlayerAttributes, string, string][] = [
   ['strength',     'Força',         'FOR'],
@@ -89,39 +87,63 @@ function SimpleSelect({ value, options, placeholder = 'Selecionar…', onChange,
 
 export default function CharacterModal({ player, onClose }: { player?: Player; onClose: () => void }) {
   const { setPlayer } = useStore();
-  const [name, setName]   = useState(player?.char.name ?? "");
-  const [code, setCode]   = useState(player?.code ?? "");
-  const [race, setRace]   = useState(player?.char.race ?? "");
-  const [cls,  setCls]    = useState(player?.char.skillClass ?? "");
-  const [sub,  setSub]    = useState(player?.char.subClass ?? "");
-  const [attrs, setAttrs] = useState<PlayerAttributes>(player?.attributes ?? EMPTY_ATTRS);
-  const [kitLoading, setKitLoading] = useState(false);
-  const [kit, setKit] = useState<ClassKit | null>(null);
-  const [subclasses] = useState<string[]>([]);
-  const [saving, setSaving] = useState(false);
+  const [name,        setName]        = useState(player?.char.name ?? "");
+  const [code,        setCode]        = useState(player?.code ?? "");
+  const [race,        setRace]        = useState(player?.char.race ?? "");
+  const [cls,         setCls]         = useState(player?.char.skillClass ?? "");
+  const [sub,         setSub]         = useState(player?.char.subClass ?? "");
+  const [portraitUrl, setPortraitUrl] = useState(player?.char.portraitUrl ?? "");
+  const [attrs,       setAttrs]       = useState<PlayerAttributes>(player?.attributes ?? EMPTY_ATTRS);
+  const [level,         setLevel]         = useState(String(player?.char.level        ?? 1));
+  const [slotsClass,    setSlotsClass]    = useState(String(player?.char.slotsClass   ?? 2));
+  const [slotsFree,     setSlotsFree]     = useState(String(player?.char.slotsFree    ?? DEFAULT_SLOTS_FREE));
+  const [etherUnlocked,       setEtherUnlocked]       = useState(player?.ether?.unlocked ?? false);
+  const [sobrecargaUnlocked,  setSobrecargaUnlocked]  = useState(player?.sobrecargaDesbloqueada ?? false);
+  const [expAvailable,  setExpAvailable]  = useState(String(player?.exp?.available    ?? 0));
+  const [expTotal,      setExpTotal]      = useState(String(player?.exp?.total        ?? 0));
+  const [kitLoading,  setKitLoading]  = useState(false);
+  const [kit,         setKit]         = useState<ClassKit | null>(null);
+  const [allKits,     setAllKits]     = useState<ClassKit[]>([]);
+  const [subclasses]  = useState<string[]>([]);
+  const [saving,      setSaving]      = useState(false);
 
+  const saveUrl    = normalizeGdriveUrl(portraitUrl);
+  const previewSrc = proxyUrl(portraitUrl);
 
+  // Carrega todos os kits uma vez
   useEffect(() => {
-    if (!cls) { setKit(null); return; }
-    let cancelled = false;
-    setKitLoading(true);
-    const kitKey = CLASS_KIT_KEY[cls] ?? cls;
-    api.get<ClassKit>(`/master/kits/${encodeURIComponent(kitKey)}`)
-      .then(r => {
-        if (cancelled) return;
-        setKit(r.data);
-        if (!player) setAttrs(r.data.starterAttributes ?? EMPTY_ATTRS);
-      })
-      .catch(() => {})
-      .finally(() => { if (!cancelled) setKitLoading(false); });
-    return () => { cancelled = true; };
-  }, [cls, player]);
+    api.get<ClassKit[]>('/master/kits').then(r => setAllKits(r.data)).catch(() => {});
+  }, []);
+
+  // Quando a classe muda, aplica o kit correspondente
+  useEffect(() => {
+    if (!cls || allKits.length === 0) { setKit(null); return; }
+    const found = allKits.find(k => k.skillClass === cls || k.skillClass === cls.split(' - ').pop());
+    if (!found) { setKit(null); return; }
+    setKit(found);
+    if (!player) {
+      setAttrs(found.starterAttributes ?? EMPTY_ATTRS);
+      const classSlots = found.starterSlots.filter(s => s.type === 'class').length || 2;
+      setSlotsClass(String(classSlots));
+    }
+  }, [cls, allKits, player]);
+
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setSaving(true);
     try {
-      const base = { code, name, skillClass: cls, subClass: sub || undefined, race, attributes: attrs };
+      const base = {
+        code, name, skillClass: cls, subClass: sub || undefined, race,
+        attributes: attrs, portraitUrl: saveUrl || undefined,
+        level:      isNaN(Number(level))      ? 1                  : Number(level)      || 1,
+        slotsClass: isNaN(Number(slotsClass)) ? 2                  : Number(slotsClass),
+        slotsFree:  isNaN(Number(slotsFree))  ? DEFAULT_SLOTS_FREE : Number(slotsFree),
+        etherUnlocked,
+        sobrecargaDesbloqueada: sobrecargaUnlocked,
+        expAvailable: Number(expAvailable),
+        expTotal:     Number(expTotal),
+      };
       const res = player
         ? await api.put<Player>(`/master/players/${player.id}`, base)
         : await api.post<Player>("/master/players", {
@@ -129,6 +151,7 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
             equipment: kit?.starterEquipment ?? {},
             items: kit?.starterItems ?? [],
           });
+
       setPlayer(res.data);
       onClose();
     } catch {
@@ -161,21 +184,48 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
               <label className={lbl}>Código de Acesso</label>
               <input type="text" value={code} onChange={(e) => setCode(e.target.value)} placeholder="Ex: hero123" required />
             </div>
+          </div>
 
-            {/* Raça */}
+          {/* Portrait */}
+          <div>
+            <label className={lbl}>URL do Portrait</label>
+            <input
+              type="text"
+              value={portraitUrl}
+              onChange={(e) => setPortraitUrl(e.target.value)}
+              placeholder="URL direta ou link do Google Drive (opcional)"
+            />
+            {previewSrc && (
+              <div className="mt-2">
+                <img
+                  src={previewSrc}
+                  alt="preview"
+
+                  className="w-16 h-16 rounded-lg object-cover border border-e-border bg-e-card"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Raça</label>
               <SimpleSelect value={race} options={RACES} onChange={setRace} required />
             </div>
-
-            {/* Classe */}
             <div>
               <label className={lbl}>Classe</label>
-              <SimpleSelect value={cls} options={CLASSES} onChange={setCls} required />
+              <SimpleSelect
+                value={cls}
+                options={allKits.map(k => k.skillClass)}
+                onChange={setCls}
+                required
+              />
+              {kit?.perks?.hasPressureBar && (
+                <p className="text-[10px] text-orange-400 mt-1">Barra de Pressão habilitada</p>
+              )}
             </div>
           </div>
 
-          {/* Subclasse */}
           {subclasses.length > 0 && (
             <div>
               <label className={lbl}>Subclasse</label>
@@ -210,6 +260,59 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
                   </div>
                 );
               })}
+            </div>
+          </div>
+
+          {/* Nível + Slots + EXP + Éter */}
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className={lbl}>Nível</label>
+              <input type="number" min={1} value={level}
+                onChange={e => setLevel(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div>
+              <label className={lbl}>Slots de classe</label>
+              <input type="number" min={0} max={10} value={slotsClass}
+                onChange={e => setSlotsClass(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div>
+              <label className={lbl}>Slots livres</label>
+              <input type="number" min={0} max={10} value={slotsFree}
+                onChange={e => setSlotsFree(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div>
+              <label className={lbl}>Pontos disponíveis</label>
+              <input type="number" min={0} value={expAvailable}
+                onChange={e => setExpAvailable(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div>
+              <label className={lbl}>EXP total</label>
+              <input type="number" min={0} value={expTotal}
+                onChange={e => setExpTotal(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div className="flex flex-col gap-2">
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={etherUnlocked}
+                  onChange={e => setEtherUnlocked(e.target.checked)}
+                  className="w-4 h-4 accent-purple-400" />
+                <span className="text-sm text-e-text">Éter desbloqueado</span>
+              </label>
+              {etherUnlocked && (
+                <p className="text-[10px] text-e-faint pl-6">
+                  Máx = min(⌊SAB ÷ 4⌋, 10) — calculado ao salvar
+                </p>
+              )}
+              <label className="flex items-center gap-2 cursor-pointer">
+                <input type="checkbox" checked={sobrecargaUnlocked}
+                  onChange={e => setSobrecargaUnlocked(e.target.checked)}
+                  className="w-4 h-4 accent-orange-400" />
+                <span className="text-sm text-e-text">Sobrecarga desbloqueada</span>
+              </label>
             </div>
           </div>
 

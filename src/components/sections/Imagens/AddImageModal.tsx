@@ -5,20 +5,29 @@ import { X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 import type { ImageEntry } from '@/store/types';
 
-export default function AddImageModal({ onClose }: { onClose: () => void }) {
-  const [title, setTitle] = useState('');
-  const [url, setUrl]     = useState('');
+export default function AddImageModal({ image, onClose }: { image?: ImageEntry; onClose: () => void }) {
+  const [title, setTitle] = useState(image?.title ?? '');
+  const [url,   setUrl]   = useState(image?.url   ?? '');
   const [loading, setLoading] = useState(false);
-  const { addImage } = useStore();
+  const { addImage, setImages } = useStore();
+  const images = useStore((s) => s.images);
+
+  const normalized = normalizeGdriveUrl(url);
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
     setLoading(true);
     try {
-      const res = await api.post<ImageEntry>('/images', { title, url });
-      addImage(res.data);
+      if (image) {
+        const res = await api.put<ImageEntry>(`/images/${image.id}`, { url: normalized, title });
+        setImages(images.map((i) => i.id === image.id ? res.data : i));
+      } else {
+        const res = await api.post<ImageEntry>('/images', { title, url: normalized });
+        addImage(res.data);
+      }
       onClose();
     } catch {}
     finally { setLoading(false); }
@@ -32,7 +41,7 @@ export default function AddImageModal({ onClose }: { onClose: () => void }) {
       <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-md shadow-2xl">
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-e-border">
-          <h3 className="font-semibold text-e-text">Nova Imagem</h3>
+          <h3 className="font-semibold text-e-text">{image ? 'Editar Imagem' : 'Nova Imagem'}</h3>
           <button onClick={onClose} className="text-e-faint hover:text-e-text cursor-pointer transition-colors p-1 rounded-lg hover:bg-e-card">
             <X size={16} />
           </button>
@@ -45,18 +54,18 @@ export default function AddImageModal({ onClose }: { onClose: () => void }) {
           </div>
           <div>
             <label className={label}>URL da imagem</label>
-            <input type="url" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="https://…" required />
+            <input type="text" value={url} onChange={(e) => setUrl(e.target.value)} placeholder="URL direta ou link do Google Drive" required />
           </div>
-          {url && (
+          {normalized && (
             <div className="rounded-xl overflow-hidden border border-e-border">
               {/* eslint-disable-next-line @next/next/no-img-element */}
-              <img src={url} alt="preview" className="w-full h-40 object-cover block" />
+              <img src={proxyUrl(url)} alt="preview" className="w-full h-40 object-cover block" />
             </div>
           )}
           <div className="grid grid-cols-2 gap-3 pt-1">
             <Button type="button" variant="ghost"   size="md" className="w-full" onClick={onClose}>Cancelar</Button>
             <Button type="submit" variant="primary" size="md" className="w-full" disabled={loading}>
-              {loading ? 'Salvando…' : 'Adicionar'}
+              {loading ? 'Salvando…' : image ? 'Salvar' : 'Adicionar'}
             </Button>
           </div>
         </form>
