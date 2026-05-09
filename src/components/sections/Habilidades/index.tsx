@@ -9,8 +9,8 @@ import SkillCard, { type Skill, type Essencia } from './SkillCard';
 import SkillModal from './SkillModal';
 import type { ItemCatalog, ClassKit } from '@/store/types';
 
-type Tab = 'general' | 'class' | 'weapon' | 'essencia';
-const TAB_LABELS: Record<Tab, string> = { general: 'Geral', class: 'Classe', weapon: 'Arma', essencia: 'Essência' };
+type Tab = 'general' | 'class' | 'weapon' | 'essencia' | 'mestre';
+const TAB_LABELS: Record<Tab, string> = { general: 'Geral', class: 'Classe', weapon: 'Arma', essencia: 'Essência', mestre: 'Mestre' };
 
 export default function Habilidades() {
   const [skills,    setSkills]    = useState<Skill[]>([]);
@@ -46,6 +46,7 @@ export default function Habilidades() {
   function filterTab(s: Skill, t: Tab): boolean {
     if (t === 'general') return s.type === 'class' && !s.skillClass;
     if (t === 'class')   return s.type === 'class' && !!s.skillClass;
+    if (t === 'mestre')  return s.type === 'mestre';
     return s.type === t;
   }
 

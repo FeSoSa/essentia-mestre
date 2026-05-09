@@ -89,13 +89,14 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
 
   const [name,       setName]       = useState(skill?.name ?? '');
   const [desc,       setDesc]       = useState(skill?.desc ?? '');
-  const [type,       setType]       = useState<'class' | 'weapon' | 'essencia'>((skill?.type as any) ?? 'class');
+  const [type,       setType]       = useState<'class' | 'weapon' | 'essencia' | 'mestre'>((skill?.type as any) ?? 'class');
   const [skillClass, setSkillClass] = useState(skill?.skillClass ?? '');
   const [weaponType, setWeaponType] = useState(skill?.weaponType ?? 'curta');
   const [essenciaId, setEssenciaId] = useState(skill?.essenciaId ?? '');
   const [cooldown,   setCooldown]   = useState(String(skill?.cooldownTurns ?? 0));
   const [ultimate,   setUltimate]   = useState(skill?.ultimate ?? false);
   const [toggle,     setToggle]     = useState(skill?.toggle ?? false);
+  const [passive,    setPassive]    = useState((skill as any)?.passive ?? false);
 
   // Damage — only base fixed + die type (quantity always 1)
   const [hasDamage, setHasDamage] = useState(!!skill?.damage);
@@ -118,7 +119,16 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
     Object.entries(skill?.requirements?.attributes ?? {}).map(([k, v]) => [k, String(v)])
   );
 
+  // Passive / buff attributes
+  type AttrEntry = [string, string];
+  const parseAttrMap = (m?: Record<string, number> | null): AttrEntry[] =>
+    m ? Object.entries(m).map(([k, v]) => [k, String(v)]) : [];
+  const [passiveAttrs, setPassiveAttrs] = useState<AttrEntry[]>(parseAttrMap((skill as any)?.passiveAttributes));
+  const [buffAttrs,    setBuffAttrs]    = useState<AttrEntry[]>(parseAttrMap((skill as any)?.buffAttributes));
+  const [buffDuration, setBuffDuration] = useState(String((skill as any)?.buffDurationTurns ?? 1));
+
   const [loading, setLoading] = useState(false);
+  const [error,   setError]   = useState<string | null>(null);
 
   // Costs
   function addCost() { setCosts((c) => [...c, { type: 'flow', value: '', percentual: '' }]); }
@@ -154,11 +164,21 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
       weaponRequired: reqWeapon || undefined,
     } : undefined;
 
-    const body: Omit<Skill, 'id'> & { id?: string } = {
-      name: name.trim(), desc, type, ultimate, toggle,
+    const toAttrMap = (entries: AttrEntry[]) => {
+      const m: Record<string, number> = {};
+      for (const [k, v] of entries) { if (k && v) m[k] = Number(v); }
+      return Object.keys(m).length > 0 ? m : undefined;
+    };
+
+    const body: Omit<Skill, 'id'> & { id?: string; passive?: boolean; passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number } = {
+      ...(editing ? { id: skill!.id } : {}),
+      name: name.trim(), desc, type, ultimate, toggle, passive,
       skillClass: type === 'class'    ? skillClass || undefined : undefined,
       weaponType: type === 'weapon'   ? weaponType             : undefined,
       essenciaId: type === 'essencia' ? essenciaId || undefined : undefined,
+      passiveAttributes: toAttrMap(passiveAttrs),
+      buffAttributes:    toAttrMap(buffAttrs),
+      buffDurationTurns: buffAttrs.length > 0 && buffDuration ? Number(buffDuration) : undefined,
       cooldownTurns: Number(cooldown) || 0,
       costs: costs.map((c) => ({
         type: c.type,
@@ -180,7 +200,9 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         : await api.post<Skill>('/skills', body);
       onSaved(res.data);
       onClose();
-    } catch {
+    } catch (err: any) {
+      const msg = err?.response?.data?.message ?? err?.response?.data ?? err?.message ?? 'Erro ao salvar.';
+      setError(typeof msg === 'string' ? msg : JSON.stringify(msg));
       setLoading(false);
     }
   }
@@ -200,11 +222,11 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         {/* ── Tipo ── */}
         <div>
           <label className={lbl}>Tipo</label>
-          <div className="flex gap-2">
-            {(['class', 'weapon', 'essencia'] as const).map((t) => (
+          <div className="flex gap-2 flex-wrap">
+            {(['class', 'weapon', 'essencia', 'mestre'] as const).map((t) => (
               <button key={t} type="button" onClick={() => setType(t)}
                 className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${type === t ? 'bg-e-accent/20 border-e-accent text-e-accent' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
-                {t === 'class' ? 'Classe' : t === 'weapon' ? 'Arma' : 'Essência'}
+                {t === 'class' ? 'Classe' : t === 'weapon' ? 'Arma' : t === 'essencia' ? 'Essência' : 'Mestre'}
               </button>
             ))}
           </div>
@@ -268,56 +290,67 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             className={`resize-none ${inp}`} placeholder="Efeito da habilidade…" />
         </div>
 
-        {/* ── Cooldown + flags ── */}
-        <div className="grid grid-cols-3 gap-4 items-end">
-          <div>
-            <label className={lbl}>Cooldown (turnos)</label>
-            <input type="number" min={0} value={cooldown}
-              onChange={(e) => setCooldown(e.target.value)} className={`text-center ${inp}`} />
-          </div>
-          <label className="flex items-center gap-2 cursor-pointer pb-2.5">
+        {/* ── Flags ── */}
+        <div className="flex gap-4 flex-wrap items-center">
+          <label className="flex items-center gap-2 cursor-pointer">
+            <input type="checkbox" checked={passive} onChange={(e) => { setPassive(e.target.checked); if (e.target.checked) { setHasDamage(false); setCosts([]); } }}
+              className="w-4 h-4 accent-teal-400" />
+            <span className="text-sm text-e-text">Passiva</span>
+          </label>
+          <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={ultimate} onChange={(e) => setUltimate(e.target.checked)}
               className="w-4 h-4 accent-amber-400" />
             <span className="text-sm text-e-text">Ultimate</span>
           </label>
-          <label className="flex items-center gap-2 cursor-pointer pb-2.5" title="Consome custo a cada turno automaticamente">
+          <label className="flex items-center gap-2 cursor-pointer" title="Consome custo a cada turno automaticamente">
             <input type="checkbox" checked={toggle} onChange={(e) => setToggle(e.target.checked)}
               className="w-4 h-4 accent-sky-400" />
             <span className="text-sm text-e-text">Por turno</span>
           </label>
         </div>
 
-        {/* ── Custos ── */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <label className={lbl}>Custos</label>
-            <button onClick={addCost} className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text">
-              <Plus size={12} /> Adicionar
-            </button>
+        {/* ── Cooldown (só para não-passivas) ── */}
+        {!passive && (
+          <div className="w-40">
+            <label className={lbl}>Cooldown (turnos)</label>
+            <input type="number" min={0} value={cooldown}
+              onChange={(e) => setCooldown(e.target.value)} className={`text-center ${inp}`} />
           </div>
-          {costs.map((c, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <div className="flex-1">
-                <Dropdown value={c.type} onChange={(v) => updateCost(i, 'type', v)} options={COST_OPTS} />
-              </div>
-              {c.type.startsWith('percentual') ? (
-                <input type="number" min={0} max={100} value={c.percentual}
-                  onChange={(e) => updateCost(i, 'percentual', e.target.value)}
-                  placeholder="%" className={`w-16 text-center ${smallInp}`} />
-              ) : (
-                <input type="number" min={0} value={c.value}
-                  onChange={(e) => updateCost(i, 'value', e.target.value)}
-                  placeholder="val" className={`w-16 text-center ${smallInp}`} />
-              )}
-              <button onClick={() => removeCost(i)} className="opacity-40 hover:opacity-80 shrink-0">
-                <Trash2 size={13} />
+        )}
+
+        {/* ── Custos (só para não-passivas) ── */}
+        {!passive && (
+          <div className="flex flex-col gap-2">
+            <div className="flex items-center justify-between">
+              <label className={lbl}>Custos</label>
+              <button onClick={addCost} className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text">
+                <Plus size={12} /> Adicionar
               </button>
             </div>
-          ))}
-        </div>
+            {costs.map((c, i) => (
+              <div key={i} className="flex gap-2 items-center">
+                <div className="flex-1">
+                  <Dropdown value={c.type} onChange={(v) => updateCost(i, 'type', v)} options={COST_OPTS} />
+                </div>
+                {c.type.startsWith('percentual') ? (
+                  <input type="number" min={0} max={100} value={c.percentual}
+                    onChange={(e) => updateCost(i, 'percentual', e.target.value)}
+                    placeholder="%" className={`w-16 text-center ${smallInp}`} />
+                ) : (
+                  <input type="number" min={0} value={c.value}
+                    onChange={(e) => updateCost(i, 'value', e.target.value)}
+                    placeholder="val" className={`w-16 text-center ${smallInp}`} />
+                )}
+                <button onClick={() => removeCost(i)} className="opacity-40 hover:opacity-80 shrink-0">
+                  <Trash2 size={13} />
+                </button>
+              </div>
+            ))}
+          </div>
+        )}
 
-        {/* ── Dano ── */}
-        <div className="flex flex-col gap-3">
+        {/* ── Dano (só para não-passivas) ── */}
+        {!passive && <div className="flex flex-col gap-3">
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={hasDamage} onChange={(e) => setHasDamage(e.target.checked)}
               className="w-4 h-4 accent-e-accent" />
@@ -349,6 +382,62 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               Preview: <span className="font-mono text-e-text">⚔ {buildFormula()}</span>
             </p>
           )}
+        </div>}
+
+        {/* ── Atributos passivos ── */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className={lbl}>Atributos passivos <span className="normal-case font-normal">(enquanto equipada)</span></label>
+            <button type="button" onClick={() => setPassiveAttrs((a) => [...a, ['strength', '1']])}
+              className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text">
+              <Plus size={12} /> Adicionar
+            </button>
+          </div>
+          {passiveAttrs.map(([attr, val], i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <div className="flex-1">
+                <Dropdown value={attr} onChange={(v) => setPassiveAttrs((a) => a.map((x, j) => j === i ? [v, x[1]] as [string,string] : x))} options={ATTR_OPTS} />
+              </div>
+              <input type="number" value={val}
+                onChange={(e) => setPassiveAttrs((a) => a.map((x, j) => j === i ? [x[0], e.target.value] as [string,string] : x))}
+                className={`w-16 text-center ${smallInp}`} />
+              <button onClick={() => setPassiveAttrs((a) => a.filter((_, j) => j !== i))} className="opacity-40 hover:opacity-80 shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Atributos de buff (por turno ao usar) ── */}
+        <div className="flex flex-col gap-2">
+          <div className="flex items-center justify-between">
+            <label className={lbl}>Buff de atributo <span className="normal-case font-normal">(ao usar, por N turnos)</span></label>
+            <button type="button" onClick={() => setBuffAttrs((a) => [...a, ['strength', '1']])}
+              className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text">
+              <Plus size={12} /> Adicionar
+            </button>
+          </div>
+          {buffAttrs.length > 0 && (
+            <div className="flex items-center gap-2 mb-1">
+              <label className={lbl + ' !mb-0'}>Duração (turnos, -1=∞)</label>
+              <input type="number" min={-1} value={buffDuration}
+                onChange={(e) => setBuffDuration(e.target.value)}
+                className={`w-20 text-center ${smallInp}`} />
+            </div>
+          )}
+          {buffAttrs.map(([attr, val], i) => (
+            <div key={i} className="flex gap-2 items-center">
+              <div className="flex-1">
+                <Dropdown value={attr} onChange={(v) => setBuffAttrs((a) => a.map((x, j) => j === i ? [v, x[1]] as [string,string] : x))} options={ATTR_OPTS} />
+              </div>
+              <input type="number" value={val}
+                onChange={(e) => setBuffAttrs((a) => a.map((x, j) => j === i ? [x[0], e.target.value] as [string,string] : x))}
+                className={`w-16 text-center ${smallInp}`} />
+              <button onClick={() => setBuffAttrs((a) => a.filter((_, j) => j !== i))} className="opacity-40 hover:opacity-80 shrink-0">
+                <Trash2 size={13} />
+              </button>
+            </div>
+          ))}
         </div>
 
         {/* ── Pré-requisitos ── */}
@@ -423,6 +512,12 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             ))}
           </div>
         </div>
+
+        {error && (
+          <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/30 rounded-lg px-3 py-2 break-all">
+            {error}
+          </p>
+        )}
 
         <div className="flex gap-2 justify-end pt-1 border-t border-e-border">
           <Button variant="ghost" size="sm" onClick={onClose} disabled={loading}>Cancelar</Button>

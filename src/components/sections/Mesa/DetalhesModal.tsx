@@ -362,7 +362,7 @@ function SkillSelect({
               }`}
             >
               <SkillIcon type={e.skill.type} size={13} className="shrink-0" />
-              <span className="flex-1 truncate">{e.skill.name}</span>
+              <span className="flex-1 leading-snug">{e.skill.name}</span>
             </button>
           ))}
           {locked.length > 0 && available.length > 0 && (
@@ -375,7 +375,7 @@ function SkillSelect({
               className="flex items-center gap-2 px-3 py-2 text-sm text-e-faint/40 cursor-not-allowed select-none"
             >
               <SkillIcon type={e.skill.type} size={13} className="shrink-0" />
-              <span className="flex-1 truncate">{e.skill.name}</span>
+              <span className="flex-1 leading-snug">{e.skill.name}</span>
             </div>
           ))}
         </div>
@@ -1293,7 +1293,7 @@ function HabilidadesPanel({
     setLoadingSkills(true);
     try {
       const r = await api.get<SkillTreeEntry[]>(
-        `/players/${player.id}/skill-tree`,
+        `/master/players/${player.id}/skill-tree`,
       );
       setSkills(r.data);
     } catch {
@@ -1304,7 +1304,7 @@ function HabilidadesPanel({
 
   useEffect(() => {
     api
-      .get<SkillTreeEntry[]>(`/players/${player.id}/skill-tree`)
+      .get<SkillTreeEntry[]>(`/master/players/${player.id}/skill-tree`)
       .then((r) => {
         setSkills(r.data);
         setLoadingSkills(false);
@@ -1315,16 +1315,28 @@ function HabilidadesPanel({
   async function unlockSkill() {
     if (!selectedSkillId) return;
     setUnlocking(true);
+    const selectedEntry = skills.find((e) => e.skill.id === selectedSkillId);
+    const isMestre = selectedEntry?.skill.type === 'mestre';
     try {
-      await api.post(`/players/${player.id}/unlock-skill`, {
-        skillId: selectedSkillId,
-      });
+      if (isMestre) {
+        await api.post(`/master/players/${player.id}/grant-skill`, { skillId: selectedSkillId });
+      } else {
+        await api.post(`/players/${player.id}/unlock-skill`, { skillId: selectedSkillId });
+      }
       setSelectedSkillId(null);
       await fetchSkills();
     } catch {
     } finally {
       setUnlocking(false);
     }
+  }
+
+  async function resetSkill(entry: SkillTreeEntry) {
+    if (!confirm(`Remover "${entry.skill.name}" do jogador? Maestria e usos serão perdidos.`)) return;
+    try {
+      await api.delete(`/master/players/${player.id}/skill/${entry.skill.id}`);
+      await fetchSkills();
+    } catch {}
   }
 
   async function adjustMaestria(ps: PlayerSkill, uses: number) {
@@ -1417,7 +1429,7 @@ function HabilidadesPanel({
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <span className={`flex-1 text-xs font-medium truncate ${isSelected ? 'text-e-accent' : 'text-e-text'}`}>
+                  <span className={`flex-1 text-xs font-medium leading-snug ${isSelected ? 'text-e-accent' : 'text-e-text'}`}>
                     {e.skill.name}
                   </span>
                   {e.skill.ultimate && (
@@ -1484,7 +1496,7 @@ function HabilidadesPanel({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-e-text truncate">
+                              <p className="text-sm font-medium text-e-text break-words">
                                 {entry.skill.name}
                               </p>
                               <p className="text-[10px] text-e-faint mt-0.5">
@@ -1507,6 +1519,13 @@ function HabilidadesPanel({
                               <span className="text-[9px] text-e-gold font-bold">
                                 Nv {m.level}
                               </span>
+                              <button
+                                onClick={() => resetSkill(entry)}
+                                title="Remover habilidade do jogador"
+                                className="text-[9px] text-e-faint hover:text-e-danger transition-colors mt-0.5 cursor-pointer"
+                              >
+                                remover
+                              </button>
                             </div>
                           </div>
 
