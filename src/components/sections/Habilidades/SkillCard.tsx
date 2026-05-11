@@ -23,6 +23,7 @@ export interface Skill {
   cooldownTurns: number;
   ultimate: boolean;
   toggle: boolean;
+  pressaoDice?: boolean;
   requirements?: {
     level?: number;
     attributes?: Record<string, number>;
@@ -46,7 +47,7 @@ const TYPE_COLOR: Record<string, string> = {
 
 const COST_LABEL: Record<string, string> = {
   flow: 'FLX', hp: 'HP', ether: 'ÉTER', charge: 'Carga',
-  percentual_flow: 'FLX%', percentual_hp: 'HP%',
+  percentual_flow: 'FLX%', percentual_hp: 'HP%', pressao: 'Pressão',
 };
 
 const ATTR_SHORT: Record<string, string> = {
@@ -91,6 +92,9 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
             )}
             {skill.toggle && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-sky-400/20 text-sky-400 shrink-0">por turno</span>
+            )}
+            {skill.pressaoDice && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-orange-500/20 text-orange-400 shrink-0">+Xd6 pressão</span>
             )}
           </div>
           <div className="flex items-center gap-1.5">

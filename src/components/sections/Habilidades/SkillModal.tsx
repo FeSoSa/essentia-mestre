@@ -48,6 +48,7 @@ const COST_OPTS = [
   { value: 'charge',          label: 'Carga'    },
   { value: 'percentual_flow', label: 'Fluxo %'  },
   { value: 'percentual_hp',   label: 'HP %'     },
+  { value: 'pressao',         label: 'Pressão'  },
 ];
 
 function Dropdown<T extends string>({ value, onChange, options, placeholder }: {
@@ -97,6 +98,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
   const [ultimate,   setUltimate]   = useState(skill?.ultimate ?? false);
   const [toggle,     setToggle]     = useState(skill?.toggle ?? false);
   const [passive,    setPassive]    = useState((skill as any)?.passive ?? false);
+  const [pressaoDice, setPressaoDice] = useState((skill as any)?.pressaoDice ?? false);
 
   const [hasDamage, setHasDamage] = useState(!!skill?.damage);
   const [dmgFixed,  setDmgFixed]  = useState(String(skill?.damage?.baseFixed ?? 0));
@@ -171,9 +173,9 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
       return Object.keys(m).length > 0 ? m : undefined;
     };
 
-    const body: Omit<Skill, 'id'> & { id?: string; passive?: boolean; passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number } = {
+    const body: Omit<Skill, 'id'> & { id?: string; passive?: boolean; pressaoDice?: boolean; passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number } = {
       ...(editing ? { id: skill!.id } : {}),
-      name: name.trim(), desc, type, ultimate, toggle, passive,
+      name: name.trim(), desc, type, ultimate, toggle, passive, pressaoDice,
       skillClass: type === 'class'    ? skillClass || undefined : undefined,
       weaponType: type === 'weapon'   ? weaponType             : undefined,
       essenciaId: type === 'essencia' ? essenciaId || undefined : undefined,
@@ -309,6 +311,16 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             <span className="text-sm text-e-text">Por turno</span>
           </label>
         </div>
+
+        {/* ── Pressão Dice (só para não-passivas com dano) ── */}
+        {!passive && (
+          <label className="flex items-center gap-2.5 cursor-pointer px-3 py-2.5 rounded-xl border border-orange-500/30 bg-orange-500/5 w-fit">
+            <input type="checkbox" checked={pressaoDice} onChange={(e) => setPressaoDice(e.target.checked)}
+              className="w-4 h-4 accent-orange-400" />
+            <span className="text-sm text-orange-300 font-medium">Pressão Dice</span>
+            <span className="text-xs text-orange-400/70">+1d6 por ponto de Pressão (consome tudo ao usar)</span>
+          </label>
+        )}
 
         {/* ── Cooldown (só para não-passivas) ── */}
         {!passive && (
