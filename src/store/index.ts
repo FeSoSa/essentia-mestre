@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
-  SobrecargaRequest,
+  SobrecargaRequest, DamageApprovalRequest,
 } from './types';
 
 interface RootState {
@@ -18,6 +18,7 @@ interface RootState {
 
   currentTurn: number;
   setCurrentTurn: (t: number) => void;
+  incrementTurn: () => void;
 
   initiative: InitiativeEntry[];
   setInitiative: (i: InitiativeEntry[]) => void;
@@ -50,6 +51,10 @@ interface RootState {
   addSobrecargaRequest: (r: SobrecargaRequest) => void;
   removeSobrecargaRequest: (playerId: string) => void;
   unlockSobrecarga: (playerId: string, unlocked: boolean) => void;
+
+  damageRequests: DamageApprovalRequest[];
+  addDamageRequest: (r: DamageApprovalRequest) => void;
+  removeDamageRequest: (requestId: string) => void;
 }
 
 export const useStore = create<RootState>((set) => ({
@@ -68,6 +73,7 @@ export const useStore = create<RootState>((set) => ({
 
   currentTurn: 0,
   setCurrentTurn: (currentTurn) => set({ currentTurn }),
+  incrementTurn: () => set((s) => ({ currentTurn: s.currentTurn + 1 })),
 
   initiative: [],
   setInitiative: (initiative) => set({ initiative }),
@@ -127,6 +133,12 @@ export const useStore = create<RootState>((set) => ({
     })),
   removeSobrecargaRequest: (playerId) =>
     set((s) => ({ sobrecargaRequests: s.sobrecargaRequests.filter((r) => r.playerId !== playerId) })),
+
+  damageRequests: [],
+  addDamageRequest: (r) =>
+    set((s) => ({ damageRequests: [...s.damageRequests, r] })),
+  removeDamageRequest: (requestId) =>
+    set((s) => ({ damageRequests: s.damageRequests.filter((r) => r.requestId !== requestId) })),
   unlockSobrecarga: (playerId, unlocked) =>
     set((s) => ({
       players: s.players.map((p) =>

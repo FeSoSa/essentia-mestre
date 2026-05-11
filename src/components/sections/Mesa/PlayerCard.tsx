@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { CircleDollarSign, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
+import { proxyUrl } from '@/lib/gdrive';
 import { useStore } from '@/store';
 import type { Essencia, Player, PlayerAttributes } from '@/store/types';
 import { getStatusIcon, STATUS_ICONS } from '@/lib/statusIcons';
@@ -78,10 +79,19 @@ export default function PlayerCard({
 
             {/* Avatar + Name + Level */}
             <div className="flex items-center gap-2.5">
-              <div className="w-10 h-10 rounded-full bg-e-card border border-e-border flex items-center justify-center shrink-0">
-                <span className="text-sm font-bold text-e-gold select-none">
-                  {player.char.name[0].toUpperCase()}
-                </span>
+              <div className="w-10 h-10 rounded-full bg-e-card border border-e-border flex items-center justify-center shrink-0 overflow-hidden">
+                {player.char.portraitUrl ? (
+                  <img
+                    src={proxyUrl(player.char.portraitUrl)}
+                    alt={player.char.name}
+                    className="w-full h-full object-cover"
+                    onError={(e) => { (e.currentTarget as HTMLImageElement).style.display = 'none'; }}
+                  />
+                ) : (
+                  <span className="text-sm font-bold text-e-gold select-none">
+                    {player.char.name[0].toUpperCase()}
+                  </span>
+                )}
               </div>
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-1.5">

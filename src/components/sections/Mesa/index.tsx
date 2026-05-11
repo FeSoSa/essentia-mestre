@@ -37,8 +37,7 @@ export default function Mesa() {
     setLoading(true);
     try {
       await api.post('/master/next-turn');
-      setCurrentTurn(currentTurn + 1);
-    } catch { setCurrentTurn(currentTurn + 1); }
+    } catch {}
     finally { setLoading(false); }
   }
 
@@ -54,7 +53,10 @@ export default function Mesa() {
     await api.put('/master/initiative', []).catch(() => {});
   }
 
-  const activePlayer = initiative[0];
+  const activePlayer = initiative.length > 0
+    ? initiative[currentTurn % initiative.length]
+    : null;
+  const combatActive = initiative.length > 0;
 
   return (
     <div className="flex flex-col h-full">
@@ -64,7 +66,7 @@ export default function Mesa() {
         <div className="flex items-center gap-2 mr-2">
           <span className="text-xs font-semibold uppercase tracking-wider text-e-faint">Turno</span>
           <span className="text-2xl font-black tabular-nums text-e-text leading-none w-8 text-center">
-            {currentTurn === 0 ? '—' : currentTurn}
+            {!combatActive ? '—' : currentTurn + 1}
           </span>
         </div>
 

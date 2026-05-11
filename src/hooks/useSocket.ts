@@ -2,14 +2,15 @@
 
 import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
+import { api } from '@/lib/api';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest } from '@/store/types';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest } from '@/store/types';
 
 export function useSocket() {
   const {
     setPlayers, setPlayer, appendLog,
     setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses,
-    addSobrecargaRequest,
+    addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest,
   } = useStore();
 
   useEffect(() => {
@@ -42,10 +43,16 @@ export function useSocket() {
         setFastAction(fa.active ? fa : null);
       });
 
-      // Iniciativa
+      // Iniciativa — reseta turno só quando combate termina
       client.subscribe('/topic/initiative', (msg) => {
         const initiative: InitiativeEntry[] = JSON.parse(msg.body);
         setInitiative(initiative);
+        if (initiative.length === 0) setCurrentTurn(0);
+      });
+
+      // Turno — incrementa monotonicamente (nunca reseta, nunca vai para o índice)
+      client.subscribe('/topic/turn', () => {
+        incrementTurn();
       });
 
       // Imagens
@@ -72,6 +79,22 @@ export function useSocket() {
         const req: SobrecargaRequest = JSON.parse(msg.body);
         addSobrecargaRequest(req);
       });
+
+      // Pedidos de aplicação de dano
+      client.subscribe('/topic/damage-request', (msg) => {
+        const req: DamageApprovalRequest = JSON.parse(msg.body);
+        addDamageRequest(req);
+      });
+
+      // Recupera estado de combate atual (perdido no refresh)
+      Promise.all([
+        api.get<EnemyInstance[]>('/combat/enemies').then(r => setEnemies(r.data)),
+        api.get<BossInstance[]>('/combat/bosses').then(r => setBosses(r.data)),
+        api.get<{ initiative: InitiativeEntry[]; currentTurnIndex: number; totalTurns: number }>('/master/turn-state').then(r => {
+          setInitiative(r.data.initiative);
+          setCurrentTurn(r.data.totalTurns);
+        }),
+      ]).catch(() => {});
     };
 
     client.onDisconnect = () => console.log('[STOMP] desconectado');

@@ -22,10 +22,8 @@ export default function Turno() {
     setLoading(true);
     try {
       await api.post('/master/next-turn');
-      setCurrentTurn(currentTurn + 1);
-    } catch {
-      setCurrentTurn(currentTurn + 1);
-    } finally { setLoading(false); }
+    } catch {}
+    finally { setLoading(false); }
   }
 
   async function confirmInitiative(entries: InitiativeEntry[]) {
@@ -50,7 +48,7 @@ export default function Turno() {
         <div className="flex flex-col items-center bg-e-surface border border-e-border rounded-xl px-5 py-3 min-w-[88px]">
           <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1">Turno</span>
           <span className="text-3xl font-black tabular-nums text-e-text leading-none">
-            {currentTurn === 0 ? '—' : currentTurn}
+            {initiative.length === 0 ? '—' : currentTurn + 1}
           </span>
         </div>
       </div>

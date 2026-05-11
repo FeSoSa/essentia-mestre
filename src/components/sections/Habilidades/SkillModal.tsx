@@ -98,9 +98,9 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
   const [toggle,     setToggle]     = useState(skill?.toggle ?? false);
   const [passive,    setPassive]    = useState((skill as any)?.passive ?? false);
 
-  // Damage — only base fixed + die type (quantity always 1)
   const [hasDamage, setHasDamage] = useState(!!skill?.damage);
   const [dmgFixed,  setDmgFixed]  = useState(String(skill?.damage?.baseFixed ?? 0));
+  const [dmgQty,    setDmgQty]    = useState(String(skill?.damage?.baseDice?.quantity ?? 1));
   const [dmgDie,    setDmgDie]    = useState(skill?.damage?.baseDice?.die ?? 'd6');
 
   const [costs, setCosts] = useState<CostEntry[]>(
@@ -147,7 +147,8 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
   function buildFormula() {
     const parts: string[] = [];
     if (Number(dmgFixed) > 0) parts.push(String(dmgFixed));
-    parts.push(dmgDie);
+    const qty = Math.max(1, Number(dmgQty) || 1);
+    parts.push(`${qty}${dmgDie}`);
     return parts.join(' + ');
   }
 
@@ -188,7 +189,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
       damage: hasDamage ? {
         formula:   buildFormula(),
         baseFixed: Number(dmgFixed) || 0,
-        baseDice:  { quantity: 1, die: dmgDie },
+        baseDice:  { quantity: Math.max(1, Number(dmgQty) || 1), die: dmgDie },
         attribute: undefined,
       } : undefined,
       requirements,
@@ -357,13 +358,18 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             <span className="text-sm font-semibold text-e-text">Tem dano</span>
           </label>
           {hasDamage && (
-            <div className="flex gap-3 pl-3 border-l-2 border-e-border items-end">
-              <div className="flex-1">
+            <div className="flex gap-3 pl-3 border-l-2 border-e-border items-end flex-wrap">
+              <div className="w-20">
                 <label className={lbl}>Base fixo</label>
                 <input type="number" min={0} value={dmgFixed}
                   onChange={(e) => setDmgFixed(e.target.value)} className={`text-center ${inp}`} />
               </div>
               <span className="text-e-faint text-sm pb-2.5">+</span>
+              <div className="w-16">
+                <label className={lbl}>Qtd.</label>
+                <input type="number" min={1} max={20} value={dmgQty}
+                  onChange={(e) => setDmgQty(e.target.value)} className={`text-center ${inp}`} />
+              </div>
               <div className="flex-1">
                 <label className={lbl}>Dado</label>
                 <div className="flex gap-1 flex-wrap">
@@ -456,7 +462,10 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             <label className={lbl}>Arma necessária (equipada)</label>
             {reqWeapon && (
               <div className="flex items-center gap-2 mb-2 px-3 py-2 rounded-xl bg-e-card border border-e-border text-sm text-e-text">
-                <span className="flex-1">{weapons.find((w) => w.id === reqWeapon)?.name ?? reqWeapon}</span>
+                <span className="flex-1">
+                  {weapons.find((w) => w.weaponType === reqWeapon || w.id === reqWeapon)?.name ?? reqWeapon}
+                  <span className="ml-2 text-[10px] text-e-faint font-mono">{reqWeapon}</span>
+                </span>
                 <button onClick={() => setReqWeapon('')} className="opacity-50 hover:opacity-100 text-xs">✕</button>
               </div>
             )}
@@ -465,23 +474,30 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                 <input
                   value={reqWeaponSearch}
                   onChange={(e) => setReqWeaponSearch(e.target.value)}
-                  placeholder="Buscar arma no catálogo…"
+                  placeholder="Buscar tipo de arma…"
                   className={inp}
                 />
                 {reqWeaponSearch && (
                   <div className="mt-1 border border-e-border rounded-xl bg-e-bg max-h-36 overflow-y-auto">
-                    {weapons
-                      .filter((w) => w.name.toLowerCase().includes(reqWeaponSearch.toLowerCase()))
-                      .map((w) => (
-                        <button key={w.id} type="button"
-                          onClick={() => { setReqWeapon(w.id); setReqWeaponSearch(''); }}
-                          className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text">
-                          {w.name}
-                          {w.weaponType && <span className="ml-2 text-[10px] text-e-faint capitalize">{w.weaponType}</span>}
-                        </button>
-                      ))
-                    }
-                    {weapons.filter((w) => w.name.toLowerCase().includes(reqWeaponSearch.toLowerCase())).length === 0 && (
+                    {[...new Map(
+                      weapons
+                        .filter((w) => w.weaponType && (
+                          w.name.toLowerCase().includes(reqWeaponSearch.toLowerCase()) ||
+                          w.weaponType.toLowerCase().includes(reqWeaponSearch.toLowerCase())
+                        ))
+                        .map((w) => [w.weaponType, w])
+                    ).values()].map((w) => (
+                      <button key={w.weaponType} type="button"
+                        onClick={() => { setReqWeapon(w.weaponType!); setReqWeaponSearch(''); }}
+                        className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text">
+                        <span className="font-mono text-e-accent">{w.weaponType}</span>
+                        <span className="ml-2 text-e-faint">{w.name}</span>
+                      </button>
+                    ))}
+                    {weapons.filter((w) => w.weaponType && (
+                      w.name.toLowerCase().includes(reqWeaponSearch.toLowerCase()) ||
+                      w.weaponType.toLowerCase().includes(reqWeaponSearch.toLowerCase())
+                    )).length === 0 && (
                       <p className="px-3 py-2 text-sm text-e-faint">Nenhuma arma encontrada.</p>
                     )}
                   </div>

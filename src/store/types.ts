@@ -108,6 +108,17 @@ export interface CustomBar {
   id: string; name: string; color: string; current: number; max: number;
 }
 
+export interface DamageApprovalRequest {
+  requestId: string;
+  playerId: string;
+  playerName: string;
+  targetId: string;
+  targetType: 'enemy' | 'boss';
+  targetName: string;
+  damage: number;
+  costs?: Record<string, number>;
+}
+
 export interface SobrecargaRequest {
   playerId: string;
   playerName: string;
