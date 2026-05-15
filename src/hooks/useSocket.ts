@@ -4,12 +4,12 @@ import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest } from '@/store/types';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, CombatAlly } from '@/store/types';
 
 export function useSocket() {
   const {
     setPlayers, setPlayer, appendLog,
-    setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses,
+    setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses, setAllies,
     addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest,
   } = useStore();
 
@@ -74,6 +74,12 @@ export function useSocket() {
         setBosses(bosses);
       });
 
+      // Aliados de combate
+      client.subscribe('/topic/combat/allies', (msg) => {
+        const allies: CombatAlly[] = JSON.parse(msg.body);
+        setAllies(allies);
+      });
+
       // Pedidos de Sobrecarga
       client.subscribe('/topic/sobrecarga-request', (msg) => {
         const req: SobrecargaRequest = JSON.parse(msg.body);
@@ -90,6 +96,7 @@ export function useSocket() {
       Promise.all([
         api.get<EnemyInstance[]>('/combat/enemies').then(r => setEnemies(r.data)),
         api.get<BossInstance[]>('/combat/bosses').then(r => setBosses(r.data)),
+        api.get<CombatAlly[]>('/combat/allies').then(r => setAllies(r.data)),
         api.get<{ initiative: InitiativeEntry[]; currentTurnIndex: number; totalTurns: number }>('/master/turn-state').then(r => {
           setInitiative(r.data.initiative);
           setCurrentTurn(r.data.totalTurns);

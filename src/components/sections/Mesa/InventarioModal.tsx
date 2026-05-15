@@ -181,7 +181,13 @@ function EquipPanel({
   processing: boolean;
 }) {
   const isWeapon = item.type === 'weapon';
-  const naturalSlot = (item.equipSlot as EquipSlot | undefined) ?? (isWeapon ? 'mainHand' : item.type === 'armor' ? 'armor' : 'utility');
+  const naturalSlot: EquipSlot = (() => {
+    const s = item.equipSlot;
+    if (s === 'mainHand' || s === 'offHand' || s === 'armor' || s === 'amulet' || s === 'ring' || s === 'utility') return s;
+    if (isWeapon) return 'mainHand';
+    if (item.type === 'armor') return 'armor';
+    return 'utility';
+  })();
   const [slot, setSlot] = useState<EquipSlot>(naturalSlot);
 
   if (isWeapon) {

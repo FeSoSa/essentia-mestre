@@ -21,6 +21,12 @@ export default function Essencias() {
     api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
   }, []);
 
+  useEffect(() => {
+    if (editing !== undefined || showNew) {
+      api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
+    }
+  }, [editing?.id, showNew]);
+
   function handleSaved(e: Essencia) {
     setEssencias((prev) => {
       const idx = prev.findIndex((x) => x.id === e.id);
@@ -62,6 +68,7 @@ export default function Essencias() {
               key={e.id}
               essencia={e}
               skills={skills.filter((s) => s.essenciaId === e.id)}
+              parentName={e.parentId ? essencias.find((x) => x.id === e.parentId)?.name : undefined}
               onEdit={() => setEditing(e)}
               onDelete={() => handleDelete(e)}
             />
@@ -71,6 +78,7 @@ export default function Essencias() {
 
       {showNew && (
         <EssenciaModal
+          essencias={essencias}
           skills={skills}
           onClose={() => setShowNew(false)}
           onSaved={handleSaved}
@@ -79,6 +87,7 @@ export default function Essencias() {
       {editing && (
         <EssenciaModal
           essencia={editing}
+          essencias={essencias}
           skills={skills}
           onClose={() => setEditing(undefined)}
           onSaved={handleSaved}

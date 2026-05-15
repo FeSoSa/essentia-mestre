@@ -14,11 +14,13 @@ const TYPE_COLORS: Record<string, string> = {
 export default function EssenciaCard({
   essencia,
   skills = [],
+  parentName,
   onEdit,
   onDelete,
 }: {
   essencia: Essencia;
   skills?: Skill[];
+  parentName?: string;
   onEdit: () => void;
   onDelete: () => void;
 }) {
@@ -40,12 +42,19 @@ export default function EssenciaCard({
         )}
         <div className="flex-1 min-w-0">
           <p className="font-semibold text-sm truncate text-e-text">{essencia.name}</p>
-          <span
-            className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-            style={{ background: accentColor + '22', color: accentColor }}
-          >
-            {essencia.type}
-          </span>
+          <div className="flex items-center gap-1 flex-wrap">
+            <span
+              className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+              style={{ background: accentColor + '22', color: accentColor }}
+            >
+              {essencia.type}
+            </span>
+            {parentName && (
+              <span className="text-[10px] px-1.5 py-0.5 rounded bg-e-card text-e-faint truncate max-w-[100px]" title={parentName}>
+                ↑ {parentName}
+              </span>
+            )}
+          </div>
         </div>
         <div className="flex gap-1 shrink-0">
           <button onClick={onEdit}

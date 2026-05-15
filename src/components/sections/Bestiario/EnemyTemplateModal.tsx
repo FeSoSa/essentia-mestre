@@ -24,6 +24,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
   const [int,   setInt]   = useState(template?.attributes.intelligence  ?? 10);
   const [def,   setDef]   = useState(template?.attributes.defense       ?? 5);
   const [xp,    setXp]    = useState(template?.xp    ?? 50);
+  const [desc,  setDesc]  = useState(template?.desc  ?? '');
   const [notes, setNotes] = useState(template?.notes ?? '');
   const [attacks, setAttacks] = useState<EnemyAttack[]>(template?.attacks ?? [{ name: '', damage: '' }]);
   const [drops,   setDrops]   = useState<EnemyDrop[]>(template?.drops ?? []);
@@ -49,7 +50,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
       attributes: { strength: str, agility: agi, intelligence: int, defense: def },
       attacks: attacks.filter((a) => a.name.trim()),
       drops: drops.filter((d) => d.name.trim()),
-      xp, notes,
+      xp, desc, notes,
     };
     try {
       const res = editing
@@ -154,7 +155,15 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
             className="w-24 text-sm rounded px-2 py-1.5 outline-none" style={is} />
         </div>
 
-        {/* Notes */}
+        {/* Desc (visível ao jogador) */}
+        <div>
+          <p className="text-[10px] uppercase tracking-wider mb-0.5 text-e-faint">Descrição (visível ao jogador)</p>
+          <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2}
+            className="w-full text-sm rounded px-2 py-1.5 resize-none outline-none placeholder:opacity-40" style={is}
+            placeholder="Aparência, lore, comportamento…" />
+        </div>
+
+        {/* Notes (privado do mestre) */}
         <textarea value={notes} onChange={(e) => setNotes(e.target.value)} rows={2}
           className="w-full text-sm rounded px-2 py-1.5 resize-none outline-none placeholder:opacity-40" style={is}
           placeholder="Observações…" />

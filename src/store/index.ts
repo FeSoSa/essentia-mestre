@@ -4,7 +4,7 @@ import { create } from 'zustand';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
-  SobrecargaRequest, DamageApprovalRequest,
+  SobrecargaRequest, DamageApprovalRequest, CombatAlly,
 } from './types';
 
 interface RootState {
@@ -46,6 +46,9 @@ interface RootState {
   bosses: BossInstance[];
   setBosses: (b: BossInstance[]) => void;
   removeBoss: (instanceId: string) => void;
+
+  allies: CombatAlly[];
+  setAllies: (a: CombatAlly[]) => void;
 
   sobrecargaRequests: SobrecargaRequest[];
   addSobrecargaRequest: (r: SobrecargaRequest) => void;
@@ -123,6 +126,9 @@ export const useStore = create<RootState>((set) => ({
   removeBoss: (instanceId) =>
     set((s) => ({ bosses: s.bosses.filter((b) => b.instanceId !== instanceId) })),
 
+  allies: [],
+  setAllies: (allies) => set({ allies }),
+
   sobrecargaRequests: [],
   addSobrecargaRequest: (r) =>
     set((s) => ({
@@ -154,3 +160,4 @@ export const useImages     = () => useStore((s) => s.images);
 export const useFastAction = () => useStore((s) => s.fastAction);
 export const useEnemies    = () => useStore((s) => s.enemies);
 export const useBosses     = () => useStore((s) => s.bosses);
+export const useAllies     = () => useStore((s) => s.allies);

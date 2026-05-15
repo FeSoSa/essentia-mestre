@@ -39,14 +39,16 @@ const lbl = 'text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5
 
 interface Props {
   essencia?: Essencia;
+  essencias: Essencia[];
   skills: Skill[];
   onClose: () => void;
   onSaved: (e: Essencia) => void;
 }
 
-export default function EssenciaModal({ essencia, skills, onClose, onSaved }: Props) {
-  const [name,    setName]    = useState(essencia?.name ?? '');
-  const [type,    setType]    = useState(essencia?.type ?? 'Derivada');
+export default function EssenciaModal({ essencia, essencias, skills, onClose, onSaved }: Props) {
+  const [name,     setName]     = useState(essencia?.name ?? '');
+  const [type,     setType]     = useState(essencia?.type ?? 'Derivada');
+  const [parentId, setParentId] = useState(essencia?.parentId ?? '');
   const [desc,    setDesc]    = useState(essencia?.desc ?? '');
   const [icon,    setIcon]    = useState(essencia?.icon ?? '');
   const [color,   setColor]   = useState(essencia?.color ?? '');
@@ -87,7 +89,11 @@ export default function EssenciaModal({ essencia, skills, onClose, onSaved }: Pr
         if (b.key) attributeBonus[b.key] = b.val;
       }
       const skillIds = linkedSkills.map((s) => s.id);
-      const payload = { name, type, desc, attributeBonus, skillIds, icon: icon || null, color: color || null };
+      const payload = {
+        name, type, desc, attributeBonus, skillIds,
+        icon: icon || null, color: color || null,
+        parentId: type === 'Derivada' ? parentId || null : null,
+      };
       const res = essencia
         ? await api.put<Essencia>(`/master/essencias/${essencia.id}`, payload)
         : await api.post<Essencia>('/master/essencias', payload);
@@ -142,6 +148,25 @@ export default function EssenciaModal({ essencia, skills, onClose, onSaved }: Pr
               ))}
             </div>
           </div>
+
+          {type === 'Derivada' && (
+            <div>
+              <label className={lbl}>Essência Grande (origem)</label>
+              <select
+                value={parentId}
+                onChange={(e) => setParentId(e.target.value)}
+                className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors cursor-pointer"
+              >
+                <option value="">— Nenhuma —</option>
+                {essencias
+                  .filter((e) => e.type === 'Grande' && e.id !== essencia?.id)
+                  .map((e) => (
+                    <option key={e.id} value={e.id}>{e.name}</option>
+                  ))
+                }
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={lbl}>Descrição</label>

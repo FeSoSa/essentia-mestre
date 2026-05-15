@@ -78,7 +78,7 @@ export interface PendingRequest {
 export interface Essencia {
   id: string; name: string; type: string; desc: string;
   attributeBonus: Record<string, number>; skillIds: string[];
-  icon?: string; color?: string;
+  icon?: string; color?: string; parentId?: string;
 }
 
 export interface EssenciaObtida {
@@ -222,11 +222,28 @@ export interface BossInstance {
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
 }
 
+export interface AllyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
+export interface AllyAttack { name: string; damage: string; }
+
+export interface AllyTemplate {
+  id: string; name: string; type: string;
+  hpMax: number; portraitUrl?: string;
+  attributes: AllyAttributes; attacks: AllyAttack[];
+  desc: string; notes: string;
+}
+
+export interface CombatAlly {
+  id: string; templateId?: string; name: string; type: string;
+  hpCurrent: number; hpMax: number; portraitUrl?: string;
+  attributes: AllyAttributes; attacks: AllyAttack[];
+  desc: string; notes: string;
+}
+
 export interface EnemyTemplate {
   id: string; name: string; type: string; icon: string;
   hpMax: number; attributes: EnemyAttributes;
   attacks: EnemyAttack[]; drops: EnemyDrop[];
-  xp: number; notes: string;
+  xp: number; desc: string; notes: string;
 }
 
 export interface EnemyInstance {
@@ -235,5 +252,5 @@ export interface EnemyInstance {
   hpCurrent: number; hpMax: number;
   attributes: EnemyAttributes;
   attacks: EnemyAttack[]; drops: EnemyDrop[];
-  xp: number; notes: string;
+  xp: number; desc: string; notes: string;
 }

@@ -345,6 +345,7 @@ const DICE_OPTS = ["d4", "d6", "d8", "d10", "d12", "d20"].map((v) => ({
 const SLOT_OPTS_WEAPON = [
   ["mainHand", "Mão Principal"],
   ["offHand", "Offhand"],
+  ["both", "Qualquer mão"],
 ].map(([v, l]) => ({ value: v, label: l }));
 const SLOT_OPTS_ACCESSORY = [
   ["amulet", "Amuleto"],
@@ -630,10 +631,11 @@ export default function ItemModal({
           {isWeapon && (
             <div>
               <label className={lbl}>Slot de equipamento</label>
-              <div className="flex gap-2">
+              <div className="flex gap-2 flex-wrap">
                 {[
                   { value: "mainHand", label: "Mão principal", two: false },
                   { value: "offHand",  label: "Offhand",       two: false },
+                  { value: "both",     label: "Qualquer mão",  two: false },
                   { value: "mainHand", label: "Duas mãos",     two: true  },
                 ].map((o) => {
                   const active = equipSlot === o.value && twoHanded === o.two;

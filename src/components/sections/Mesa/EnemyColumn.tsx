@@ -1,22 +1,26 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Crown } from 'lucide-react';
-import type { BossInstance, EnemyInstance, Player } from '@/store/types';
+import { Plus, Crown, Shield } from 'lucide-react';
+import type { BossInstance, CombatAlly, EnemyInstance, Player } from '@/store/types';
 import BossCard from './BossCard';
 import EnemyCard from './EnemyCard';
+import AllyCard from './AllyCard';
 import AddEnemyModal from './AddEnemyModal';
 import AddBossModal from './AddBossModal';
+import AddAllyModal from './AddAllyModal';
 
 interface Props {
   bosses: BossInstance[];
   enemies: EnemyInstance[];
+  allies: CombatAlly[];
   players: Player[];
 }
 
-export default function EnemyColumn({ bosses, enemies, players }: Props) {
+export default function EnemyColumn({ bosses, enemies, allies, players }: Props) {
   const [showAddEnemy, setShowAddEnemy] = useState(false);
   const [showAddBoss, setShowAddBoss]   = useState(false);
+  const [showAddAlly, setShowAddAlly]   = useState(false);
 
   return (
     <div className="w-72 shrink-0 border-l border-e-enemy-border bg-e-enemy-bg flex flex-col overflow-hidden">
@@ -35,6 +39,16 @@ export default function EnemyColumn({ bosses, enemies, players }: Props) {
             onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#7a7050'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <Crown size={13} />
+          </button>
+          <button
+            onClick={() => setShowAddAlly(true)}
+            title="Adicionar aliado"
+            className="w-6 h-6 rounded flex items-center justify-center transition-colors"
+            style={{ color: '#3a6a50' }}
+            onMouseEnter={(e) => { (e.currentTarget as HTMLElement).style.color = '#4ade80'; (e.currentTarget as HTMLElement).style.background = '#152a1e'; }}
+            onMouseLeave={(e) => { (e.currentTarget as HTMLElement).style.color = '#3a6a50'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <Shield size={13} />
           </button>
           <button
             onClick={() => setShowAddEnemy(true)}
@@ -57,10 +71,23 @@ export default function EnemyColumn({ bosses, enemies, players }: Props) {
         {enemies.map((e) => (
           <EnemyCard key={e.instanceId} enemy={e} players={players} />
         ))}
+
+        {allies.length > 0 && (enemies.length > 0 || bosses.length > 0) && (
+          <div className="border-t" style={{ borderColor: '#2a4a3a' }} />
+        )}
+        {allies.length > 0 && (
+          <p className="text-[10px] font-semibold uppercase tracking-wider px-0.5" style={{ color: '#5a8a70' }}>
+            Aliados
+          </p>
+        )}
+        {allies.map((a) => (
+          <AllyCard key={a.id} ally={a} />
+        ))}
       </div>
 
       {showAddEnemy && <AddEnemyModal onClose={() => setShowAddEnemy(false)} />}
       {showAddBoss  && <AddBossModal  onClose={() => setShowAddBoss(false)}  />}
+      {showAddAlly  && <AddAllyModal  onClose={() => setShowAddAlly(false)}  />}
     </div>
   );
 }

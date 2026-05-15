@@ -71,6 +71,7 @@ function instanceFromTemplate(t: EnemyTemplate): EnemyInstance {
     attacks: t.attacks,
     drops: t.drops,
     xp: t.xp,
+    desc: t.desc,
     notes: t.notes,
   };
 }
@@ -171,6 +172,7 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
   const [attacks, setAttacks] = useState<EnemyAttack[]>([{ name: '', damage: '' }]);
   const [drops, setDrops]     = useState<EnemyDrop[]>([]);
   const [xp, setXp]       = useState(50);
+  const [desc,  setDesc]  = useState('');
   const [notes, setNotes] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -214,6 +216,7 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
       attacks: attacks.filter((a) => a.name.trim()),
       drops: drops.filter((d) => d.name.trim()),
       xp,
+      desc,
       notes,
     };
     try {
@@ -355,14 +358,24 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
         />
       </div>
 
-      {/* Notes */}
+      {/* Desc (visível ao jogador) */}
+      <textarea
+        value={desc}
+        onChange={(e) => setDesc(e.target.value)}
+        rows={2}
+        className="w-full text-sm rounded px-2 py-1.5 resize-none outline-none placeholder:opacity-40"
+        style={inputStyle}
+        placeholder="Descrição (visível ao jogador)…"
+      />
+
+      {/* Notes (privado) */}
       <textarea
         value={notes}
         onChange={(e) => setNotes(e.target.value)}
         rows={2}
         className="w-full text-sm rounded px-2 py-1.5 resize-none outline-none placeholder:opacity-40"
         style={inputStyle}
-        placeholder="Observações…"
+        placeholder="Observações (privado)…"
       />
 
       <Button variant="danger" size="sm" onClick={addToCombat} disabled={!name.trim() || loading}>
@@ -406,6 +419,7 @@ function RandomTab({ onClose }: { onClose: () => void }) {
       attacks: [],
       drops: [],
       xp: 0,
+      desc: '',
       notes: '',
     };
     try {

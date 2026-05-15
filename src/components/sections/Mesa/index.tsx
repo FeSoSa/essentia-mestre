@@ -1,15 +1,16 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dices, RotateCcw, ChevronRight, Zap, Skull } from 'lucide-react';
+import { Dices, RotateCcw, ChevronRight, Zap, Skull, Shield } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useStore, usePlayers, useFastAction, useEnemies, useBosses } from '@/store';
+import { useStore, usePlayers, useFastAction, useEnemies, useBosses, useAllies } from '@/store';
 import Button from '@/components/ui/Button';
 import type { Essencia, Player } from '@/store/types';
 import PlayerCard from './PlayerCard';
 import AcaoRapidaModal from './AcaoRapidaModal';
 import EnemyColumn from './EnemyColumn';
 import AddEnemyModal from './AddEnemyModal';
+import AddAllyModal from './AddAllyModal';
 import InitiativeEditorModal from '@/components/sections/Turno/InitiativeEditorModal';
 import type { InitiativeEntry } from '@/store/types';
 
@@ -18,10 +19,12 @@ export default function Mesa() {
   const fastAction = useFastAction();
   const enemies = useEnemies();
   const bosses  = useBosses();
+  const allies  = useAllies();
   const { setPlayers, currentTurn, setCurrentTurn, initiative, setInitiative } = useStore();
   const [loading,   setLoading]   = useState(false);
   const [showAcao,       setShowAcao]       = useState(false);
-  const [showAddEnemy,   setShowAddEnemy]   = useState(false);
+  const [showAddEnemy, setShowAddEnemy] = useState(false);
+  const [showAddAlly,  setShowAddAlly]  = useState(false);
   const [showInitEditor, setShowInitEditor] = useState(false);
   const [essencias, setEssencias] = useState<Essencia[]>([]);
 
@@ -96,6 +99,9 @@ export default function Mesa() {
           <Button variant="subtle" size="sm" onClick={() => setShowAddEnemy(true)} className="gap-1.5">
             <Skull size={14} /> Inimigos
           </Button>
+          <Button variant="subtle" size="sm" onClick={() => setShowAddAlly(true)} className="gap-1.5">
+            <Shield size={14} /> Aliados
+          </Button>
           <Button variant="primary" size="sm" disabled={loading || initiative.length === 0} onClick={nextTurn} className="gap-1.5">
             <ChevronRight size={14} />
             {loading ? 'Avançando…' : 'Próximo Turno'}
@@ -117,13 +123,14 @@ export default function Mesa() {
           )}
         </div>
 
-        {(enemies.length > 0 || bosses.length > 0) && (
-          <EnemyColumn bosses={bosses} enemies={enemies} players={players} />
+        {(enemies.length > 0 || bosses.length > 0 || allies.length > 0) && (
+          <EnemyColumn bosses={bosses} enemies={enemies} allies={allies} players={players} />
         )}
       </div>
 
       {showAcao && <AcaoRapidaModal onClose={() => setShowAcao(false)} />}
       {showAddEnemy && <AddEnemyModal onClose={() => setShowAddEnemy(false)} />}
+      {showAddAlly  && <AddAllyModal  onClose={() => setShowAddAlly(false)}  />}
       {showInitEditor && (
         <InitiativeEditorModal
           players={players}
