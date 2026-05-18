@@ -2,13 +2,14 @@
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
-import type { Player, InitiativeEntry, EnemyInstance, BossInstance } from '@/store/types';
+import type { Player, InitiativeEntry, EnemyInstance, BossInstance, CombatAlly } from '@/store/types';
 import Button from '@/components/ui/Button';
 
 interface Props {
   players: Player[];
   enemies: EnemyInstance[];
   bosses:  BossInstance[];
+  allies:  CombatAlly[];
   onConfirm: (entries: InitiativeEntry[]) => void;
   onClose: () => void;
 }
@@ -28,7 +29,7 @@ function agiMod(agility: number) {
 function initBonus(agility: number) { return Math.floor(agiMod(agility) / 2); }
 function d20() { return Math.ceil(Math.random() * 20); }
 
-function rollAll(players: Player[], enemies: EnemyInstance[], bosses: BossInstance[]): InitiativeEntry[] {
+function rollAll(players: Player[], enemies: EnemyInstance[], bosses: BossInstance[], allies: CombatAlly[]): InitiativeEntry[] {
   const entries: InitiativeEntry[] = [
     ...players.map(p => ({
       playerId: p.id,
@@ -48,13 +49,18 @@ function rollAll(players: Player[], enemies: EnemyInstance[], bosses: BossInstan
         value: d20() + initBonus(phase?.attributes?.agility ?? 0),
       };
     }),
+    ...allies.map(a => ({
+      playerId: a.id,
+      name: `🛡 ${a.name}`,
+      value: d20() + initBonus(a.attributes.agility),
+    })),
   ];
   return entries.sort((a, b) => b.value - a.value);
 }
 
-export default function InitiativeEditorModal({ players, enemies, bosses, onConfirm, onClose }: Props) {
+export default function InitiativeEditorModal({ players, enemies, bosses, allies, onConfirm, onClose }: Props) {
   const [entries, setEntries] = useState<InitiativeEntry[]>(() =>
-    rollAll(players, enemies, bosses)
+    rollAll(players, enemies, bosses, allies)
   );
 
   function setValue(id: string, value: number) {
@@ -72,6 +78,7 @@ export default function InitiativeEditorModal({ players, enemies, bosses, onConf
   }
 
   const isPlayer = (id: string) => players.some(p => p.id === id);
+  const isAlly   = (id: string) => allies.some(a => a.id === id);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -98,7 +105,7 @@ export default function InitiativeEditorModal({ players, enemies, bosses, onConf
                 <span style={{
                   fontSize: 14, fontWeight: 500, overflow: 'hidden',
                   whiteSpace: 'nowrap', textOverflow: 'ellipsis',
-                  color: player ? '#f4f4f5' : '#fb923c',
+                  color: player ? '#f4f4f5' : isAlly(entry.playerId) ? '#2dd4bf' : '#fb923c',
                 }}>
                   {entry.name}
                 </span>

@@ -17,8 +17,8 @@ export interface Skill {
   damage?: {
     formula: string;
     baseFixed: number;
-    baseDice?: { quantity: number; die: string };
-    attribute?: string;
+    atributo?: string;
+    equilibrio?: number;
   };
   cooldownTurns: number;
   ultimate: boolean;
@@ -69,7 +69,10 @@ function categoryLabel(skill: Skill, essencias: Essencia[]): string {
 function dmgDisplay(d: NonNullable<Skill['damage']>): string {
   const parts: string[] = [];
   if (d.baseFixed) parts.push(String(d.baseFixed));
-  if (d.baseDice)  parts.push(`${d.baseDice.quantity > 1 ? d.baseDice.quantity : ''}${d.baseDice.die}`);
+  if (d.atributo) {
+    const eq = d.equilibrio != null ? `/${d.equilibrio}` : '';
+    parts.push(`d20×${d.atributo}${eq}`);
+  }
   return parts.join(' + ') || '—';
 }
 

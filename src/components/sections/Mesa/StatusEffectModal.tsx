@@ -6,21 +6,9 @@ import { STATUS_ICONS, getStatusIcon } from '@/lib/statusIcons';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
+import EffectBuilder from '@/components/sections/StatusEffects/EffectBuilder';
 import type { Player, AutoEffect } from '@/store/types';
-
-const TRIGGERS = [
-  { value: 'on_turn_start', label: 'Início do turno' },
-  { value: 'on_turn_end', label: 'Fim do turno' },
-  { value: 'on_skill_use', label: 'Ao usar skill' },
-  { value: 'on_damage_received', label: 'Ao receber dano' },
-];
-const TYPES = [
-  { value: 'damage_hp', label: 'Dano HP' }, { value: 'damage_flow', label: 'Dano Flow' },
-  { value: 'heal_hp', label: 'Cura HP' }, { value: 'heal_flow', label: 'Cura Flow' },
-  { value: 'modify_attribute', label: 'Mod. Atributo' },
-  { value: 'modify_damage_dealt', label: 'Mod. dano causado' },
-  { value: 'modify_damage_received', label: 'Mod. dano recebido' },
-];
 
 export default function StatusEffectModal({ player, onClose }: { player: Player; onClose: () => void }) {
   const { setPlayer } = useStore();
@@ -118,8 +106,8 @@ export default function StatusEffectModal({ player, onClose }: { player: Player;
               </div>
             </div>
             <div className="flex items-center gap-4">
-              <label className="flex items-center gap-2 cursor-pointer select-none">
-                <input type="checkbox" checked={permanent} onChange={(e) => setPermanent(e.target.checked)} />
+              <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setPermanent((p) => !p)}>
+                <Checkbox checked={permanent} onChange={setPermanent} />
                 <span className="text-sm text-e-sub">Permanente</span>
               </label>
               {!permanent && (
@@ -131,30 +119,11 @@ export default function StatusEffectModal({ player, onClose }: { player: Player;
               )}
             </div>
 
-            {/* Efeitos automáticos — simplificado */}
-            {effects.length > 0 && (
-              <div className="flex flex-col gap-2">
-                {effects.map((eff, i) => (
-                  <div key={i} className="grid grid-cols-2 gap-2 bg-e-card rounded-xl p-3">
-                    <select value={eff.trigger} onChange={(e) => setEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, trigger: e.target.value } : ef))}>
-                      {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                    <select value={eff.type} onChange={(e) => setEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, type: e.target.value } : ef))}>
-                      {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                    </select>
-                    <input type="number" placeholder="Valor" value={eff.value ?? 0}
-                      onChange={(e) => setEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, value: Number(e.target.value) } : ef))} />
-                    <button type="button" onClick={() => setEffects((p) => p.filter((_, idx) => idx !== i))}
-                      className="text-e-faint hover:text-e-danger text-sm cursor-pointer transition-colors">Remover</button>
-                  </div>
-                ))}
-              </div>
-            )}
-            <button type="button"
-              onClick={() => setEffects((p) => [...p, { trigger: 'on_turn_start', type: 'damage_hp', value: 0 }])}
-              className="py-2 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
-              + Efeito automático
-            </button>
+            {/* Efeitos automáticos */}
+            <div>
+              <p className={label}>Efeitos automáticos</p>
+              <EffectBuilder effects={effects} onChange={setEffects} />
+            </div>
 
             <Button type="submit" variant="primary" size="md" className="w-full" disabled={saving || !name.trim()}>
               {saving ? 'Aplicando…' : 'Aplicar Status Effect'}

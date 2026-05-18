@@ -333,15 +333,16 @@ const WEAPON_OPTS = ["curta", "média", "pesada", "ranged", "unarmed"].map(
   (v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }),
 );
 const DMGATTR_OPTS = [
-  ["strength", "FOR — Força"],
-  ["agility", "AGI — Agilidade"],
-  ["intelligence", "INT — Inteligência"],
-  ["resistance", "RES — Resistência"],
-].map(([v, l]) => ({ value: v, label: l }));
-const DICE_OPTS = ["d4", "d6", "d8", "d10", "d12", "d20"].map((v) => ({
-  value: v,
-  label: v,
-}));
+  { value: '',    label: 'Nenhum'           },
+  { value: 'FOR', label: 'FOR — Força'      },
+  { value: 'AGI', label: 'AGI — Agilidade'  },
+  { value: 'INT', label: 'INT — Inteligência'},
+  { value: 'RES', label: 'RES — Resistência' },
+  { value: 'FLX', label: 'FLX — Fluxo'     },
+  { value: 'SAB', label: 'SAB — Sabedoria'  },
+  { value: 'PRE', label: 'PRE — Presença'   },
+  { value: 'DEF', label: 'DEF — Defesa'     },
+];
 const SLOT_OPTS_WEAPON = [
   ["mainHand", "Mão Principal"],
   ["offHand", "Offhand"],
@@ -386,11 +387,9 @@ export default function ItemModal({
 
   const [weaponType, setWeaponType] = useState(item?.weaponType ?? "curta");
   const [damageBase, setDamageBase] = useState(item?.damageBase ?? 0);
-  const [diceQty, setDiceQty] = useState(item?.damageDice?.quantity ?? 1);
-  const [diceDie, setDiceDie] = useState(item?.damageDice?.die ?? "d6");
-  const [damageAttribute, setDamageAttribute] = useState(
-    item?.damageAttribute ?? "strength",
-  );
+  const dmgAttrParts = item?.damageAttribute?.split('/') ?? [];
+  const [dmgAttr1, setDmgAttr1] = useState(dmgAttrParts[0] ?? '');
+  const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? '');
   const [armorWeight, setArmorWeight] = useState(item?.armorWeight ?? "");
   const [rarity, setRarity] = useState(item?.rarity ?? "");
   const [twoHanded, setTwoHanded] = useState(item?.twoHanded ?? false);
@@ -456,8 +455,7 @@ export default function ItemModal({
     if (isWeapon) {
       body.weaponType = weaponType;
       body.damageBase = damageBase;
-      body.damageDice = { quantity: diceQty, die: diceDie };
-      body.damageAttribute = damageAttribute;
+      body.damageAttribute = [dmgAttr1, dmgAttr2].filter(Boolean).join('/') || undefined;
       body.properties = properties || undefined;
       body.twoHanded = twoHanded || undefined;
     }
@@ -571,22 +569,8 @@ export default function ItemModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>Tipo de arma</label>
-                  <Dropdown
-                    value={weaponType}
-                    onChange={setWeaponType}
-                    options={WEAPON_OPTS}
-                  />
+                  <Dropdown value={weaponType} onChange={setWeaponType} options={WEAPON_OPTS} />
                 </div>
-                <div>
-                  <label className={lbl}>Atributo de dano</label>
-                  <Dropdown
-                    value={damageAttribute}
-                    onChange={setDamageAttribute}
-                    options={DMGATTR_OPTS}
-                  />
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-4">
                 <div>
                   <label className={lbl}>Dano base</label>
                   <input
@@ -596,26 +580,26 @@ export default function ItemModal({
                     className={`text-center ${inp}`}
                   />
                 </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
                 <div>
-                  <label className={lbl}>Qtd. dado</label>
-                  <input
-                    type="number"
-                    value={diceQty}
-                    min={0}
-                    onChange={(e) => setDiceQty(Number(e.target.value))}
-                    className={`text-center ${inp}`}
+                  <label className={lbl}>Atributo 1</label>
+                  <Dropdown
+                    value={dmgAttr1}
+                    onChange={(v) => { setDmgAttr1(v); if (!v) setDmgAttr2(''); }}
+                    options={DMGATTR_OPTS}
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Tipo do dado</label>
+                  <label className={lbl}>Atributo 2 <span className="normal-case font-normal">(usa o maior)</span></label>
                   <Dropdown
-                    value={diceDie}
-                    onChange={setDiceDie}
-                    options={DICE_OPTS}
+                    value={dmgAttr2}
+                    onChange={setDmgAttr2}
+                    options={DMGATTR_OPTS.filter((o) => o.value !== dmgAttr1)}
                   />
                 </div>
               </div>
-              <div className="col-span-3">
+              <div>
                 <label className={lbl}>Propriedades</label>
                 <input
                   value={properties}

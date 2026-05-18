@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { Skill, Essencia } from './SkillCard';
 import type { ItemCatalog } from '@/store/types';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
 
 interface Props {
   skill?: Skill;
@@ -28,17 +29,15 @@ const WEAPON_OPTS = [
   { value: 'unarmed',  label: 'Desarmado' },
 ];
 
-const DICE_OPTS = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
-
-const ATTR_OPTS = [
-  { value: 'strength',     label: 'FOR — Força'        },
-  { value: 'agility',      label: 'AGI — Agilidade'    },
-  { value: 'intelligence', label: 'INT — Inteligência'  },
-  { value: 'resistance',   label: 'RES — Resistência'   },
-  { value: 'flow',         label: 'FLX — Fluxo'        },
-  { value: 'wisdom',       label: 'SAB — Sabedoria'     },
-  { value: 'presence',     label: 'PRE — Presença'      },
-  { value: 'defense',      label: 'DEF — Defesa'        },
+const ATTR_ABBREV_OPTS = [
+  { value: 'FOR', label: 'FOR — Força'       },
+  { value: 'AGI', label: 'AGI — Agilidade'   },
+  { value: 'INT', label: 'INT — Inteligência' },
+  { value: 'RES', label: 'RES — Resistência'  },
+  { value: 'FLX', label: 'FLX — Fluxo'       },
+  { value: 'SAB', label: 'SAB — Sabedoria'    },
+  { value: 'PRE', label: 'PRE — Presença'     },
+  { value: 'DEF', label: 'DEF — Defesa'       },
 ];
 
 const COST_OPTS = [
@@ -100,10 +99,12 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
   const [passive,    setPassive]    = useState((skill as any)?.passive ?? false);
   const [pressaoDice, setPressaoDice] = useState((skill as any)?.pressaoDice ?? false);
 
-  const [hasDamage, setHasDamage] = useState(!!skill?.damage);
-  const [dmgFixed,  setDmgFixed]  = useState(String(skill?.damage?.baseFixed ?? 0));
-  const [dmgQty,    setDmgQty]    = useState(String(skill?.damage?.baseDice?.quantity ?? 1));
-  const [dmgDie,    setDmgDie]    = useState(skill?.damage?.baseDice?.die ?? 'd6');
+  const [hasDamage,     setHasDamage]     = useState(!!skill?.damage);
+  const [dmgFixed,      setDmgFixed]      = useState(String(skill?.damage?.baseFixed ?? 0));
+  const [dmgEquilibrio, setDmgEquilibrio] = useState(String(skill?.damage?.equilibrio ?? ''));
+  const dmgAtributoRaw = skill?.damage?.atributo?.split('/') ?? [];
+  const [dmgAttr1, setDmgAttr1] = useState(dmgAtributoRaw[0] ?? '');
+  const [dmgAttr2, setDmgAttr2] = useState(dmgAtributoRaw[1] ?? '');
 
   const [costs, setCosts] = useState<CostEntry[]>(
     skill?.costs.map((c) => ({
@@ -146,11 +147,19 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
     setReqAttrs((a) => a.map((x, j) => j === i ? (field === 0 ? [v, x[1]] : [x[0], v]) as AttrReq : x));
   }
 
-  function buildFormula() {
+  function buildAtributo(): string | undefined {
+    const parts = [dmgAttr1, dmgAttr2].filter(Boolean);
+    return parts.length > 0 ? parts.join('/') : undefined;
+  }
+
+  function buildFormula(): string {
     const parts: string[] = [];
     if (Number(dmgFixed) > 0) parts.push(String(dmgFixed));
-    const qty = Math.max(1, Number(dmgQty) || 1);
-    parts.push(`${qty}${dmgDie}`);
+    const atrib = buildAtributo();
+    if (atrib) {
+      const eq = dmgEquilibrio ? `/${dmgEquilibrio}` : '';
+      parts.push(`d20×${atrib}${eq}`);
+    }
     return parts.join(' + ');
   }
 
@@ -189,10 +198,10 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         percentual: c.percentual !== '' ? Number(c.percentual) : undefined,
       })),
       damage: hasDamage ? {
-        formula:   buildFormula(),
-        baseFixed: Number(dmgFixed) || 0,
-        baseDice:  { quantity: Math.max(1, Number(dmgQty) || 1), die: dmgDie },
-        attribute: undefined,
+        formula:    buildFormula(),
+        baseFixed:  Number(dmgFixed) || 0,
+        atributo:   buildAtributo(),
+        equilibrio: dmgEquilibrio !== '' ? Number(dmgEquilibrio) : undefined,
       } : undefined,
       requirements,
     };
@@ -296,18 +305,15 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         {/* ── Flags ── */}
         <div className="flex gap-4 flex-wrap items-center">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={passive} onChange={(e) => { setPassive(e.target.checked); if (e.target.checked) { setHasDamage(false); setCosts([]); } }}
-              className="w-4 h-4 accent-teal-400" />
+            <Checkbox checked={passive} onChange={(v) => { setPassive(v); if (v) { setHasDamage(false); setCosts([]); } }} color="teal" />
             <span className="text-sm text-e-text">Passiva</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={ultimate} onChange={(e) => setUltimate(e.target.checked)}
-              className="w-4 h-4 accent-amber-400" />
+            <Checkbox checked={ultimate} onChange={setUltimate} color="amber" />
             <span className="text-sm text-e-text">Ultimate</span>
           </label>
           <label className="flex items-center gap-2 cursor-pointer" title="Consome custo a cada turno automaticamente">
-            <input type="checkbox" checked={toggle} onChange={(e) => setToggle(e.target.checked)}
-              className="w-4 h-4 accent-sky-400" />
+            <Checkbox checked={toggle} onChange={setToggle} color="sky" />
             <span className="text-sm text-e-text">Por turno</span>
           </label>
         </div>
@@ -315,8 +321,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         {/* ── Pressão Dice (só para não-passivas com dano) ── */}
         {!passive && (
           <label className="flex items-center gap-2.5 cursor-pointer px-3 py-2.5 rounded-xl border border-orange-500/30 bg-orange-500/5 w-fit">
-            <input type="checkbox" checked={pressaoDice} onChange={(e) => setPressaoDice(e.target.checked)}
-              className="w-4 h-4 accent-orange-400" />
+            <Checkbox checked={pressaoDice} onChange={setPressaoDice} color="orange" />
             <span className="text-sm text-orange-300 font-medium">Pressão Dice</span>
             <span className="text-xs text-orange-400/70">+1d6 por ponto de Pressão (consome tudo ao usar)</span>
           </label>
@@ -365,32 +370,41 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
         {/* ── Dano (só para não-passivas) ── */}
         {!passive && <div className="flex flex-col gap-3">
           <label className="flex items-center gap-2 cursor-pointer">
-            <input type="checkbox" checked={hasDamage} onChange={(e) => setHasDamage(e.target.checked)}
-              className="w-4 h-4 accent-e-accent" />
+            <Checkbox checked={hasDamage} onChange={setHasDamage} />
             <span className="text-sm font-semibold text-e-text">Tem dano</span>
           </label>
           {hasDamage && (
-            <div className="flex gap-3 pl-3 border-l-2 border-e-border items-end flex-wrap">
-              <div className="w-20">
-                <label className={lbl}>Base fixo</label>
+            <div className="flex gap-3 pl-3 border-l-2 border-e-border items-start flex-wrap">
+              <div className="w-24">
+                <label className={lbl}>Dano base</label>
                 <input type="number" min={0} value={dmgFixed}
                   onChange={(e) => setDmgFixed(e.target.value)} className={`text-center ${inp}`} />
               </div>
-              <span className="text-e-faint text-sm pb-2.5">+</span>
-              <div className="w-16">
-                <label className={lbl}>Qtd.</label>
-                <input type="number" min={1} max={20} value={dmgQty}
-                  onChange={(e) => setDmgQty(e.target.value)} className={`text-center ${inp}`} />
+              <div className="w-24">
+                <label className={lbl}>Equilíbrio</label>
+                <input type="number" min={1} value={dmgEquilibrio}
+                  onChange={(e) => setDmgEquilibrio(e.target.value)}
+                  placeholder="—" className={`text-center ${inp}`} />
               </div>
-              <div className="flex-1">
-                <label className={lbl}>Dado</label>
-                <div className="flex gap-1 flex-wrap">
-                  {DICE_OPTS.map((d) => (
-                    <button key={d} type="button" onClick={() => setDmgDie(d)}
-                      className={`px-2.5 py-1.5 rounded-lg text-xs font-mono font-bold border transition-colors ${dmgDie === d ? 'bg-e-accent/20 border-e-accent text-e-accent' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
-                      {d}
-                    </button>
-                  ))}
+              <div className="flex gap-2 items-start">
+                <div className="w-36">
+                  <label className={lbl}>Atributo 1</label>
+                  <Dropdown
+                    value={dmgAttr1}
+                    onChange={(v) => { setDmgAttr1(v); if (!v) setDmgAttr2(''); }}
+                    options={[{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS]}
+                  />
+                </div>
+                <div className="w-36">
+                  <label className={lbl}>Atributo 2</label>
+                  <Dropdown
+                    value={dmgAttr2}
+                    onChange={setDmgAttr2}
+                    options={[
+                      { value: '', label: 'Nenhum' },
+                      ...ATTR_ABBREV_OPTS.filter((o) => o.value !== dmgAttr1),
+                    ]}
+                  />
                 </div>
               </div>
             </div>

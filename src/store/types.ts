@@ -38,8 +38,8 @@ export interface StatusEffect {
 export interface Item {
   id: string; name: string; desc: string; qty: number; type: string; icon?: string;
   // Weapon fields (type === 'weapon')
-  weaponType?: string; damageBase?: number; damageDice?: Dice;
-  damageAttribute?: string; properties?: string;
+  weaponType?: string; damageBase?: number; damageAttribute?: string;
+  equilibrio?: number; properties?: string;
   // Armor field
   damageReduction?: number;
   armorWeight?: string; // "leve" | "média" | "pesada"
@@ -51,7 +51,7 @@ export interface Item {
 
 export interface WeaponEquip {
   id: string; name: string; weaponType: string;
-  damageBase: number; damageDice: Dice; damageAttribute: string;
+  damageBase: number; damageAttribute: string; equilibrio?: number;
   attributeBonus?: Record<string, number>;
   rarity?: string;
 }
@@ -148,7 +148,7 @@ export interface FastAction {
 
 export interface ClassPerks {
   hasPressureBar: boolean;
-  unarmedDamage?: string;
+  unarmedAttack?: { damageBase: number; attribute: string };
 }
 
 export interface ClassKit {
@@ -182,8 +182,8 @@ export interface SkillTreeEntry {
 
 export interface ItemCatalog {
   id: string; name: string; desc: string; type: string; icon?: string;
-  weaponType?: string; damageBase?: number; damageDice?: Dice;
-  damageAttribute?: string; properties?: string;
+  weaponType?: string; damageBase?: number; damageAttribute?: string;
+  equilibrio?: number; properties?: string;
   damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
   rarity?: string; twoHanded?: boolean;

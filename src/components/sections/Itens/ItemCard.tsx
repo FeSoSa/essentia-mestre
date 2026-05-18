@@ -71,9 +71,10 @@ function dmgStr(item: ItemCatalog) {
   if (item.type !== "weapon") return null;
   const parts = [];
   if (item.damageBase) parts.push(String(item.damageBase));
-  if (item.damageDice)
-    parts.push(`${item.damageDice.quantity}${item.damageDice.die}`);
-  return parts.length ? parts.join("+") : null;
+  if (item.damageAttribute) {
+    parts.push(`d20×${item.damageAttribute}/4`);
+  }
+  return parts.length ? parts.join(' + ') : null;
 }
 
 export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {

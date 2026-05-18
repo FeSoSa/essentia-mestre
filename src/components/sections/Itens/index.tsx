@@ -1,9 +1,10 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Plus } from 'lucide-react';
+import { ChevronDown, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ItemCatalog } from '@/store/types';
+import { RARITY_ORDER, RARITY_LABELS } from '@/lib/rarity';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import ItemCard from './ItemCard';
@@ -28,6 +29,72 @@ const TAB_LABELS: Record<Tab, string> = {
   armas: 'Armas', armaduras: 'Armaduras', itens: 'Itens',
 };
 
+const WEAPON_TYPE_OPTS = [
+  { value: 'curta',   label: 'Curta'        },
+  { value: 'média',   label: 'Média'        },
+  { value: 'pesada',  label: 'Pesada'       },
+  { value: 'ranged',  label: 'À distância'  },
+  { value: 'unarmed', label: 'Desarmado'    },
+];
+
+const ARMOR_WEIGHT_OPTS = [
+  { value: 'leve',   label: 'Leve'   },
+  { value: 'média',  label: 'Média'  },
+  { value: 'pesada', label: 'Pesada' },
+];
+
+const RARITY_OPTS = RARITY_ORDER.map((r) => ({ value: r, label: RARITY_LABELS[r] }));
+
+function FilterDropdown({ value, onChange, placeholder, options }: {
+  value: string;
+  onChange: (v: string) => void;
+  placeholder: string;
+  options: { value: string; label: string }[];
+}) {
+  const [open, setOpen] = useState(false);
+  const selected = options.find((o) => o.value === value);
+  const active = !!value;
+
+  return (
+    <div className="relative">
+      {open && <div className="fixed inset-0 z-40" onClick={() => setOpen(false)} />}
+      <button
+        type="button"
+        onClick={() => setOpen((v) => !v)}
+        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm transition-colors whitespace-nowrap ${
+          active
+            ? 'bg-e-card border-e-border2 text-e-text'
+            : 'bg-e-bg border-e-border text-e-faint hover:text-e-text hover:border-e-border2'
+        }`}
+      >
+        {selected?.label ?? placeholder}
+        <ChevronDown size={12} className={`shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute right-0 z-50 mt-1 min-w-full bg-e-surface border border-e-border rounded-xl shadow-2xl overflow-hidden">
+          <button
+            type="button"
+            onClick={() => { onChange(''); setOpen(false); }}
+            className={`w-full px-3 py-2 text-sm text-left transition-colors hover:bg-e-card ${!active ? 'text-e-accent' : 'text-e-faint'}`}
+          >
+            {placeholder}
+          </button>
+          {options.map((opt) => (
+            <button
+              key={opt.value}
+              type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors ${value === opt.value ? 'text-e-accent' : 'text-e-text'}`}
+            >
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function Itens() {
   const [items,   setItems]   = useState<ItemCatalog[]>([]);
   const [tab,     setTab]     = useState<Tab>('armas');
@@ -35,9 +102,28 @@ export default function Itens() {
   const [sending, setSending] = useState<ItemCatalog | undefined>();
   const [showNew, setShowNew] = useState(false);
 
+  const [search,            setSearch]            = useState('');
+  const [filterRarity,      setFilterRarity]      = useState('');
+  const [filterWeaponType,  setFilterWeaponType]  = useState('');
+  const [filterArmorWeight, setFilterArmorWeight] = useState('');
+
   useEffect(() => {
     api.get<ItemCatalog[]>('/items').then((r) => setItems(r.data)).catch(() => {});
   }, []);
+
+  function changeTab(t: Tab) {
+    setTab(t);
+    setFilterRarity('');
+    setFilterWeaponType('');
+    setFilterArmorWeight('');
+  }
+
+  function clearFilters() {
+    setSearch('');
+    setFilterRarity('');
+    setFilterWeaponType('');
+    setFilterArmorWeight('');
+  }
 
   function handleSaved(i: ItemCatalog) {
     setItems((prev) => {
@@ -52,7 +138,15 @@ export default function Itens() {
     setItems((prev) => prev.filter((x) => x.id !== i.id));
   }
 
-  const visible = items.filter(TAB_FILTER[tab]);
+  const tabItems = items.filter(TAB_FILTER[tab]);
+  const visible = tabItems
+    .filter((i) => !search || i.name.toLowerCase().includes(search.toLowerCase()))
+    .filter((i) => !filterRarity || i.rarity === filterRarity)
+    .filter((i) => !filterWeaponType || i.weaponType === filterWeaponType)
+    .filter((i) => !filterArmorWeight || i.armorWeight === filterArmorWeight);
+
+  const hasFilters = !!(search || filterRarity || filterWeaponType || filterArmorWeight);
+  const isFiltered = hasFilters && visible.length !== tabItems.length;
 
   const tabCls = (t: Tab) =>
     `px-4 py-1.5 rounded text-sm font-semibold transition-colors ${
@@ -71,17 +165,72 @@ export default function Itens() {
         }
       />
 
-      <div className="flex gap-1 rounded-lg p-1 mb-6 w-fit bg-e-surface">
-        {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-          <button key={t} onClick={() => setTab(t)} className={tabCls(t)}>
-            {TAB_LABELS[t]}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        {/* Tabs */}
+        <div className="flex gap-1 rounded-lg p-1 bg-e-surface shrink-0">
+          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
+            <button key={t} onClick={() => changeTab(t)} className={tabCls(t)}>
+              {TAB_LABELS[t]}
+            </button>
+          ))}
+        </div>
+
+        {/* Filters */}
+        <div className="flex items-center gap-2 ml-auto flex-wrap">
+          <input
+            type="text"
+            placeholder="Buscar..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="px-3 py-1.5 bg-e-bg border border-e-border rounded-lg text-sm text-e-text placeholder:text-e-faint outline-none focus:border-e-border2 transition-colors w-40"
+          />
+
+          {(tab === 'armas' || tab === 'armaduras') && (
+            <FilterDropdown
+              value={filterRarity}
+              onChange={setFilterRarity}
+              placeholder="Raridade"
+              options={RARITY_OPTS}
+            />
+          )}
+
+          {tab === 'armas' && (
+            <FilterDropdown
+              value={filterWeaponType}
+              onChange={setFilterWeaponType}
+              placeholder="Tipo de arma"
+              options={WEAPON_TYPE_OPTS}
+            />
+          )}
+
+          {tab === 'armaduras' && (
+            <FilterDropdown
+              value={filterArmorWeight}
+              onChange={setFilterArmorWeight}
+              placeholder="Peso"
+              options={ARMOR_WEIGHT_OPTS}
+            />
+          )}
+
+          {hasFilters && (
+            <button onClick={clearFilters} className="text-xs text-e-faint hover:text-e-sub transition-colors">
+              Limpar
+            </button>
+          )}
+
+          {isFiltered && (
+            <span className="text-xs text-e-faint">
+              {visible.length} de {tabItems.length}
+            </span>
+          )}
+        </div>
       </div>
 
       {visible.length === 0 ? (
         <p className="text-e-faint text-sm text-center py-16">
-          Nenhum item nesta categoria. Clique em "Novo item" para criar.
+          {hasFilters
+            ? 'Nenhum item corresponde aos filtros.'
+            : 'Nenhum item nesta categoria. Clique em "Novo item" para criar.'}
         </p>
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))' }}>

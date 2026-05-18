@@ -136,6 +136,7 @@ export default function Mesa() {
           players={players}
           enemies={enemies}
           bosses={bosses}
+          allies={allies}
           onConfirm={confirmInitiative}
           onClose={() => setShowInitEditor(false)}
         />

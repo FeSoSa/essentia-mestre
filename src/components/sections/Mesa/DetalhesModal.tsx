@@ -1,6 +1,8 @@
 "use client";
 
 import Button from "@/components/ui/Button";
+import Checkbox from "@/components/ui/Checkbox";
+import EffectBuilder from "@/components/sections/StatusEffects/EffectBuilder";
 import { api } from "@/lib/api";
 import type { CatalogEntry, EquipSlot } from "@/lib/equipmentCatalog";
 import { useStore } from "@/store";
@@ -159,11 +161,9 @@ function CatalogSelect({
 
   function stats(entry: CatalogEntry): string {
     if ("damageBase" in entry.item) {
-      const w = entry.item as {
-        damageBase: number;
-        damageDice: { quantity: number; die: string };
-      };
-      return `${w.damageBase}+${w.damageDice.quantity}${w.damageDice.die}`;
+      const w = entry.item as { damageBase: number; damageAttribute?: string };
+      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : '';
+      return `${w.damageBase}${attr}`;
     }
     if ("damageReduction" in entry.item)
       return `-${(entry.item as { damageReduction: number }).damageReduction} dano`;
@@ -795,8 +795,8 @@ function InventarioPanel({
                 name: item.name,
                 weaponType: item.weaponType ?? "",
                 damageBase: item.damageBase ?? 0,
-                damageDice: item.damageDice ?? { quantity: 1, die: "d6" },
                 damageAttribute: item.damageAttribute ?? "",
+                equilibrio: item.equilibrio,
                 attributeBonus: item.attributeBonus,
               },
             }
@@ -870,9 +870,8 @@ function InventarioPanel({
               icon: iconForEntry(entry),
               weaponType: (entry.item as { weaponType?: string }).weaponType,
               damageBase: (entry.item as { damageBase?: number }).damageBase,
-              damageDice: (entry.item as { damageDice?: unknown }).damageDice,
-              damageAttribute: (entry.item as { damageAttribute?: string })
-                .damageAttribute,
+              damageAttribute: (entry.item as { damageAttribute?: string }).damageAttribute,
+              equilibrio: (entry.item as { equilibrio?: number }).equilibrio,
               attributeBonus: entry.item.attributeBonus,
             }
           : type === "armor"
@@ -1044,19 +1043,14 @@ function InventarioPanel({
                 {selectedWeapon &&
                   (() => {
                     const w = selectedWeapon.item as {
-                      name: string;
-                      weaponType: string;
-                      damageBase: number;
-                      damageDice: { quantity: number; die: string };
-                      damageAttribute: string;
-                      properties?: string;
+                      name: string; weaponType: string;
+                      damageBase: number; damageAttribute: string; properties?: string;
                     };
                     return (
                       <div className="text-xs text-e-faint flex flex-col gap-1">
                         <p>
                           <span className="text-e-sub">{w.weaponType}</span> ·{" "}
-                          {w.damageBase}+{w.damageDice.quantity}
-                          {w.damageDice.die} · {w.damageAttribute}
+                          {w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : ''}
                         </p>
                         {w.properties && <p>{w.properties}</p>}
                       </div>
@@ -1590,22 +1584,6 @@ function HabilidadesPanel({
 
 // ── EfeitosPanel ─────────────────────────────────────────────────────────────
 
-const EFFECT_TRIGGERS = [
-  { value: 'on_turn_start',      label: 'Início do turno'  },
-  { value: 'on_turn_end',        label: 'Fim do turno'     },
-  { value: 'on_skill_use',       label: 'Ao usar skill'    },
-  { value: 'on_damage_received', label: 'Ao receber dano'  },
-];
-const EFFECT_TYPES = [
-  { value: 'damage_hp',              label: 'Dano HP'            },
-  { value: 'damage_flow',            label: 'Dano Flow'          },
-  { value: 'heal_hp',                label: 'Cura HP'            },
-  { value: 'heal_flow',              label: 'Cura Flow'          },
-  { value: 'modify_attribute',       label: 'Mod. Atributo'      },
-  { value: 'modify_damage_dealt',    label: 'Mod. dano causado'  },
-  { value: 'modify_damage_received', label: 'Mod. dano recebido' },
-];
-
 function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Player) => void }) {
   const { presets, addPreset, removePreset } = useEffectPresetsStore();
 
@@ -1880,8 +1858,8 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
           </div>
 
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={permanent} onChange={(e) => setPermanent(e.target.checked)} />
+            <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setPermanent((p) => !p)}>
+              <Checkbox checked={permanent} onChange={setPermanent} />
               <span className="text-sm text-e-sub">Permanente</span>
             </label>
             {!permanent && (
@@ -1895,36 +1873,10 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
             )}
           </div>
 
-          {autoEffects.length > 0 && (
-            <div className="flex flex-col gap-2">
-              <p className={lbl}>Efeitos automáticos</p>
-              {autoEffects.map((eff, i) => (
-                <div key={i} className="grid grid-cols-2 gap-2 bg-e-card rounded-xl p-3">
-                  <select value={eff.trigger}
-                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, trigger: e.target.value } : ef))}>
-                    {EFFECT_TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                  <select value={eff.type}
-                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, type: e.target.value } : ef))}>
-                    {EFFECT_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                  </select>
-                  <input type="number" placeholder="Valor" value={eff.value ?? 0}
-                    onChange={(e) => setAutoEffects((p) => p.map((ef, idx) => idx === i ? { ...ef, value: Number(e.target.value) } : ef))} />
-                  <button type="button"
-                    onClick={() => setAutoEffects((p) => p.filter((_, idx) => idx !== i))}
-                    className="text-e-faint hover:text-e-danger text-sm cursor-pointer transition-colors">
-                    Remover
-                  </button>
-                </div>
-              ))}
-            </div>
-          )}
-
-          <button type="button"
-            onClick={() => setAutoEffects((p) => [...p, { trigger: 'on_turn_start', type: 'damage_hp', value: 0 }])}
-            className="flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
-            <Plus size={13} /> Efeito automático
-          </button>
+          <div>
+            <p className={lbl}>Efeitos automáticos</p>
+            <EffectBuilder effects={autoEffects} onChange={setAutoEffects} />
+          </div>
 
           <div className="flex gap-2">
             <button type="button"

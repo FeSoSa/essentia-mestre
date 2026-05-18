@@ -5,6 +5,7 @@ import { X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
 import type { AutoEffect, Player } from '@/store/types';
 import { STATUS_ICONS } from '@/lib/statusIcons';
 import EffectBuilder from './EffectBuilder';
@@ -75,8 +76,8 @@ export default function AddEffectModal({ playerId, onClose }: { playerId: string
           </div>
 
           <div className="flex items-center gap-4">
-            <label className="flex items-center gap-2 cursor-pointer select-none">
-              <input type="checkbox" checked={permanent} onChange={(e) => setPermanent(e.target.checked)} />
+            <label className="flex items-center gap-2 cursor-pointer select-none" onClick={() => setPermanent((p) => !p)}>
+              <Checkbox checked={permanent} onChange={setPermanent} />
               <span className="text-sm text-e-sub">Permanente</span>
             </label>
             {!permanent && (

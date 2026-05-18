@@ -1,6 +1,7 @@
 'use client';
 
-import type { AutoEffect, Dice } from '@/store/types';
+import type { AutoEffect } from '@/store/types';
+import Select from '@/components/ui/Select';
 
 const TRIGGERS = [
   { value: 'on_turn_start',      label: 'Início do turno' },
@@ -20,8 +21,17 @@ const TYPES = [
   { value: 'modify_damage_received', label: 'Mod. dano recebido' },
 ];
 
-const ATTRS = ['strength', 'agility', 'intelligence', 'resistance', 'flow', 'wisdom', 'presence', 'defense'];
-const DICE_TYPES = ['d4', 'd6', 'd8', 'd10', 'd12', 'd20'];
+const ATTRS = [
+  { value: 'strength',     label: 'Força' },
+  { value: 'agility',      label: 'Agilidade' },
+  { value: 'intelligence', label: 'Inteligência' },
+  { value: 'resistance',   label: 'Resistência' },
+  { value: 'flow',         label: 'Fluxo' },
+  { value: 'wisdom',       label: 'Sabedoria' },
+  { value: 'presence',     label: 'Presença' },
+  { value: 'defense',      label: 'Defesa' },
+];
+
 
 function emptyEffect(): AutoEffect {
   return { trigger: 'on_turn_start', type: 'damage_hp' };
@@ -49,15 +59,19 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={label}>Trigger</label>
-              <select value={eff.trigger} onChange={(e) => update(i, { trigger: e.target.value })}>
-                {TRIGGERS.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <Select
+                value={eff.trigger}
+                onChange={(v) => update(i, { trigger: v })}
+                options={TRIGGERS}
+              />
             </div>
             <div>
               <label className={label}>Tipo</label>
-              <select value={eff.type} onChange={(e) => update(i, { type: e.target.value })}>
-                {TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-              </select>
+              <Select
+                value={eff.type}
+                onChange={(v) => update(i, { type: v })}
+                options={TYPES}
+              />
             </div>
 
             <div>
@@ -75,28 +89,15 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
             {eff.type === 'modify_attribute' && (
               <div className="col-span-2">
                 <label className={label}>Atributo</label>
-                <select value={eff.attribute ?? ''} onChange={(e) => update(i, { attribute: e.target.value })}>
-                  <option value="">Selecionar…</option>
-                  {ATTRS.map((a) => <option key={a} value={a}>{a}</option>)}
-                </select>
+                <Select
+                  value={eff.attribute ?? ''}
+                  onChange={(v) => update(i, { attribute: v })}
+                  options={ATTRS}
+                  placeholder="Selecionar atributo…"
+                />
               </div>
             )}
 
-            <div className="col-span-2">
-              <label className={label}>Dado (opcional)</label>
-              <div className="flex gap-2">
-                <input type="number" placeholder="qtd"
-                  value={eff.dice?.quantity ?? 0}
-                  onChange={(e) => update(i, { dice: { quantity: Number(e.target.value), die: eff.dice?.die ?? 'd6' } as Dice })}
-                  className="!w-20" min={0} />
-                <select
-                  value={eff.dice?.die ?? ''}
-                  onChange={(e) => update(i, { dice: e.target.value ? { quantity: eff.dice?.quantity ?? 1, die: e.target.value } as Dice : undefined })}>
-                  <option value="">Nenhum</option>
-                  {DICE_TYPES.map((d) => <option key={d} value={d}>{d}</option>)}
-                </select>
-              </div>
-            </div>
           </div>
         </div>
       ))}

@@ -117,7 +117,8 @@ export default function Inventario() {
                               <p className="text-sm font-medium truncate" style={{ color: rarityColor((item as any).rarity) ?? '#fafafa' }}>{item!.name}</p>
                               {'damageBase' in item! && (
                                 <p className="text-xs text-e-sub mt-0.5">
-                                  {(item as { damageBase: number; damageDice: { quantity: number; die: string } }).damageBase}+{(item as { damageDice: { quantity: number; die: string } }).damageDice.quantity}{(item as { damageDice: { quantity: number; die: string } }).damageDice.die}
+                                  {(item as any).damageBase}
+                                  {(item as any).damageAttribute ? ` + d20×${(item as any).damageAttribute}/4` : ''}
                                 </p>
                               )}
                               {'damageReduction' in item! && (

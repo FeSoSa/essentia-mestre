@@ -15,6 +15,7 @@ export default function Turno() {
   const players = usePlayers();
   const enemies = useStore(s => s.enemies);
   const bosses  = useStore(s => s.bosses);
+  const allies  = useStore(s => s.allies);
   const [loading, setLoading] = useState(false);
   const [showEditor, setShowEditor] = useState(false);
 
@@ -92,6 +93,7 @@ export default function Turno() {
           players={players}
           enemies={enemies}
           bosses={bosses}
+          allies={allies}
           onConfirm={confirmInitiative}
           onClose={() => setShowEditor(false)}
         />

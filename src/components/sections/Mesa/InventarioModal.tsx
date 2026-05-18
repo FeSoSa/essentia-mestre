@@ -91,8 +91,9 @@ function CatalogSelect({
 
   function stats(entry: CatalogEntry): string {
     if ('damageBase' in entry.item) {
-      const w = entry.item as { damageBase: number; damageDice: { quantity: number; die: string } };
-      return `${w.damageBase}+${w.damageDice.quantity}${w.damageDice.die}`;
+      const w = entry.item as { damageBase: number; damageAttribute?: string };
+      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : '';
+      return `${w.damageBase}${attr}`;
     }
     if ('damageReduction' in entry.item)
       return `-${(entry.item as { damageReduction: number }).damageReduction} dano`;
@@ -334,8 +335,8 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
           icon: iconForEntry(entry),
           weaponType: (entry.item as { weaponType?: string }).weaponType,
           damageBase: (entry.item as { damageBase?: number }).damageBase,
-          damageDice: (entry.item as { damageDice?: unknown }).damageDice,
           damageAttribute: (entry.item as { damageAttribute?: string }).damageAttribute,
+          equilibrio: (entry.item as { equilibrio?: number }).equilibrio,
           attributeBonus: entry.item.attributeBonus,
         } :
         type === 'armor' ? {
@@ -365,8 +366,8 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
             id: item.id, name: item.name,
             weaponType: item.weaponType ?? '',
             damageBase: item.damageBase ?? 0,
-            damageDice: item.damageDice ?? { quantity: 1, die: 'd6' },
             damageAttribute: item.damageAttribute ?? '',
+            equilibrio: item.equilibrio,
             attributeBonus: item.attributeBonus,
           },
         } :
@@ -562,9 +563,8 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                   {selectedWeapon && (() => {
                     const w = selectedWeapon.item as {
                       name: string; weaponType: string;
-                      damageBase: number; damageDice: { quantity: number; die: string };
-                      damageAttribute: string; properties?: string;
-                      attributeBonus?: Record<string, number>;
+                      damageBase: number; damageAttribute: string;
+                      properties?: string; attributeBonus?: Record<string, number>;
                     };
                     return (
                       <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2">
@@ -574,8 +574,8 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <span className="text-e-faint">Tipo<br /><span className="text-e-sub">{w.weaponType}</span></span>
-                          <span className="text-e-faint">Dano<br /><span className="text-e-sub">{w.damageBase}+{w.damageDice.quantity}{w.damageDice.die}</span></span>
-                          <span className="text-e-faint">Attr<br /><span className="text-e-sub">{w.damageAttribute}</span></span>
+                          <span className="text-e-faint">Dano<br /><span className="text-e-sub">{w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : ''}</span></span>
+                          <span className="text-e-faint">Attr<br /><span className="text-e-sub">{w.damageAttribute ?? '—'}</span></span>
                         </div>
                         {w.properties && <p className="text-xs text-e-faint">Propriedades: <span className="text-e-sub">{w.properties}</span></p>}
                         {w.attributeBonus && Object.entries(w.attributeBonus).some(([, v]) => v > 0) && (
@@ -770,9 +770,9 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                                 )}
                               </div>
                               {item.desc && <p className="text-[10px] text-e-sub mt-0.5 leading-snug">{item.desc}</p>}
-                              {item.type === 'weapon' && item.damageDice && (
+                              {item.type === 'weapon' && item.damageBase != null && (
                                 <p className="text-[10px] text-e-faint mt-0.5">
-                                  {item.weaponType} · {item.damageBase}+{item.damageDice.quantity}{item.damageDice.die} · {item.damageAttribute}
+                                  {item.weaponType} · {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/4` : ''}
                                 </p>
                               )}
                               {item.type === 'armor' && item.damageReduction != null && (

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { Plus, Trash2, ChevronDown } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { ClassKit, ClassPerks, ItemCatalog } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
@@ -17,6 +17,45 @@ interface Props {
 
 const lbl = 'text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5 block';
 const inp = 'w-full text-sm rounded-xl px-3 py-2 bg-e-bg border border-e-border text-e-text placeholder:text-e-faint outline-none focus:border-e-border2 transition-colors';
+
+const ATTR_ABBREV_OPTS = [
+  { value: 'FOR', label: 'FOR — Força' },
+  { value: 'AGI', label: 'AGI — Agilidade' },
+  { value: 'INT', label: 'INT — Inteligência' },
+  { value: 'RES', label: 'RES — Resistência' },
+  { value: 'FLX', label: 'FLX — Fluxo' },
+  { value: 'SAB', label: 'SAB — Sabedoria' },
+  { value: 'PRE', label: 'PRE — Presença' },
+  { value: 'DEF', label: 'DEF — Defesa' },
+];
+
+function AttrDropdown({ value, onChange, exclude }: { value: string; onChange: (v: string) => void; exclude?: string }) {
+  const [open, setOpen] = useState(false);
+  const opts = [{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS.filter((o) => o.value !== exclude)];
+  const current = opts.find((o) => o.value === value);
+  return (
+    <div className="relative flex-1">
+      <button type="button" onClick={() => setOpen((v) => !v)}
+        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors">
+        <span className={`flex-1 truncate ${current?.value ? 'text-e-text' : 'text-e-faint'}`}>
+          {current?.label ?? 'Nenhum'}
+        </span>
+        <ChevronDown size={13} className={`text-e-faint shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+      </button>
+      {open && (
+        <div className="absolute z-50 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-52 overflow-y-auto">
+          {opts.map((opt) => (
+            <button key={opt.value} type="button"
+              onClick={() => { onChange(opt.value); setOpen(false); }}
+              className={`w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors ${value === opt.value ? 'text-e-accent' : 'text-e-text'}`}>
+              {opt.label}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
 
 const ATTRS = ['strength', 'agility', 'intelligence', 'resistance', 'flow', 'wisdom', 'presence', 'defense'] as const;
 const ATTR_LABEL: Record<string, string> = {
@@ -46,8 +85,11 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
     kit?.starterItems.map((i) => ({ id: i.id, qty: i.qty })) ?? []
   );
 
-  const [hasPressureBar, setHasPressureBar] = useState(kit?.perks?.hasPressureBar ?? false);
-  const [unarmedDamage, setUnarmedDamage] = useState(kit?.perks?.unarmedDamage ?? '');
+  const [hasPressureBar,  setHasPressureBar]  = useState(kit?.perks?.hasPressureBar ?? false);
+  const [unarmedDanoBase, setUnarmedDanoBase] = useState(String(kit?.perks?.unarmedAttack?.damageBase ?? ''));
+  const unarmedAttrParts = kit?.perks?.unarmedAttack?.attribute?.split('/') ?? [];
+  const [unarmedAttr1, setUnarmedAttr1] = useState(unarmedAttrParts[0] ?? '');
+  const [unarmedAttr2, setUnarmedAttr2] = useState(unarmedAttrParts[1] ?? '');
 
   const [loading, setLoading] = useState(false);
 
@@ -85,7 +127,11 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
       };
     });
 
-    const perks: ClassPerks = { hasPressureBar, unarmedDamage: unarmedDamage.trim() || undefined };
+    const attrStr = [unarmedAttr1, unarmedAttr2].filter(Boolean).join('/');
+    const unarmedAttack = unarmedDanoBase !== '' && attrStr
+      ? { damageBase: Number(unarmedDanoBase), attribute: attrStr }
+      : undefined;
+    const perks: ClassPerks = { hasPressureBar, unarmedAttack };
 
     const body = {
       skillClass: skillClass.trim(),
@@ -146,14 +192,30 @@ export default function ClassKitModal({ kit, skills, items, onClose, onSaved }: 
             </div>
           </label>
           <div className="flex flex-col gap-1.5">
-            <label className={lbl}>Dano desarmado</label>
-            <input
-              value={unarmedDamage}
-              onChange={(e) => setUnarmedDamage(e.target.value)}
-              className={inp}
-              placeholder="ex: 1d4+FOR, 1d6+AGI…"
-            />
-            <p className="text-[11px] text-e-faint">Fórmula de dano sem arma equipada</p>
+            <label className={lbl}>Ataque desarmado</label>
+            <div className="flex gap-2">
+              <div className="w-24">
+                <label className="text-[10px] text-e-faint mb-1 block">Dano base</label>
+                <input
+                  type="number" min={0}
+                  value={unarmedDanoBase}
+                  onChange={(e) => setUnarmedDanoBase(e.target.value)}
+                  className={`text-center ${inp}`}
+                  placeholder="—"
+                />
+              </div>
+              <div className="flex gap-2 flex-1">
+                <div className="flex-1">
+                  <label className="text-[10px] text-e-faint mb-1 block">Atributo 1</label>
+                  <AttrDropdown value={unarmedAttr1} onChange={(v) => { setUnarmedAttr1(v); if (!v) setUnarmedAttr2(''); }} />
+                </div>
+                <div className="flex-1">
+                  <label className="text-[10px] text-e-faint mb-1 block">Atributo 2</label>
+                  <AttrDropdown value={unarmedAttr2} onChange={setUnarmedAttr2} exclude={unarmedAttr1} />
+                </div>
+              </div>
+            </div>
+            <p className="text-[11px] text-e-faint">Equilíbrio fixo em 4 · fórmula: dano_base + d20×atributo / 4</p>
           </div>
         </div>
 

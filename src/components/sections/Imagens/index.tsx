@@ -15,6 +15,7 @@ export default function Imagens() {
   const { setImages, setActiveImage } = useStore();
   const [showModal, setShowModal] = useState(false);
   const [editImage, setEditImage] = useState<ImageEntry | null>(null);
+  const [previewImage, setPreviewImage] = useState<ImageEntry | null>(null);
   const [toggling, setToggling] = useState<string | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
@@ -73,7 +74,12 @@ export default function Imagens() {
             ].join(' ')}>
               <div className="relative">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img src={proxyUrl(img.url)} alt={img.title} className="w-full h-28 object-cover block" />
+                <img
+                  src={proxyUrl(img.url)}
+                  alt={img.title}
+                  className="w-full h-28 object-cover block cursor-zoom-in"
+                  onClick={() => setPreviewImage(img)}
+                />
                 {img.active && (
                   <span className="absolute top-2 right-2 text-[9px] font-black tracking-widest uppercase bg-e-gold text-black px-2 py-0.5 rounded-md">
                     LIVE
@@ -114,6 +120,24 @@ export default function Imagens() {
 
       {showModal && <AddImageModal onClose={() => setShowModal(false)} />}
       {editImage  && <AddImageModal image={editImage} onClose={() => setEditImage(null)} />}
+
+      {previewImage && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/85 cursor-zoom-out"
+          onClick={() => setPreviewImage(null)}
+        >
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src={proxyUrl(previewImage.url)}
+            alt={previewImage.title}
+            className="max-w-[90vw] max-h-[90vh] object-contain rounded-xl shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          />
+          <span className="absolute bottom-6 left-1/2 -translate-x-1/2 text-sm text-white/60 pointer-events-none">
+            {previewImage.title}
+          </span>
+        </div>
+      )}
     </div>
   );
 }
