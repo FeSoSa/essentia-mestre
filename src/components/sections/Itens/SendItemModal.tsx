@@ -2,14 +2,18 @@
 
 import { useState } from 'react';
 import {
+  Anchor,
   ChevronDown,
+  Footprints,
   Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
   Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
+  HardHat, Ribbon,
   Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
   type LucideIcon,
 } from 'lucide-react';
 
 const ICON_MAP: Record<string, LucideIcon> = {
+  Anchor, Footprints, HardHat, Ribbon,
   Package, FlaskConical, Flame, Link, CircleDollarSign, Key,
   Sword, Crosshair, Axe, Wand2, Shield, Circle, Gem, Wrench,
   Zap, Star, Sparkles, BookOpen, Shirt, Scroll,

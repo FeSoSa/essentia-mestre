@@ -10,6 +10,7 @@ import Bestiario from '@/components/sections/Bestiario';
 import Itens from '@/components/sections/Itens';
 import Habilidades from '@/components/sections/Habilidades';
 import Classes from '@/components/sections/Classes';
+import Racas from '@/components/sections/Racas';
 import Essencias from '@/components/sections/Essencias';
 
 export default function MainContent() {
@@ -26,6 +27,7 @@ export default function MainContent() {
       <div className={active === 'bestiario'   ? 'flex-1 overflow-y-auto' : 'hidden'}><Bestiario /></div>
       <div className={active === 'habilidades' ? 'flex-1 overflow-y-auto' : 'hidden'}><Habilidades /></div>
       <div className={active === 'classes'     ? 'flex-1 overflow-y-auto' : 'hidden'}><Classes /></div>
+      <div className={active === 'racas'       ? 'flex-1 overflow-y-auto' : 'hidden'}><Racas /></div>
       <div className={active === 'log'         ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><Log /></div>
     </main>
   );

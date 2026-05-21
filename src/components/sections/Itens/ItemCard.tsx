@@ -3,15 +3,16 @@
 import type { ItemCatalog } from "@/store/types";
 import { RARITY_COLORS, RARITY_LABELS, rarityColor, type Rarity } from "@/lib/rarity";
 import {
-  Activity, Amphora, Apple, Axe, Backpack, Bandage, Barrel, Bird, Bomb,
+  Activity, Amphora, Anchor, Apple, Axe, Backpack, Bandage, Barrel, Bird, Bomb,
   BookOpen, BottleWine, Box, BowArrow, Bug, Cable, Cat, Circle,
   CircleDollarSign, Club, Coffee, Coins, Compass, Crosshair, Crown, Cuboid,
   Diamond, Dices, Dog, Droplets, Drumstick, Dumbbell, Eye, Feather, Fish,
-  Flashlight, Flame, FlaskConical, Gem, Hammer, Heart, HeartPulse, Hourglass,
-  Key, Lasso, Leaf, Link, Lock, Magnet, Map, Moon, Music, Package, Pencil,
-  Pickaxe, Pill, Rabbit, Salad, Scroll, Send, Shield, ShieldPlus, Shirt,
-  Shovel, Skull, Snowflake, Sparkles, Squirrel, Star, Sun, Sword, Swords,
-  Target, Tent, Trash2, TreePine, Trophy, Wand, Wind, Wrench, Zap,
+  Flashlight, Flame, FlaskConical, Footprints, Gem, Hammer, HardHat, Heart,
+  HeartPulse, Hourglass, Key, Lasso, Leaf, Link, Lock, Magnet, Map, Moon,
+  Music, Package, Pencil, Pickaxe, Pill, Rabbit, Ribbon, Salad, Scroll, Send,
+  Shield, ShieldPlus, Shirt, Shovel, Skull, Snowflake, Sparkles, Squirrel,
+  Star, Sun, Sword, Swords, Target, Tent, Trash2, TreePine, Trophy, Wand,
+  Wind, Wrench, Zap,
   type LucideIcon,
 } from "lucide-react";
 
@@ -26,6 +27,8 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Skull, Bug,
   // Consumível
   FlaskConical, Amphora, BottleWine, Barrel, Apple, Drumstick, Salad, Coffee,
+  // Acessórios
+  Anchor, Ribbon, HardHat, Footprints,
   // Equipamento
   Shirt, Backpack, Tent, Lasso, Cable, Wrench, Hammer, Pickaxe, Shovel, Dumbbell, Key, Flashlight,
   // Tesouros

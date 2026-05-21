@@ -1,4 +1,10 @@
-export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'log';
+export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log';
+
+export interface Race {
+  id: string;
+  name: string;
+  starterAttributes: PlayerAttributes;
+}
 
 /* ── Backend models ─────────────────────────────────────────── */
 
@@ -156,6 +162,7 @@ export interface ClassKit {
   starterAttributes: PlayerAttributes;
   starterEquipment: unknown; starterItems: Item[];
   starterSlots: Slot[]; starterSkillIds: string[];
+  allowedWeaponTypes?: string[];
   perks: ClassPerks;
 }
 
@@ -180,6 +187,11 @@ export interface SkillTreeEntry {
   status: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED';
 }
 
+export interface ItemRequirements {
+  level?: number;
+  attributes?: Record<string, number>;
+}
+
 export interface ItemCatalog {
   id: string; name: string; desc: string; type: string; icon?: string;
   weaponType?: string; damageBase?: number; damageAttribute?: string;
@@ -187,6 +199,7 @@ export interface ItemCatalog {
   damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
   rarity?: string; twoHanded?: boolean;
+  requirements?: ItemRequirements;
 }
 
 export interface EnemyAttributes { strength: number; agility: number; intelligence: number; defense: number; }

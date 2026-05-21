@@ -5,10 +5,8 @@ import { ChevronDown, X, Package, FlaskConical, Sword, Shield, Gem, Wrench, Key,
 import { api } from "@/lib/api";
 import { useStore } from "@/store";
 import Button from "@/components/ui/Button";
-import type { Player, ClassKit, PlayerAttributes } from "@/store/types";
+import type { Player, ClassKit, PlayerAttributes, Race } from "@/store/types";
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
-
-const RACES = ["Humano", "Elfo", "Anão", "Gnomo", "Wix", "Nakudama"];
 
 const DEFAULT_SLOTS_FREE = 6;
 
@@ -104,29 +102,37 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
   const [kitLoading,  setKitLoading]  = useState(false);
   const [kit,         setKit]         = useState<ClassKit | null>(null);
   const [allKits,     setAllKits]     = useState<ClassKit[]>([]);
+  const [allRaces,    setAllRaces]    = useState<Race[]>([]);
   const [subclasses]  = useState<string[]>([]);
   const [saving,      setSaving]      = useState(false);
 
   const saveUrl    = normalizeGdriveUrl(portraitUrl);
   const previewSrc = proxyUrl(portraitUrl);
 
-  // Carrega todos os kits uma vez
+  // Carrega kits e raças uma vez
   useEffect(() => {
     api.get<ClassKit[]>('/master/kits').then(r => setAllKits(r.data)).catch(() => {});
+    api.get<Race[]>('/master/races').then(r => setAllRaces(r.data)).catch(() => {});
   }, []);
 
-  // Quando a classe muda, aplica o kit correspondente
+  // Quando a classe muda, aplica slots do kit correspondente
   useEffect(() => {
     if (!cls || allKits.length === 0) { setKit(null); return; }
     const found = allKits.find(k => k.skillClass === cls || k.skillClass === cls.split(' - ').pop());
     if (!found) { setKit(null); return; }
     setKit(found);
     if (!player) {
-      setAttrs(found.starterAttributes ?? EMPTY_ATTRS);
       const classSlots = found.starterSlots.filter(s => s.type === 'class').length || 2;
       setSlotsClass(String(classSlots));
     }
   }, [cls, allKits, player]);
+
+  // Quando a raça muda, preenche atributos iniciais (só no cadastro, não na edição)
+  useEffect(() => {
+    if (player || !race || allRaces.length === 0) return;
+    const found = allRaces.find(r => r.name === race);
+    if (found) setAttrs(found.starterAttributes);
+  }, [race, allRaces, player]);
 
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -210,7 +216,7 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
           <div className="grid grid-cols-2 gap-3">
             <div>
               <label className={lbl}>Raça</label>
-              <SimpleSelect value={race} options={RACES} onChange={setRace} required />
+              <SimpleSelect value={race} options={allRaces.length > 0 ? allRaces.map(r => r.name) : [race].filter(Boolean)} onChange={setRace} required />
             </div>
             <div>
               <label className={lbl}>Classe</label>

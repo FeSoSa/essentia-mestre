@@ -12,11 +12,6 @@ interface Props {
   onDelete: () => void;
 }
 
-const ATTR_SHORT: Record<string, string> = {
-  strength: 'FOR', agility: 'AGI', intelligence: 'INT', resistance: 'RES',
-  flow: 'FLX', wisdom: 'SAB', presence: 'PRE', defense: 'DEF',
-};
-
 function PerkBadge({ children, color }: { children: React.ReactNode; color: string }) {
   return (
     <span className="text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider"
@@ -27,7 +22,6 @@ function PerkBadge({ children, color }: { children: React.ReactNode; color: stri
 }
 
 export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDelete }: Props) {
-  const attrs  = kit.starterAttributes as Record<string, number>;
   const perks  = kit.perks ?? { hasPressureBar: false };
   const hasPerks = perks.hasPressureBar;
 
@@ -54,16 +48,6 @@ export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDel
             <Trash2 size={13} />
           </button>
         </div>
-      </div>
-
-      {/* Atributos */}
-      <div className="grid grid-cols-4 gap-1.5">
-        {Object.entries(attrs).map(([key, val]) => (
-          <div key={key} className="bg-e-card rounded-lg px-2 py-1.5 text-center">
-            <p className="text-[9px] font-bold text-e-faint uppercase tracking-wider">{ATTR_SHORT[key] ?? key}</p>
-            <p className="text-sm font-bold text-e-text">{val}</p>
-          </div>
-        ))}
       </div>
 
       {/* Skills iniciais */}

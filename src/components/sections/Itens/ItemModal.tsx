@@ -2,11 +2,12 @@
 
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
-import type { ItemCatalog } from "@/store/types";
-import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER, type Rarity } from "@/lib/rarity";
+import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
+import type { ItemCatalog, ItemRequirements } from "@/store/types";
 import {
   Activity,
   Amphora,
+  Anchor,
   Apple,
   Axe,
   Backpack,
@@ -16,8 +17,8 @@ import {
   Bomb,
   BookOpen,
   BottleWine,
-  Box,
   BowArrow,
+  Box,
   Bug,
   Cable,
   Cat,
@@ -34,7 +35,6 @@ import {
   Diamond,
   Dices,
   Dog,
-  Flashlight,
   Droplets,
   Drumstick,
   Dumbbell,
@@ -42,9 +42,12 @@ import {
   Feather,
   Fish,
   Flame,
+  Flashlight,
   FlaskConical,
+  Footprints,
   Gem,
   Hammer,
+  HardHat,
   Heart,
   HeartPulse,
   Hourglass,
@@ -62,12 +65,13 @@ import {
   Pill,
   Plus,
   Rabbit,
+  Ribbon,
   Salad,
   Scroll,
   Shield,
-  Shovel,
   ShieldPlus,
   Shirt,
+  Shovel,
   Skull,
   Snowflake,
   Sparkles,
@@ -98,17 +102,105 @@ interface Props {
 }
 
 /* ── Icon system ─────────────────────────────────────────────── */
-const ICON_CATEGORIES: { label: string; icons: Record<string, LucideIcon> }[] = [
-  { label: 'Armas',           icons: { Sword, Swords, Axe, Wand, BowArrow, Crosshair, Target, Bomb, Club } },
-  { label: 'Defesa / Cura',   icons: { Shield, ShieldPlus, Heart, HeartPulse, Bandage, Pill, Activity } },
-  { label: 'Magia / Elemental', icons: { Flame, Zap, Wind, Snowflake, Droplets, Moon, Sun, Sparkles } },
-  { label: 'Veneno / Status', icons: { Skull, Bug } },
-  { label: 'Consumível',      icons: { FlaskConical, Amphora, BottleWine, Barrel, Apple, Drumstick, Salad, Coffee } },
-  { label: 'Equipamento',     icons: { Shirt, Backpack, Tent, Lasso, Cable, Wrench, Hammer, Pickaxe, Shovel, Dumbbell, Key, Flashlight } },
-  { label: 'Tesouros',        icons: { Gem, Diamond, Coins, CircleDollarSign, Crown, Trophy } },
-  { label: 'Natureza',        icons: { TreePine, Leaf, Feather, Bird, Fish, Dog, Cat, Rabbit, Squirrel } },
-  { label: 'Misc',            icons: { Package, BookOpen, Scroll, Star, Link, Circle, Eye, Map, Music, Hourglass, Compass, Dices, Cuboid, Lock, Magnet, Box } },
-];
+const ICON_CATEGORIES: { label: string; icons: Record<string, LucideIcon> }[] =
+  [
+    {
+      label: "Armas",
+      icons: {
+        Sword,
+        Swords,
+        Axe,
+        Wand,
+        BowArrow,
+        Crosshair,
+        Target,
+        Bomb,
+        Club,
+      },
+    },
+    {
+      label: "Defesa / Cura",
+      icons: { Shield, ShieldPlus, Heart, HeartPulse, Bandage, Pill, Activity },
+    },
+    {
+      label: "Magia / Elemental",
+      icons: { Flame, Zap, Wind, Snowflake, Droplets, Moon, Sun, Sparkles },
+    },
+    { label: "Veneno / Status", icons: { Skull, Bug } },
+    {
+      label: "Consumível",
+      icons: {
+        FlaskConical,
+        Amphora,
+        BottleWine,
+        Barrel,
+        Apple,
+        Drumstick,
+        Salad,
+        Coffee,
+      },
+    },
+    {
+      label: "Acessórios",
+      icons: { Anchor, Ribbon, HardHat, Footprints },
+    },
+    {
+      label: "Equipamento",
+      icons: {
+        Shirt,
+        Backpack,
+        Tent,
+        Lasso,
+        Cable,
+        Wrench,
+        Hammer,
+        Pickaxe,
+        Shovel,
+        Dumbbell,
+        Key,
+        Flashlight,
+      },
+    },
+    {
+      label: "Tesouros",
+      icons: { Gem, Diamond, Coins, CircleDollarSign, Crown, Trophy },
+    },
+    {
+      label: "Natureza",
+      icons: {
+        TreePine,
+        Leaf,
+        Feather,
+        Bird,
+        Fish,
+        Dog,
+        Cat,
+        Rabbit,
+        Squirrel,
+      },
+    },
+    {
+      label: "Misc",
+      icons: {
+        Package,
+        BookOpen,
+        Scroll,
+        Star,
+        Link,
+        Circle,
+        Eye,
+        Map,
+        Music,
+        Hourglass,
+        Compass,
+        Dices,
+        Cuboid,
+        Lock,
+        Magnet,
+        Box,
+      },
+    },
+  ];
 
 const ICON_MAP: Record<string, LucideIcon> = Object.fromEntries(
   ICON_CATEGORIES.flatMap((c) => Object.entries(c.icons)),
@@ -137,35 +229,61 @@ function ItemIconPreview({
 }
 
 /* ── Icon Tile ───────────────────────────────────────────────── */
-function IconTile({ name, Icon, selected, onClick }: { name: string; Icon: LucideIcon; selected: boolean; onClick: () => void }) {
+function IconTile({
+  name,
+  Icon,
+  selected,
+  onClick,
+}: {
+  name: string;
+  Icon: LucideIcon;
+  selected: boolean;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       title={name}
       onClick={onClick}
       className={`flex flex-col items-center justify-center gap-1 rounded-lg p-2 transition-colors cursor-pointer ${
-        selected ? 'bg-e-accent/15 text-e-accent' : 'hover:bg-e-card text-e-text'
+        selected
+          ? "bg-e-accent/15 text-e-accent"
+          : "hover:bg-e-card text-e-text"
       }`}
     >
       <Icon size={15} className="shrink-0" />
-      <span className="text-[8px] leading-none truncate w-full text-center text-e-sub">{name}</span>
+      <span className="text-[8px] leading-none truncate w-full text-center text-e-sub">
+        {name}
+      </span>
     </button>
   );
 }
 
 /* ── Icon Picker ─────────────────────────────────────────────── */
-function IconPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
-  const [open, setOpen]     = useState(false);
-  const [mode, setMode]     = useState<'icone' | 'imagem'>(value?.startsWith('img:') ? 'imagem' : 'icone');
-  const [imgUrl, setImgUrl] = useState(value?.startsWith('img:') ? value.slice(4) : '');
-  const [search, setSearch] = useState('');
-  const [pos, setPos]       = useState({ top: 0, left: 0 });
-  const btnRef              = useRef<HTMLButtonElement>(null);
+function IconPicker({
+  value,
+  onChange,
+}: {
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  const [open, setOpen] = useState(false);
+  const [mode, setMode] = useState<"icone" | "imagem">(
+    value?.startsWith("img:") ? "imagem" : "icone",
+  );
+  const [imgUrl, setImgUrl] = useState(
+    value?.startsWith("img:") ? value.slice(4) : "",
+  );
+  const [search, setSearch] = useState("");
+  const [pos, setPos] = useState({ top: 0, left: 0 });
+  const btnRef = useRef<HTMLButtonElement>(null);
 
-  const isImg  = value?.startsWith('img:');
-  const query  = search.trim().toLowerCase();
+  const isImg = value?.startsWith("img:");
+  const query = search.trim().toLowerCase();
   const allIcons = ICON_CATEGORIES.flatMap((c) => Object.entries(c.icons));
-  const filtered = query ? allIcons.filter(([n]) => n.toLowerCase().includes(query)) : null;
+  const filtered = query
+    ? allIcons.filter(([n]) => n.toLowerCase().includes(query))
+    : null;
 
   function handleOpen() {
     if (btnRef.current) {
@@ -175,8 +293,15 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
     setOpen((v) => !v);
   }
 
-  function pick(name: string) { onChange(name); setOpen(false); setSearch(''); }
-  function close()             { setOpen(false); setSearch(''); }
+  function pick(name: string) {
+    onChange(name);
+    setOpen(false);
+    setSearch("");
+  }
+  function close() {
+    setOpen(false);
+    setSearch("");
+  }
 
   return (
     <div>
@@ -186,89 +311,134 @@ function IconPicker({ value, onChange }: { value: string; onChange: (v: string) 
         onClick={handleOpen}
         className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors"
       >
-        <span className="text-e-sub shrink-0"><ItemIconPreview value={value} size={13} /></span>
-        <span className="flex-1 text-e-text truncate">
-          {isImg ? 'Imagem personalizada' : (value || <span className="text-e-faint">Selecionar ícone…</span>)}
+        <span className="text-e-sub shrink-0">
+          <ItemIconPreview value={value} size={13} />
         </span>
-        <ChevronDown size={13} className={`text-e-faint shrink-0 transition-transform ${open ? 'rotate-180' : ''}`} />
+        <span className="flex-1 text-e-text truncate">
+          {isImg
+            ? "Imagem personalizada"
+            : value || <span className="text-e-faint">Selecionar ícone…</span>}
+        </span>
+        <ChevronDown
+          size={13}
+          className={`text-e-faint shrink-0 transition-transform ${open ? "rotate-180" : ""}`}
+        />
       </button>
 
-      {open && createPortal(
-        <>
-          <div className="fixed inset-0 z-[9998]" onClick={close} />
-          <div
-            className="fixed z-[9999] bg-e-surface border border-e-border rounded-xl shadow-2xl"
-            style={{ top: pos.top, left: pos.left, width: 280 }}
-          >
-            {/* Mode tabs */}
-            <div className="flex gap-1 p-2 border-b border-e-border">
-              {(['icone', 'imagem'] as const).map((m) => (
-                <button key={m} type="button" onClick={() => setMode(m)}
-                  className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === m ? 'bg-e-card text-e-text' : 'text-e-sub hover:text-e-text'}`}>
-                  {m === 'icone' ? 'Ícone' : 'URL de imagem'}
-                </button>
-              ))}
-            </div>
-
-            {mode === 'icone' ? (
-              <>
-                <div className="p-2 border-b border-e-border">
-                  <input
-                    autoFocus
-                    value={search}
-                    onChange={(e) => setSearch(e.target.value)}
-                    placeholder="Pesquisar ícone…"
-                    className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
-                  />
-                </div>
-                <div className="max-h-60 overflow-y-auto">
-                  {filtered ? (
-                    filtered.length === 0
-                      ? <p className="px-3 py-4 text-xs text-e-faint text-center">Nenhum ícone encontrado</p>
-                      : <div className="grid grid-cols-4 gap-0.5 p-2">
-                          {filtered.map(([name, Icon]) => (
-                            <IconTile key={name} name={name} Icon={Icon} selected={name === value} onClick={() => pick(name)} />
-                          ))}
-                        </div>
-                  ) : (
-                    ICON_CATEGORIES.map((cat) => (
-                      <div key={cat.label}>
-                        <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-e-faint bg-e-surface sticky top-0 border-b border-e-border/40">
-                          {cat.label}
-                        </div>
-                        <div className="grid grid-cols-4 gap-0.5 p-2">
-                          {Object.entries(cat.icons).map(([name, Icon]) => (
-                            <IconTile key={name} name={name} Icon={Icon} selected={name === value} onClick={() => pick(name)} />
-                          ))}
-                        </div>
-                      </div>
-                    ))
-                  )}
-                </div>
-              </>
-            ) : (
-              <div className="p-3 flex flex-col gap-2">
-                <input
-                  value={imgUrl}
-                  onChange={(e) => setImgUrl(e.target.value)}
-                  placeholder="https://…"
-                  className="w-full text-sm rounded-xl px-3 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
-                />
-                {imgUrl && (
-                  <div className="flex items-center gap-2">
-                    <img src={imgUrl} alt="" className="w-8 h-8 object-cover rounded" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none'; }} />
-                    <span className="text-xs text-e-sub truncate">{imgUrl}</span>
-                  </div>
-                )}
-                <Button variant="primary" size="sm" onClick={() => { onChange(`img:${imgUrl}`); close(); }} disabled={!imgUrl.trim()}>
-                  Usar imagem
-                </Button>
+      {open &&
+        createPortal(
+          <>
+            <div className="fixed inset-0 z-[9998]" onClick={close} />
+            <div
+              className="fixed z-[9999] bg-e-surface border border-e-border rounded-xl shadow-2xl"
+              style={{ top: pos.top, left: pos.left, width: 280 }}
+            >
+              {/* Mode tabs */}
+              <div className="flex gap-1 p-2 border-b border-e-border">
+                {(["icone", "imagem"] as const).map((m) => (
+                  <button
+                    key={m}
+                    type="button"
+                    onClick={() => setMode(m)}
+                    className={`flex-1 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors ${mode === m ? "bg-e-card text-e-text" : "text-e-sub hover:text-e-text"}`}
+                  >
+                    {m === "icone" ? "Ícone" : "URL de imagem"}
+                  </button>
+                ))}
               </div>
-            )}
-          </div>
-        </>,
-        document.body,
-      )}
+
+              {mode === "icone" ? (
+                <>
+                  <div className="p-2 border-b border-e-border">
+                    <input
+                      autoFocus
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      placeholder="Pesquisar ícone…"
+                      className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
+                    />
+                  </div>
+                  <div className="max-h-60 overflow-y-auto">
+                    {filtered ? (
+                      filtered.length === 0 ? (
+                        <p className="px-3 py-4 text-xs text-e-faint text-center">
+                          Nenhum ícone encontrado
+                        </p>
+                      ) : (
+                        <div className="grid grid-cols-4 gap-0.5 p-2">
+                          {filtered.map(([name, Icon]) => (
+                            <IconTile
+                              key={name}
+                              name={name}
+                              Icon={Icon}
+                              selected={name === value}
+                              onClick={() => pick(name)}
+                            />
+                          ))}
+                        </div>
+                      )
+                    ) : (
+                      ICON_CATEGORIES.map((cat) => (
+                        <div key={cat.label}>
+                          <div className="px-3 py-1 text-[9px] font-bold uppercase tracking-widest text-e-faint bg-e-surface sticky top-0 border-b border-e-border/40">
+                            {cat.label}
+                          </div>
+                          <div className="grid grid-cols-4 gap-0.5 p-2">
+                            {Object.entries(cat.icons).map(([name, Icon]) => (
+                              <IconTile
+                                key={name}
+                                name={name}
+                                Icon={Icon}
+                                selected={name === value}
+                                onClick={() => pick(name)}
+                              />
+                            ))}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+                </>
+              ) : (
+                <div className="p-3 flex flex-col gap-2">
+                  <input
+                    value={imgUrl}
+                    onChange={(e) => setImgUrl(e.target.value)}
+                    placeholder="https://…"
+                    className="w-full text-sm rounded-xl px-3 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
+                  />
+                  {imgUrl && (
+                    <div className="flex items-center gap-2">
+                      <img
+                        src={imgUrl}
+                        alt=""
+                        className="w-8 h-8 object-cover rounded"
+                        onError={(e) => {
+                          (e.target as HTMLImageElement).style.display = "none";
+                        }}
+                      />
+                      <span className="text-xs text-e-sub truncate">
+                        {imgUrl}
+                      </span>
+                    </div>
+                  )}
+                  <Button
+                    variant="primary"
+                    size="sm"
+                    onClick={() => {
+                      onChange(`img:${imgUrl}`);
+                      close();
+                    }}
+                    disabled={!imgUrl.trim()}
+                  >
+                    Usar imagem
+                  </Button>
+                </div>
+              )}
+            </div>
+          </>,
+          document.body,
+        )}
     </div>
   );
 }
@@ -329,19 +499,30 @@ const TYPE_OPTS = [
   { value: "normal", label: "🎒  Normal" },
   { value: "chave", label: "🔑  Chave" },
 ];
-const WEAPON_OPTS = ["curta", "média", "pesada", "ranged", "unarmed"].map(
-  (v) => ({ value: v, label: v.charAt(0).toUpperCase() + v.slice(1) }),
-);
+const WEAPON_OPTS = [
+  { value: "espadas", label: "Espadas" },
+  { value: "rapieiras", label: "Rapieiras" },
+  { value: "alabardas", label: "Alabardas" },
+  { value: "lancas", label: "Lanças" },
+  { value: "machados-de-guerra", label: "Machados de guerra" },
+  { value: "martelos", label: "Martelos" },
+  { value: "armas-colossais", label: "Armas colossais" },
+  { value: "adagas", label: "Adagas" },
+  { value: "garras", label: "Garras" },
+  { value: "a-distancia", label: "À distância" },
+  { value: "luvas-manoplas", label: "Luvas & manoplas" },
+  { value: "escudos", label: "Escudos" },
+];
 const DMGATTR_OPTS = [
-  { value: '',    label: 'Nenhum'           },
-  { value: 'FOR', label: 'FOR — Força'      },
-  { value: 'AGI', label: 'AGI — Agilidade'  },
-  { value: 'INT', label: 'INT — Inteligência'},
-  { value: 'RES', label: 'RES — Resistência' },
-  { value: 'FLX', label: 'FLX — Fluxo'     },
-  { value: 'SAB', label: 'SAB — Sabedoria'  },
-  { value: 'PRE', label: 'PRE — Presença'   },
-  { value: 'DEF', label: 'DEF — Defesa'     },
+  { value: "", label: "Nenhum" },
+  { value: "FOR", label: "FOR — Força" },
+  { value: "AGI", label: "AGI — Agilidade" },
+  { value: "INT", label: "INT — Inteligência" },
+  { value: "RES", label: "RES — Resistência" },
+  { value: "FLX", label: "FLX — Fluxo" },
+  { value: "SAB", label: "SAB — Sabedoria" },
+  { value: "PRE", label: "PRE — Presença" },
+  { value: "DEF", label: "DEF — Defesa" },
 ];
 const SLOT_OPTS_WEAPON = [
   ["mainHand", "Mão Principal"],
@@ -387,9 +568,9 @@ export default function ItemModal({
 
   const [weaponType, setWeaponType] = useState(item?.weaponType ?? "curta");
   const [damageBase, setDamageBase] = useState(item?.damageBase ?? 0);
-  const dmgAttrParts = item?.damageAttribute?.split('/') ?? [];
-  const [dmgAttr1, setDmgAttr1] = useState(dmgAttrParts[0] ?? '');
-  const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? '');
+  const dmgAttrParts = item?.damageAttribute?.split("/") ?? [];
+  const [dmgAttr1, setDmgAttr1] = useState(dmgAttrParts[0] ?? "");
+  const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? "");
   const [armorWeight, setArmorWeight] = useState(item?.armorWeight ?? "");
   const [rarity, setRarity] = useState(item?.rarity ?? "");
   const [twoHanded, setTwoHanded] = useState(item?.twoHanded ?? false);
@@ -408,6 +589,26 @@ export default function ItemModal({
   });
 
   const [loading, setLoading] = useState(false);
+
+  const [reqLevel, setReqLevel] = useState<number | "">(
+    item?.requirements?.level ?? "",
+  );
+  const [reqAttrs, setReqAttrs] = useState<[string, number][]>(() =>
+    Object.entries(item?.requirements?.attributes ?? {}),
+  );
+
+  function addReqAttr() {
+    setReqAttrs((r) => [...r, ["strength", 1]]);
+  }
+  function updateReqAttrKey(i: number, v: string) {
+    setReqAttrs((r) => r.map((x, j) => (j === i ? [v, x[1]] : x)));
+  }
+  function updateReqAttrVal(i: number, v: number) {
+    setReqAttrs((r) => r.map((x, j) => (j === i ? [x[0], v] : x)));
+  }
+  function removeReqAttr(i: number) {
+    setReqAttrs((r) => r.filter((_, j) => j !== i));
+  }
 
   function handleTypeChange(t: string) {
     setType(t);
@@ -443,6 +644,16 @@ export default function ItemModal({
     setLoading(true);
     const attrBonus =
       bonuses.length > 0 ? Object.fromEntries(bonuses) : undefined;
+    const reqAttrObj =
+      reqAttrs.length > 0 ? Object.fromEntries(reqAttrs) : undefined;
+    const requirements: ItemRequirements | undefined =
+      hasEquip && (reqLevel !== "" || reqAttrObj)
+        ? {
+            level: reqLevel !== "" ? reqLevel : undefined,
+            attributes: reqAttrObj,
+          }
+        : undefined;
+
     const body: Partial<ItemCatalog> = {
       name: name.trim(),
       desc,
@@ -451,11 +662,13 @@ export default function ItemModal({
       equipSlot: equipSlot || undefined,
       attributeBonus: attrBonus,
       rarity: rarity || undefined,
+      requirements,
     };
     if (isWeapon) {
       body.weaponType = weaponType;
       body.damageBase = damageBase;
-      body.damageAttribute = [dmgAttr1, dmgAttr2].filter(Boolean).join('/') || undefined;
+      body.damageAttribute =
+        [dmgAttr1, dmgAttr2].filter(Boolean).join("/") || undefined;
       body.properties = properties || undefined;
       body.twoHanded = twoHanded || undefined;
     }
@@ -509,7 +722,9 @@ export default function ItemModal({
                 type="button"
                 onClick={() => setRarity("")}
                 className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
-                  rarity === "" ? "border-e-border2 bg-e-card text-e-sub" : "border-e-border text-e-faint hover:border-e-border2"
+                  rarity === ""
+                    ? "border-e-border2 bg-e-card text-e-sub"
+                    : "border-e-border text-e-faint hover:border-e-border2"
                 }`}
               >
                 Nenhuma
@@ -521,9 +736,11 @@ export default function ItemModal({
                   onClick={() => setRarity(r)}
                   className="px-3 py-1.5 rounded-lg text-xs font-bold border transition-all"
                   style={{
-                    borderColor: rarity === r ? RARITY_COLORS[r] : RARITY_COLORS[r] + '55',
+                    borderColor:
+                      rarity === r ? RARITY_COLORS[r] : RARITY_COLORS[r] + "55",
                     color: RARITY_COLORS[r],
-                    background: rarity === r ? RARITY_COLORS[r] + '22' : 'transparent',
+                    background:
+                      rarity === r ? RARITY_COLORS[r] + "22" : "transparent",
                   }}
                 >
                   {RARITY_LABELS[r]}
@@ -569,7 +786,11 @@ export default function ItemModal({
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <label className={lbl}>Tipo de arma</label>
-                  <Dropdown value={weaponType} onChange={setWeaponType} options={WEAPON_OPTS} />
+                  <Dropdown
+                    value={weaponType}
+                    onChange={setWeaponType}
+                    options={WEAPON_OPTS}
+                  />
                 </div>
                 <div>
                   <label className={lbl}>Dano base</label>
@@ -586,12 +807,20 @@ export default function ItemModal({
                   <label className={lbl}>Atributo 1</label>
                   <Dropdown
                     value={dmgAttr1}
-                    onChange={(v) => { setDmgAttr1(v); if (!v) setDmgAttr2(''); }}
+                    onChange={(v) => {
+                      setDmgAttr1(v);
+                      if (!v) setDmgAttr2("");
+                    }}
                     options={DMGATTR_OPTS}
                   />
                 </div>
                 <div>
-                  <label className={lbl}>Atributo 2 <span className="normal-case font-normal">(usa o maior)</span></label>
+                  <label className={lbl}>
+                    Atributo 2{" "}
+                    <span className="normal-case font-normal">
+                      (usa o maior)
+                    </span>
+                  </label>
                   <Dropdown
                     value={dmgAttr2}
                     onChange={setDmgAttr2}
@@ -618,16 +847,19 @@ export default function ItemModal({
               <div className="flex gap-2 flex-wrap">
                 {[
                   { value: "mainHand", label: "Mão principal", two: false },
-                  { value: "offHand",  label: "Offhand",       two: false },
-                  { value: "both",     label: "Qualquer mão",  two: false },
-                  { value: "mainHand", label: "Duas mãos",     two: true  },
+                  { value: "offHand", label: "Offhand", two: false },
+                  { value: "both", label: "Qualquer mão", two: false },
+                  { value: "mainHand", label: "Duas mãos", two: true },
                 ].map((o) => {
                   const active = equipSlot === o.value && twoHanded === o.two;
                   return (
                     <button
                       key={o.label}
                       type="button"
-                      onClick={() => { setEquipSlot(o.value); setTwoHanded(o.two); }}
+                      onClick={() => {
+                        setEquipSlot(o.value);
+                        setTwoHanded(o.two);
+                      }}
                       className={`flex-1 px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${active ? "bg-e-accent/20 border-e-accent text-e-accent" : "bg-e-bg border-e-border text-e-faint hover:border-e-border2"}`}
                     >
                       {o.label}
@@ -715,6 +947,62 @@ export default function ItemModal({
                   />
                   <button
                     onClick={() => removeBonus(i)}
+                    className="opacity-40 hover:opacity-80 shrink-0"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* ── Pré-requisitos (itens equipáveis) ── */}
+          {hasEquip && (
+            <div className="flex flex-col gap-2">
+              <div className="flex items-center justify-between">
+                <label className={lbl}>Pré-requisitos</label>
+                <button
+                  onClick={addReqAttr}
+                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text"
+                >
+                  <Plus size={12} /> Atributo
+                </button>
+              </div>
+              <div className="flex gap-2 items-center">
+                <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint w-14 shrink-0">
+                  Nível
+                </span>
+                <input
+                  type="number"
+                  value={reqLevel}
+                  onChange={(e) =>
+                    setReqLevel(
+                      e.target.value === "" ? "" : Number(e.target.value),
+                    )
+                  }
+                  placeholder="—"
+                  className="w-20 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
+                />
+              </div>
+              {reqAttrs.map(([attr, val], i) => (
+                <div key={i} className="flex gap-2 items-center">
+                  <div className="flex-1">
+                    <Dropdown
+                      value={attr}
+                      onChange={(v) => updateReqAttrKey(i, v)}
+                      options={ATTR_OPTS.filter((o) => o.value !== "defense")}
+                    />
+                  </div>
+                  <input
+                    type="number"
+                    value={val}
+                    onChange={(e) =>
+                      updateReqAttrVal(i, Number(e.target.value))
+                    }
+                    className="w-16 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
+                  />
+                  <button
+                    onClick={() => removeReqAttr(i)}
                     className="opacity-40 hover:opacity-80 shrink-0"
                   >
                     <Trash2 size={13} />
