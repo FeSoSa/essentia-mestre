@@ -177,6 +177,22 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
         {item.equipSlot && (
           <p className="text-e-faint capitalize">{item.equipSlot}</p>
         )}
+        {item.onUseEffect && (
+          <div className="flex items-center gap-1 mt-0.5">
+            <span
+              className="w-2 h-2 rounded-full shrink-0"
+              style={{ background: item.onUseEffect.color ?? "#a855f7" }}
+            />
+            <span className="text-[10px] text-e-sub truncate">
+              {item.onUseEffect.name || "Efeito ao usar"}
+              {item.onUseEffect.durationTurns === -1
+                ? " · ∞"
+                : item.onUseEffect.durationTurns != null
+                  ? ` · ${item.onUseEffect.durationTurns}t`
+                  : ""}
+            </span>
+          </div>
+        )}
         {item.desc && <p className="text-e-faint truncate">{item.desc}</p>}
       </div>
     </div>

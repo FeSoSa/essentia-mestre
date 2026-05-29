@@ -113,6 +113,7 @@ export default function BossCard({ boss, players }: Props) {
             ) : (
               <span className="text-xs tabular-nums cursor-text hover:opacity-70" onClick={startEditHp}>
                 {boss.hpCurrent}/{phase.hpMax}
+                <span className="ml-1.5 opacity-50 text-[10px] font-normal">{Math.round(hpPct)}%</span>
               </span>
             )}
             <div className="flex gap-1 ml-auto">

@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
+import { Star, RotateCcw } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { EnemyInstance, Player } from '@/store/types';
 import Button from '@/components/ui/Button';
+import Checkbox from '@/components/ui/Checkbox';
 
 interface Props {
   enemy: EnemyInstance;
@@ -14,7 +16,8 @@ interface Props {
 export default function DefeatModal({ enemy, players, onClose }: Props) {
   const [selectedDrops, setSelectedDrops] = useState<Set<number>>(new Set());
   const [dropAssignments, setDropAssignments] = useState<Record<number, string>>({});
-  const [distributeXp, setDistributeXp] = useState(true);
+  const [distributeXp, setDistributeXp] = useState(enemy.xp > 0);
+  const [xpAmount, setXpAmount] = useState(String(enemy.xp));
   const [loading, setLoading] = useState(false);
 
   function toggleDrop(i: number) {
@@ -44,12 +47,15 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
           playerId: dropAssignments[i] ?? '',
         })),
         distributeXp,
+        xpAmount: distributeXp ? (parseInt(xpAmount) || 0) : 0,
       });
       onClose();
     } catch {
       setLoading(false);
     }
   }
+
+  const xpModified = enemy.xp > 0 && parseInt(xpAmount) !== enemy.xp;
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -67,16 +73,17 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a5050' }}>Drops</p>
             {enemy.drops.map((drop, i) => (
               <div key={i} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id={`drop-${i}`}
+                <Checkbox
                   checked={selectedDrops.has(i)}
                   onChange={() => toggleDrop(i)}
-                  className="accent-[#c04040]"
+                  color="default"
                 />
-                <label htmlFor={`drop-${i}`} className="flex-1 text-sm flex items-center gap-1.5 cursor-pointer">
+                <span
+                  className="flex-1 text-sm flex items-center gap-1.5 cursor-pointer select-none"
+                  onClick={() => toggleDrop(i)}
+                >
                   {drop.icon} {drop.name}
-                </label>
+                </span>
                 {selectedDrops.has(i) && (
                   <select
                     value={dropAssignments[i] ?? ''}
@@ -96,20 +103,40 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
         )}
 
         {/* XP */}
-        {enemy.xp > 0 && (
-          <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="xp-check"
-              checked={distributeXp}
-              onChange={(e) => setDistributeXp(e.target.checked)}
-              className="accent-[#3aaa60]"
-            />
-            <label htmlFor="xp-check" className="text-sm cursor-pointer">
-              Distribuir <span style={{ color: '#3aaa60' }}>⭐ {enemy.xp} XP</span> para todos os jogadores
-            </label>
+        <div className="flex flex-col gap-2.5">
+          <div
+            className="flex items-center gap-2 cursor-pointer select-none"
+            onClick={() => setDistributeXp((v) => !v)}
+          >
+            <Checkbox checked={distributeXp} onChange={setDistributeXp} color="green" />
+            <Star size={13} className="text-green-400 shrink-0" />
+            <span className="text-sm text-green-400">Distribuir XP para todos</span>
           </div>
-        )}
+
+          {distributeXp && (
+            <div className="flex items-center gap-2 pl-6">
+              <input
+                type="number"
+                min={0}
+                value={xpAmount}
+                onChange={(e) => setXpAmount(e.target.value)}
+                className="w-24 rounded px-2 py-1 text-sm text-center outline-none tabular-nums"
+                style={{ background: '#1a2a1a', color: '#4ade80', border: '1px solid #166534' }}
+              />
+              <span className="text-xs text-e-faint">XP por jogador</span>
+              {xpModified && (
+                <button
+                  type="button"
+                  onClick={() => setXpAmount(String(enemy.xp))}
+                  className="ml-auto flex items-center gap-1 text-xs text-e-faint hover:text-e-sub transition-colors cursor-pointer"
+                >
+                  <RotateCcw size={11} />
+                  {enemy.xp}
+                </button>
+              )}
+            </div>
+          )}
+        </div>
 
         {/* Actions */}
         <div className="flex gap-2 justify-end pt-1">

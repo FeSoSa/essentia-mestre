@@ -11,7 +11,7 @@ interface Props {
 }
 
 type Tab = 'catalogo' | 'temporario' | 'aleatorio';
-type Difficulty = 'facil' | 'medio' | 'dificil';
+type Difficulty = 'facil' | 'medio' | 'dificil' | 'extremo';
 
 /* ── Random generator ────────────────────────────────────────── */
 function rng(min: number, max: number) {
@@ -34,15 +34,20 @@ const POOL: Record<Difficulty, { names: string[]; icons: string[] }> = {
     names: ['Dragão Jovem', 'Lich', 'Ogro Élite', 'Demônio', 'Necromante', 'Vampiro Antigo', 'Gigante', 'Wyvern', 'Espectro', 'Golem de Ferro'],
     icons: ['🐉', '☠️', '🔥', '🦂', '🐲', '👁️', '🦁', '🐯', '🧿', '⚡'],
   },
+  extremo: {
+    names: ['Lorde Demoníaco', 'Dragão Ancião', 'Lich Supremo', 'Titã das Sombras', 'Abominação', 'Colosso de Ferro', 'Deus da Morte', 'Leviatã', 'Arqui-Vampiro', 'Destruidor'],
+    icons: ['🐉', '☠️', '💀', '👁️', '🔥', '⚡', '🌑', '🦂', '🧿', '💠'],
+  },
 };
 
-const STATS: Record<Difficulty, { hp: [number, number]; str: [number, number]; agi: [number, number]; int: [number, number]; def: [number, number] }> = {
-  facil:   { hp: [8,  15], str: [5,  8],  agi: [5,  8],  int: [4,  7],  def: [3,  5]  },
-  medio:   { hp: [20, 35], str: [10, 14], agi: [10, 14], int: [8,  12], def: [6,  10] },
-  dificil: { hp: [45, 70], str: [16, 22], agi: [15, 20], int: [12, 18], def: [12, 18] },
+const STATS: Record<Difficulty, { hp: [number, number]; str: [number, number]; agi: [number, number]; int: [number, number]; def: [number, number]; xp: [number, number] }> = {
+  facil:   { hp: [40,  100], str: [5,  8],  agi: [5,  8],  int: [4,  7],  def: [3,  5],  xp: [8,   40]  },
+  medio:   { hp: [100, 220], str: [10, 14], agi: [10, 14], int: [8,  12], def: [6,  10], xp: [25,  130] },
+  dificil: { hp: [220, 400], str: [16, 22], agi: [15, 20], int: [12, 18], def: [12, 18], xp: [90,  350] },
+  extremo: { hp: [400, 800], str: [24, 32], agi: [22, 30], int: [20, 28], def: [20, 28], xp: [160, 500] },
 };
 
-interface GeneratedEnemy { name: string; icon: string; hpMax: number; str: number; agi: number; int: number; def: number; }
+interface GeneratedEnemy { name: string; icon: string; hpMax: number; str: number; agi: number; int: number; def: number; xp: number; }
 
 function generate(diff: Difficulty): GeneratedEnemy {
   const pool = POOL[diff];
@@ -55,6 +60,7 @@ function generate(diff: Difficulty): GeneratedEnemy {
     agi:   rng(...s.agi),
     int:   rng(...s.int),
     def:   rng(...s.def),
+    xp:    rng(...s.xp),
   };
 }
 
@@ -418,7 +424,7 @@ function RandomTab({ onClose }: { onClose: () => void }) {
       attributes: { strength: enemy.str, agility: enemy.agi, intelligence: enemy.int, defense: enemy.def },
       attacks: [],
       drops: [],
-      xp: 0,
+      xp: enemy.xp,
       desc: '',
       notes: '',
     };
@@ -430,14 +436,14 @@ function RandomTab({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const diffLabels: Record<Difficulty, string> = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil' };
-  const diffColors: Record<Difficulty, string> = { facil: '#3aaa60', medio: '#d4a84e', dificil: '#c04040' };
+  const diffLabels: Record<Difficulty, string> = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil', extremo: 'Extremo' };
+  const diffColors: Record<Difficulty, string> = { facil: '#3aaa60', medio: '#d4a84e', dificil: '#c04040', extremo: '#a855f7' };
 
   return (
     <div className="flex flex-col gap-4">
       {/* Difficulty selector */}
-      <div className="grid grid-cols-3 gap-2">
-        {(['facil', 'medio', 'dificil'] as Difficulty[]).map((d) => (
+      <div className="grid grid-cols-4 gap-2">
+        {(['facil', 'medio', 'dificil', 'extremo'] as Difficulty[]).map((d) => (
           <button
             key={d}
             onClick={() => changeDiff(d)}

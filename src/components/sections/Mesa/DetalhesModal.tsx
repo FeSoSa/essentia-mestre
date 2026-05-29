@@ -42,6 +42,7 @@ import {
   type LucideIcon,
 } from "lucide-react";
 import { STATUS_ICONS, getStatusIcon } from "@/lib/statusIcons";
+import { rarityColor, RARITY_LABELS, type Rarity } from "@/lib/rarity";
 import { useEffectPresetsStore, type EffectPreset } from "@/store/effectPresetsStore";
 import type { AutoEffect } from "@/store/types";
 import { useEffect, useRef, useState } from "react";
@@ -1205,7 +1206,10 @@ function InventarioPanel({
                           </span>
                         )}
                         {isEquip && (
-                          <span className="absolute bottom-1 left-1 w-1.5 h-1.5 rounded-full bg-e-accent/60" />
+                          <span
+                            className="absolute bottom-1 left-1 w-1.5 h-1.5 rounded-full"
+                            style={{ backgroundColor: rarityColor(item.rarity) ?? '#71717a' }}
+                          />
                         )}
                       </>
                     ) : (
@@ -1223,17 +1227,35 @@ function InventarioPanel({
                       />
                       <div className="absolute z-30 top-full mt-1 left-0 w-44 bg-e-surface border border-e-border rounded-xl shadow-2xl p-2 flex flex-col gap-1">
                         <div className="px-2 py-1.5 border-b border-e-border mb-1">
-                          <p className="text-xs font-semibold text-e-text">
+                          <p className="text-xs font-semibold" style={{ color: rarityColor(item.rarity) ?? '#fafafa' }}>
                             {item.name}
                           </p>
-                          {item.desc && (
-                            <p className="text-[10px] text-e-sub mt-0.5">
-                              {item.desc}
+                          {item.rarity && (
+                            <p className="text-[9px] font-bold uppercase tracking-wider mt-0.5" style={{ color: rarityColor(item.rarity) }}>
+                              {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
                             </p>
                           )}
-                          <p className="text-[10px] text-e-faint mt-0.5">
-                            Qtd: {item.qty}
-                          </p>
+                          {item.desc && (
+                            <p className="text-[10px] text-e-sub mt-0.5">{item.desc}</p>
+                          )}
+                          {item.damageBase != null && (
+                            <p className="text-[10px] text-e-gold mt-0.5">
+                              {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/4` : ''}
+                              {item.weaponType ? ` · ${item.weaponType}` : ''}
+                            </p>
+                          )}
+                          {item.damageReduction != null && (
+                            <p className="text-[10px] text-e-gold mt-0.5">-{item.damageReduction} dano</p>
+                          )}
+                          {item.attributeBonus && Object.entries(item.attributeBonus).filter(([, v]) => v !== 0).length > 0 && (
+                            <p className="text-[10px] text-emerald-400 mt-0.5">
+                              {Object.entries(item.attributeBonus)
+                                .filter(([, v]) => v !== 0)
+                                .map(([k, v]) => `${k.slice(0,3).toUpperCase()} ${v > 0 ? '+' : ''}${v}`)
+                                .join('  ')}
+                            </p>
+                          )}
+                          <p className="text-[10px] text-e-faint mt-0.5">Qtd: {item.qty}</p>
                         </div>
                         {isEquip && slotView === "menu" && (
                           <button

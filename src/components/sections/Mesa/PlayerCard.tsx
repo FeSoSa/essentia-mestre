@@ -23,7 +23,19 @@ const ATTRS: [string, keyof PlayerAttributes][] = [
 ];
 
 function attrMod(score: number): number {
-  return Math.floor((score - 10) / 2);
+  if (score <= 7)  return -1;
+  if (score <= 11) return 0;
+  if (score <= 15) return 1;
+  if (score <= 19) return 2;
+  if (score <= 23) return 3;
+  if (score <= 27) return 4;
+  if (score <= 31) return 5;
+  if (score <= 35) return 6;
+  if (score <= 40) return 7;
+  if (score <= 46) return 8;
+  if (score <= 53) return 9;
+  if (score <= 61) return 10;
+  return 11;
 }
 
 export default function PlayerCard({
@@ -39,11 +51,20 @@ export default function PlayerCard({
   const hpPct  = player.hp.max > 0 ? player.hp.current / player.hp.max : 0;
   const hpFill = hpPct > 0.5 ? 'bg-e-success' : hpPct > 0.25 ? 'bg-e-gold' : 'bg-e-hp';
   const hpText = hpPct > 0.5 ? 'text-e-success' : hpPct > 0.25 ? 'text-e-gold' : 'text-e-hp';
-  const gold        = player.gold ?? 0;
-  const XP_PER_LVL  = 100;
-  const xpThreshold = (level: number) => (level - 1) * XP_PER_LVL;
-  const xpInLevel   = player.exp.total - xpThreshold(player.char.level);
-  const expPct      = Math.min(1, xpInLevel / XP_PER_LVL);
+  const gold = player.gold ?? 0;
+
+  function xpParaNivel(n: number): number {
+    if (n <= 1) return 0;
+    if (n <= 20) return 75 * (n * (n + 1) / 2 - 1) - 50 * (n - 1);
+    const m = n - 20;
+    return 14725 + m * (2750 + 150 * m);
+  }
+  const expTotal     = player.exp.total ?? 0;
+  const expAvailable = player.exp.available ?? 0;
+  const floor        = xpParaNivel(player.char.level);
+  const xpNeeded     = xpParaNivel(player.char.level + 1) - floor;
+  const xpInLevel    = Math.max(0, Math.min(xpNeeded, expTotal - floor));
+  const expPct       = xpNeeded > 0 ? xpInLevel / xpNeeded : 1;
 
   async function adjust(resource: 'hp' | 'flow', delta: number) {
     try {
@@ -114,7 +135,10 @@ export default function PlayerCard({
                   style={{ width: `${expPct * 100}%` }} />
               </div>
               <p className="text-[10px] text-e-faint mt-0.5 tabular-nums">
-                {xpInLevel}/{XP_PER_LVL} XP
+                {xpInLevel}/{xpNeeded} XP
+                {expAvailable > 0 && (
+                  <span className="text-e-gold ml-2">{expAvailable} pts disponíveis</span>
+                )}
               </p>
             </div>
 
@@ -140,7 +164,7 @@ export default function PlayerCard({
             {/* Attributes 4×2 */}
             <div className="grid grid-cols-4 gap-x-1 gap-y-2 pt-2 border-t border-e-border">
               {ATTRS.map(([label, key]) => {
-                const score = player.attributes[key];
+                const score = (player.effectiveAttributes ?? player.attributes)[key];
                 const mod   = attrMod(score);
                 return (
                   <div key={key} className="flex flex-col items-center">

@@ -3,7 +3,7 @@
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
-import type { ItemCatalog, ItemRequirements } from "@/store/types";
+import type { AutoEffect, ItemCatalog, ItemRequirements, OnUseEffect } from "@/store/types";
 import {
   Activity,
   Amphora,
@@ -590,6 +590,49 @@ export default function ItemModal({
 
   const [loading, setLoading] = useState(false);
 
+  // onUseEffect — only for normal/chave
+  const existingEffect = item?.onUseEffect;
+  const [effectEnabled, setEffectEnabled] = useState(!!existingEffect);
+  const [effectName, setEffectName] = useState(existingEffect?.name ?? "");
+  const [effectDesc, setEffectDesc] = useState(existingEffect?.desc ?? "");
+  const [effectDuration, setEffectDuration] = useState<number | "">(existingEffect?.durationTurns ?? 1);
+  const [effectIcon, setEffectIcon] = useState(existingEffect?.icon ?? "");
+  const [effectColor, setEffectColor] = useState(existingEffect?.color ?? "#a855f7");
+  const [effectInstantHp, setEffectInstantHp] = useState<number | "">(existingEffect?.instantHealHp ?? "");
+  const [effectInstantFlow, setEffectInstantFlow] = useState<number | "">(existingEffect?.instantHealFlow ?? "");
+  const [effectRegenHp, setEffectRegenHp] = useState<number | "">(() => {
+    const a = existingEffect?.effects?.find(e => e.trigger === "on_turn_start" && e.type === "heal_hp");
+    return a?.value ?? "";
+  });
+  const [effectRegenFlow, setEffectRegenFlow] = useState<number | "">(() => {
+    const a = existingEffect?.effects?.find(e => e.trigger === "on_turn_start" && e.type === "heal_flow");
+    return a?.value ?? "";
+  });
+  const [effectBonuses, setEffectBonuses] = useState<[string, number][]>(() =>
+    Object.entries(existingEffect?.attributeBonus ?? {})
+  );
+  const [effectHitBonus, setEffectHitBonus] = useState<number | "">(existingEffect?.hitBonus ?? "");
+  const [effectAttackBonus, setEffectAttackBonus] = useState<number | "">(existingEffect?.attackBonus ?? "");
+  const [effectDamageBonus, setEffectDamageBonus] = useState<number | "">(existingEffect?.damageBonus ?? "");
+
+  // onExpire
+  const existingExpire = existingEffect?.onExpire;
+  const [expireEnabled, setExpireEnabled] = useState(!!existingExpire);
+  const [expireName, setExpireName] = useState(existingExpire?.name ?? "");
+  const [expireDesc, setExpireDesc] = useState(existingExpire?.desc ?? "");
+  const [expireDuration, setExpireDuration] = useState<number | "">(existingExpire?.durationTurns ?? 1);
+  const [expireIcon, setExpireIcon] = useState(existingExpire?.icon ?? "");
+  const [expireColor, setExpireColor] = useState(existingExpire?.color ?? "#e05050");
+  const [expireInstantHp, setExpireInstantHp] = useState<number | "">(existingExpire?.instantHealHp ?? "");
+  const [expireDamageHp, setExpireDamageHp] = useState<number | "">(existingExpire?.instantDamageHp ?? "");
+  const [expireInstantFlow, setExpireInstantFlow] = useState<number | "">(existingExpire?.instantHealFlow ?? "");
+  const [expireHitBonus, setExpireHitBonus] = useState<number | "">(existingExpire?.hitBonus ?? "");
+  const [expireAttackBonus, setExpireAttackBonus] = useState<number | "">(existingExpire?.attackBonus ?? "");
+  const [expireDamageBonus, setExpireDamageBonus] = useState<number | "">(existingExpire?.damageBonus ?? "");
+  const [expireBonuses, setExpireBonuses] = useState<[string, number][]>(() =>
+    Object.entries(existingExpire?.attributeBonus ?? {})
+  );
+
   const [reqLevel, setReqLevel] = useState<number | "">(
     item?.requirements?.level ?? "",
   );
@@ -636,8 +679,8 @@ export default function ItemModal({
   }
 
   const isWeapon = type === "weapon";
-  const hasEquip =
-    type === "weapon" || type === "armor" || type === "accessory";
+  const hasEquip = type === "weapon" || type === "armor" || type === "accessory";
+  const isConsumableType = type === "normal" || type === "chave";
 
   async function save() {
     if (!name.trim()) return;
@@ -654,6 +697,52 @@ export default function ItemModal({
           }
         : undefined;
 
+    let onUseEffect: OnUseEffect | undefined;
+    if (isConsumableType && effectEnabled) {
+      const autoEffects: AutoEffect[] = [];
+      if (effectRegenHp !== "" && effectRegenHp > 0)
+        autoEffects.push({ trigger: "on_turn_start", type: "heal_hp", value: Number(effectRegenHp) });
+      if (effectRegenFlow !== "" && effectRegenFlow > 0)
+        autoEffects.push({ trigger: "on_turn_start", type: "heal_flow", value: Number(effectRegenFlow) });
+      const effectAttrBonus = effectBonuses.length > 0 ? Object.fromEntries(effectBonuses) : undefined;
+
+      let onExpire: OnUseEffect["onExpire"] | undefined;
+      if (expireEnabled) {
+        const expireAttrBonus = expireBonuses.length > 0 ? Object.fromEntries(expireBonuses) : undefined;
+        onExpire = {
+          name: expireName,
+          desc: expireDesc,
+          durationTurns: expireDuration === "" ? 1 : Number(expireDuration),
+          icon: expireIcon || undefined,
+          color: expireColor || undefined,
+          instantHealHp: expireInstantHp !== "" ? Number(expireInstantHp) : undefined,
+          instantDamageHp: expireDamageHp !== "" ? Number(expireDamageHp) : undefined,
+          instantHealFlow: expireInstantFlow !== "" ? Number(expireInstantFlow) : undefined,
+          hitBonus: expireHitBonus !== "" ? Number(expireHitBonus) : undefined,
+          attackBonus: expireAttackBonus !== "" ? Number(expireAttackBonus) : undefined,
+          damageBonus: expireDamageBonus !== "" ? Number(expireDamageBonus) : undefined,
+          attributeBonus: expireAttrBonus,
+          effects: [],
+        };
+      }
+
+      onUseEffect = {
+        name: effectName,
+        desc: effectDesc,
+        durationTurns: effectDuration === "" ? 1 : Number(effectDuration),
+        icon: effectIcon || undefined,
+        color: effectColor || undefined,
+        instantHealHp: effectInstantHp !== "" ? Number(effectInstantHp) : undefined,
+        instantHealFlow: effectInstantFlow !== "" ? Number(effectInstantFlow) : undefined,
+        attributeBonus: effectAttrBonus,
+        effects: autoEffects,
+        hitBonus: effectHitBonus !== "" ? Number(effectHitBonus) : undefined,
+        attackBonus: effectAttackBonus !== "" ? Number(effectAttackBonus) : undefined,
+        damageBonus: effectDamageBonus !== "" ? Number(effectDamageBonus) : undefined,
+        onExpire,
+      };
+    }
+
     const body: Partial<ItemCatalog> = {
       name: name.trim(),
       desc,
@@ -663,6 +752,7 @@ export default function ItemModal({
       attributeBonus: attrBonus,
       rarity: rarity || undefined,
       requirements,
+      onUseEffect,
     };
     if (isWeapon) {
       body.weaponType = weaponType;
@@ -1009,6 +1099,353 @@ export default function ItemModal({
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── Efeito ao usar (normal / chave) ── */}
+          {isConsumableType && (
+            <div className="flex flex-col gap-3 rounded-xl border border-e-border p-4">
+              <button
+                type="button"
+                onClick={() => setEffectEnabled((v) => !v)}
+                className="flex items-center justify-between w-full"
+              >
+                <span className="text-xs font-bold uppercase tracking-widest text-e-sub">
+                  Efeito ao usar
+                </span>
+                <span
+                  className={`w-8 h-4 rounded-full transition-colors relative ${effectEnabled ? "bg-e-accent" : "bg-e-border"}`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${effectEnabled ? "left-4" : "left-0.5"}`}
+                  />
+                </span>
+              </button>
+
+              {effectEnabled && (
+                <div className="flex flex-col gap-3 pt-1">
+                  {/* Nome e duração */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Nome do efeito</label>
+                      <input
+                        value={effectName}
+                        onChange={(e) => setEffectName(e.target.value)}
+                        className={inp}
+                        placeholder="ex: Força de poção"
+                      />
+                    </div>
+                    <div>
+                      <label className={lbl}>
+                        Duração{" "}
+                        <span className="normal-case font-normal">(-1 = permanente)</span>
+                      </label>
+                      <input
+                        type="number"
+                        value={effectDuration}
+                        onChange={(e) =>
+                          setEffectDuration(e.target.value === "" ? "" : Number(e.target.value))
+                        }
+                        className={`text-center ${inp}`}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Descrição */}
+                  <div>
+                    <label className={lbl}>Descrição do efeito</label>
+                    <textarea
+                      value={effectDesc}
+                      onChange={(e) => setEffectDesc(e.target.value)}
+                      rows={2}
+                      className={`resize-none ${inp}`}
+                      placeholder="Descrição exibida ao jogador…"
+                    />
+                  </div>
+
+                  {/* Ícone e cor */}
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <label className={lbl}>Ícone</label>
+                      <IconPicker value={effectIcon} onChange={setEffectIcon} />
+                    </div>
+                    <div>
+                      <label className={lbl}>Cor</label>
+                      <div className="flex flex-wrap gap-2">
+                        {[
+                          "#a855f7", // roxo
+                          "#e05050", // vermelho
+                          "#e0844e", // laranja
+                          "#d4a84e", // dourado
+                          "#3dba72", // verde
+                          "#4a9fe0", // azul
+                          "#4de0d0", // ciano
+                          "#e06090", // rosa
+                          "#71717a", // cinza
+                        ].map((c) => (
+                          <button
+                            key={c}
+                            type="button"
+                            onClick={() => setEffectColor(c)}
+                            className="w-7 h-7 rounded-full border-2 transition-all"
+                            style={{
+                              backgroundColor: c,
+                              borderColor: effectColor === c ? "#fff" : "transparent",
+                              boxShadow: effectColor === c ? `0 0 0 1px ${c}` : "none",
+                            }}
+                          />
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Recuperação instantânea */}
+                  <div>
+                    <label className={lbl}>Recuperação instantânea (ao usar)</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-e-faint w-8 shrink-0">HP +</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={effectInstantHp}
+                          onChange={(e) =>
+                            setEffectInstantHp(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="—"
+                          className={`text-center ${inp}`}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-e-faint w-10 shrink-0">Flow +</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={effectInstantFlow}
+                          onChange={(e) =>
+                            setEffectInstantFlow(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="—"
+                          className={`text-center ${inp}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Regeneração por turno */}
+                  <div>
+                    <label className={lbl}>Regeneração por turno</label>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-e-faint w-8 shrink-0">HP +</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={effectRegenHp}
+                          onChange={(e) =>
+                            setEffectRegenHp(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="—"
+                          className={`text-center ${inp}`}
+                        />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] text-e-faint w-10 shrink-0">Flow +</span>
+                        <input
+                          type="number"
+                          min={0}
+                          value={effectRegenFlow}
+                          onChange={(e) =>
+                            setEffectRegenFlow(e.target.value === "" ? "" : Number(e.target.value))
+                          }
+                          placeholder="—"
+                          className={`text-center ${inp}`}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Bônus de atributos enquanto ativo */}
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className={lbl}>Bônus de atributo (enquanto ativo)</label>
+                      <button
+                        type="button"
+                        onClick={() => setEffectBonuses((b) => [...b, ["strength", 1]])}
+                        className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text"
+                      >
+                        <Plus size={12} /> Adicionar
+                      </button>
+                    </div>
+                    {effectBonuses.map(([attr, val], i) => (
+                      <div key={i} className="flex gap-2 items-center">
+                        <div className="flex-1">
+                          <Dropdown
+                            value={attr}
+                            onChange={(v) =>
+                              setEffectBonuses((b) => b.map((x, j) => (j === i ? [v, x[1]] : x)))
+                            }
+                            options={ATTR_OPTS}
+                          />
+                        </div>
+                        <input
+                          type="number"
+                          value={val}
+                          onChange={(e) =>
+                            setEffectBonuses((b) =>
+                              b.map((x, j) => (j === i ? [x[0], Number(e.target.value)] : x))
+                            )
+                          }
+                          className="w-16 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
+                        />
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setEffectBonuses((b) => b.filter((_, j) => j !== i))
+                          }
+                          className="opacity-40 hover:opacity-80 shrink-0"
+                        >
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  {/* Bônus de combate */}
+                  <div>
+                    <label className={lbl}>Bônus de combate (enquanto ativo)</label>
+                    <div className="grid grid-cols-3 gap-3">
+                      {([
+                        { label: "Acerto +", val: effectHitBonus,    set: setEffectHitBonus },
+                        { label: "Ataque +", val: effectAttackBonus, set: setEffectAttackBonus },
+                        { label: "Dano +",   val: effectDamageBonus, set: setEffectDamageBonus },
+                      ]).map(({ label, val, set }) => (
+                        <div key={label} className="flex flex-col gap-1">
+                          <span className="text-[10px] text-e-faint">{label}</span>
+                          <input
+                            type="number"
+                            value={val}
+                            onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))}
+                            placeholder="—"
+                            className={`text-center ${inp}`}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Ao expirar */}
+                  <div className="flex flex-col gap-3 rounded-xl border border-e-border/60 p-3">
+                    <button
+                      type="button"
+                      onClick={() => setExpireEnabled((v) => !v)}
+                      className="flex items-center justify-between w-full"
+                    >
+                      <span className="text-xs font-bold uppercase tracking-widest text-e-faint">
+                        Ao expirar
+                      </span>
+                      <span
+                        className={`w-8 h-4 rounded-full transition-colors relative ${expireEnabled ? "bg-e-accent" : "bg-e-border"}`}
+                      >
+                        <span
+                          className={`absolute top-0.5 w-3 h-3 rounded-full bg-white transition-all ${expireEnabled ? "left-4" : "left-0.5"}`}
+                        />
+                      </span>
+                    </button>
+
+                    {expireEnabled && (
+                      <div className="flex flex-col gap-3 pt-1">
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={lbl}>Nome</label>
+                            <input value={expireName} onChange={(e) => setExpireName(e.target.value)} className={inp} placeholder="ex: Fadiga" />
+                          </div>
+                          <div>
+                            <label className={lbl}>Duração</label>
+                            <input type="number" value={expireDuration} onChange={(e) => setExpireDuration(e.target.value === "" ? "" : Number(e.target.value))} className={`text-center ${inp}`} />
+                          </div>
+                        </div>
+                        <div>
+                          <label className={lbl}>Descrição</label>
+                          <textarea value={expireDesc} onChange={(e) => setExpireDesc(e.target.value)} rows={2} className={`resize-none ${inp}`} placeholder="Descrição do efeito de expiração…" />
+                        </div>
+                        <div className="grid grid-cols-2 gap-3">
+                          <div>
+                            <label className={lbl}>Ícone</label>
+                            <IconPicker value={expireIcon} onChange={setExpireIcon} />
+                          </div>
+                          <div>
+                            <label className={lbl}>Cor</label>
+                            <div className="flex flex-wrap gap-2">
+                              {["#a855f7","#e05050","#e0844e","#d4a84e","#3dba72","#4a9fe0","#4de0d0","#e06090","#71717a"].map((c) => (
+                                <button key={c} type="button" onClick={() => setExpireColor(c)}
+                                  className="w-7 h-7 rounded-full border-2 transition-all"
+                                  style={{ backgroundColor: c, borderColor: expireColor === c ? "#fff" : "transparent", boxShadow: expireColor === c ? `0 0 0 1px ${c}` : "none" }}
+                                />
+                              ))}
+                            </div>
+                          </div>
+                        </div>
+                        <div>
+                          <label className={lbl}>Efeito instantâneo</label>
+                          <div className="grid grid-cols-3 gap-3">
+                            {([
+                              { label: "HP +",   val: expireInstantHp,   set: setExpireInstantHp },
+                              { label: "HP −",   val: expireDamageHp,    set: setExpireDamageHp },
+                              { label: "Flow +", val: expireInstantFlow, set: setExpireInstantFlow },
+                            ]).map(({ label, val, set }) => (
+                              <div key={label} className="flex flex-col gap-1">
+                                <span className="text-[10px] text-e-faint">{label}</span>
+                                <input type="number" min={0} value={val}
+                                  onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))}
+                                  placeholder="—" className={`text-center ${inp}`} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div>
+                          <label className={lbl}>Bônus de combate</label>
+                          <div className="grid grid-cols-3 gap-3">
+                            {([
+                              { label: "Acerto +", val: expireHitBonus,    set: setExpireHitBonus },
+                              { label: "Ataque +", val: expireAttackBonus, set: setExpireAttackBonus },
+                              { label: "Dano +",   val: expireDamageBonus, set: setExpireDamageBonus },
+                            ]).map(({ label, val, set }) => (
+                              <div key={label} className="flex flex-col gap-1">
+                                <span className="text-[10px] text-e-faint">{label}</span>
+                                <input type="number" value={val}
+                                  onChange={(e) => set(e.target.value === "" ? "" : Number(e.target.value))}
+                                  placeholder="—" className={`text-center ${inp}`} />
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                        <div className="flex flex-col gap-2">
+                          <div className="flex items-center justify-between">
+                            <label className={lbl}>Bônus de atributo</label>
+                            <button type="button" onClick={() => setExpireBonuses((b) => [...b, ["strength", 1]])} className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text">
+                              <Plus size={12} /> Adicionar
+                            </button>
+                          </div>
+                          {expireBonuses.map(([attr, val], i) => (
+                            <div key={i} className="flex gap-2 items-center">
+                              <div className="flex-1">
+                                <Dropdown value={attr} onChange={(v) => setExpireBonuses((b) => b.map((x, j) => (j === i ? [v, x[1]] : x)))} options={ATTR_OPTS} />
+                              </div>
+                              <input type="number" value={val}
+                                onChange={(e) => setExpireBonuses((b) => b.map((x, j) => (j === i ? [x[0], Number(e.target.value)] : x)))}
+                                className="w-16 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2" />
+                              <button type="button" onClick={() => setExpireBonuses((b) => b.filter((_, j) => j !== i))} className="opacity-40 hover:opacity-80 shrink-0">
+                                <Trash2 size={13} />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

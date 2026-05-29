@@ -53,6 +53,9 @@ export default function ResourceBar({ label, current, max, fillClass, trackClass
             onClick={startEdit}
           >
             {current}<span className="text-e-faint text-xs font-normal">/{max}</span>
+            <span className="text-e-faint text-[10px] font-normal ml-1.5">
+              {Math.round(pct)}%
+            </span>
           </span>
         )}
       </div>

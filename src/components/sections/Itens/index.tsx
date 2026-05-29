@@ -252,7 +252,7 @@ export default function Itens() {
             className="px-3 py-1.5 bg-e-bg border border-e-border rounded-lg text-sm text-e-text placeholder:text-e-faint outline-none focus:border-e-border2 transition-colors w-40"
           />
 
-          {(tab === "armas" || tab === "armaduras" || tab === "acessorios") && (
+          {(tab === "armas" || tab === "armaduras" || tab === "acessorios" || tab === "itens") && (
             <FilterDropdown
               value={filterRarity}
               onChange={setFilterRarity}

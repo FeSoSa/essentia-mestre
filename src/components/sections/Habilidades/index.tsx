@@ -13,11 +13,20 @@ type Tab = 'general' | 'class' | 'weapon' | 'essencia' | 'mestre';
 const TAB_LABELS: Record<Tab, string> = { general: 'Geral', class: 'Classe', weapon: 'Arma', essencia: 'Essência', mestre: 'Mestre' };
 
 const WEAPON_TYPE_OPTS = [
-  { value: 'curta',   label: 'Curta'       },
-  { value: 'média',   label: 'Média'       },
-  { value: 'pesada',  label: 'Pesada'      },
-  { value: 'ranged',  label: 'À distância' },
-  { value: 'unarmed', label: 'Desarmado'   },
+  { value: 'espadas',            label: 'Espadas'            },
+  { value: 'rapieiras',          label: 'Rapieiras'          },
+  { value: 'alabardas',          label: 'Alabardas'          },
+  { value: 'lancas',             label: 'Lanças'             },
+  { value: 'machados-de-guerra', label: 'Machados de guerra' },
+  { value: 'martelos',           label: 'Martelos'           },
+  { value: 'armas-colossais',    label: 'Armas colossais'    },
+  { value: 'adagas',             label: 'Adagas'             },
+  { value: 'garras',             label: 'Garras'             },
+  { value: 'arcos',              label: 'Arcos'              },
+  { value: 'bestas',             label: 'Bestas'             },
+  { value: 'pistolas',           label: 'Pistolas'           },
+  { value: 'luvas-manoplas',     label: 'Luvas & manoplas'   },
+  { value: 'escudos',            label: 'Escudos'            },
 ];
 
 function FilterDropdown({ value, onChange, placeholder, options }: {
@@ -131,7 +140,7 @@ export default function Habilidades() {
   const visible = tabSkills
     .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
     .filter((s) => !filterClass || s.skillClass === filterClass)
-    .filter((s) => !filterWeaponType || s.weaponType === filterWeaponType)
+    .filter((s) => !filterWeaponType || (s.weaponTypes ?? (s.weaponType ? [s.weaponType] : [])).includes(filterWeaponType))
     .filter((s) => !filterEssencia || s.essenciaId === filterEssencia);
 
   const hasFilters = !!(search || filterClass || filterWeaponType || filterEssencia);

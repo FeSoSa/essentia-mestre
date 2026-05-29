@@ -26,6 +26,7 @@ export interface PlayerAttributes {
 export interface Slot {
   id: string; type: 'class' | 'free' | 'human_bonus';
   skillId?: string; cooldownRemaining: number;
+  toggleActive?: boolean;
 }
 
 export interface Dice { quantity: number; die: string; }
@@ -36,9 +37,42 @@ export interface AutoEffect {
   attribute?: string; dice?: Dice;
 }
 
+export interface OnExpireEffect {
+  name: string; desc: string;
+  durationTurns: number;
+  icon?: string; color?: string;
+  instantHealHp?: number;
+  instantHealFlow?: number;
+  instantDamageHp?: number;
+  attributeBonus?: Record<string, number>;
+  effects?: AutoEffect[];
+  hitBonus?: number;
+  attackBonus?: number;
+  damageBonus?: number;
+}
+
 export interface StatusEffect {
   id: string; name: string; desc: string; icon?: string; color?: string;
   durationTurns: number; effects: AutoEffect[];
+  attributeBonus?: Record<string, number>;
+  hitBonus?: number;
+  attackBonus?: number;
+  damageBonus?: number;
+  onExpire?: OnExpireEffect;
+}
+
+export interface OnUseEffect {
+  name: string; desc: string;
+  durationTurns: number; // -1 = permanente
+  icon?: string; color?: string;
+  instantHealHp?: number;
+  instantHealFlow?: number;
+  attributeBonus?: Record<string, number>;
+  effects?: AutoEffect[];
+  hitBonus?: number;
+  attackBonus?: number;
+  damageBonus?: number;
+  onExpire?: OnExpireEffect;
 }
 
 export interface Item {
@@ -53,6 +87,7 @@ export interface Item {
   attributeBonus?: Record<string, number>;
   equipSlot?: string; // 'mainHand'|'offHand'|'armor'|'amulet'|'ring'|'utility'
   rarity?: string;
+  onUseEffect?: OnUseEffect;
 }
 
 export interface WeaponEquip {
@@ -97,6 +132,7 @@ export interface Player {
   ether: Vital & { unlocked: boolean };
   exp: { available: number; total: number };
   attributes: PlayerAttributes;
+  effectiveAttributes?: PlayerAttributes;
   slots: Slot[]; equipment: Equipment;
   statusEffects: StatusEffect[];
   items: Item[];
@@ -200,6 +236,7 @@ export interface ItemCatalog {
   attributeBonus?: Record<string, number>; equipSlot?: string;
   rarity?: string; twoHanded?: boolean;
   requirements?: ItemRequirements;
+  onUseEffect?: OnUseEffect;
 }
 
 export interface EnemyAttributes { strength: number; agility: number; intelligence: number; defense: number; }

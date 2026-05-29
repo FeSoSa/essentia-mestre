@@ -12,6 +12,7 @@ export interface Skill {
   type: string;
   skillClass?: string;
   weaponType?: string;
+  weaponTypes?: string[];
   essenciaId?: string;
   costs: { type: string; value?: number; percentual?: number }[];
   damage?: {
@@ -23,7 +24,18 @@ export interface Skill {
   cooldownTurns: number;
   ultimate: boolean;
   toggle: boolean;
+  actionType?: string;
   pressaoDice?: boolean;
+  buffAttributes?: Record<string, number>;
+  buffDurationTurns?: number;
+  hitBonus?: number;
+  attackBonus?: number;
+  damageBonus?: number;
+  multiTarget?: {
+    maxTargets: number;
+    damageMode: 'igual' | 'distribuido' | 'especifico';
+    specificDamage?: number;
+  };
   requirements?: {
     level?: number;
     attributes?: Record<string, number>;
@@ -56,12 +68,18 @@ const ATTR_SHORT: Record<string, string> = {
 };
 
 const WEAPON_LABEL: Record<string, string> = {
-  curta: 'Curta', média: 'Média', pesada: 'Pesada', ranged: 'Ranged', unarmed: 'Desarmado',
+  espadas: 'Espadas', rapieiras: 'Rapieiras', alabardas: 'Alabardas', lancas: 'Lanças',
+  'machados-de-guerra': 'Machados de guerra', martelos: 'Martelos', 'armas-colossais': 'Armas colossais',
+  adagas: 'Adagas', garras: 'Garras', arcos: 'Arcos', bestas: 'Bestas', pistolas: 'Pistolas',
+  'luvas-manoplas': 'Luvas & manoplas', escudos: 'Escudos',
 };
 
 function categoryLabel(skill: Skill, essencias: Essencia[]): string {
   if (skill.type === 'class')    return skill.skillClass || 'Geral';
-  if (skill.type === 'weapon')   return WEAPON_LABEL[skill.weaponType ?? ''] ?? skill.weaponType ?? '—';
+  if (skill.type === 'weapon') {
+    const types = skill.weaponTypes ?? (skill.weaponType ? [skill.weaponType] : []);
+    return types.map((t) => WEAPON_LABEL[t] ?? t).join(' / ') || '—';
+  }
   if (skill.type === 'essencia') return essencias.find((e) => e.id === skill.essenciaId)?.name ?? skill.essenciaId ?? '—';
   return '—';
 }
@@ -97,7 +115,12 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-sky-400/20 text-sky-400 shrink-0">por turno</span>
             )}
             {skill.pressaoDice && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-orange-500/20 text-orange-400 shrink-0">+Xd6 pressão</span>
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-orange-500/20 text-orange-400 shrink-0">pressão</span>
+            )}
+            {skill.multiTarget && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-rose-500/20 text-rose-400 shrink-0">
+                {skill.multiTarget.maxTargets} alvos · {skill.multiTarget.damageMode}
+              </span>
             )}
           </div>
           <div className="flex items-center gap-1.5">
