@@ -39,7 +39,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
   Package, BookOpen, Scroll, Star, Link, Circle, Eye, Map, Music, Hourglass, Compass, Dices, Cuboid, Lock, Magnet, Box,
 };
 
-function ItemIcon({ name, size = 18 }: { name: string; size?: number }) {
+export function ItemIcon({ name, size = 18 }: { name: string; size?: number }) {
   if (name.startsWith("img:")) {
     return (
       <img

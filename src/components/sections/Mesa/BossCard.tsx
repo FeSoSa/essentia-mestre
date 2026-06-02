@@ -5,6 +5,7 @@ import { ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { BossInstance, Player } from '@/store/types';
 import BossDefeatModal from './BossDefeatModal';
+import CombatEntityPanel from './CombatEntityPanel';
 
 interface Props {
   boss: BossInstance;
@@ -210,6 +211,9 @@ export default function BossCard({ boss, players }: Props) {
             </div>
           </div>
         )}
+
+        {/* Combat panel */}
+        <CombatEntityPanel entity={{ kind: 'boss', data: boss }} players={players} theme="boss" />
 
         {/* Notes */}
         <textarea

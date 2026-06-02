@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { EnemyTemplate } from '@/store/types';
 import Button from '@/components/ui/Button';
 import EnemyTemplateModal from './EnemyTemplateModal';
+import { ItemIcon } from '@/components/sections/Itens/ItemCard';
 
 export default function EnemyTemplateList() {
   const [templates, setTemplates] = useState<EnemyTemplate[]>([]);
@@ -60,12 +61,18 @@ export default function EnemyTemplateList() {
               </div>
 
               <div className="grid grid-cols-3 gap-1 text-center text-xs">
-                {[['FOR', t.attributes.strength], ['AGI', t.attributes.agility], ['DEF', t.attributes.defense]].map(([l, v]) => (
-                  <div key={l} className="rounded py-1 bg-e-card">
-                    <p className="text-e-faint">{l}</p>
-                    <p className="font-bold">{v}</p>
-                  </div>
-                ))}
+                {([['FOR', t.attributes.strength], ['AGI', t.attributes.agility], ['DEF', t.attributes.defense]] as [string, number][]).map(([l, v]) => {
+                  const mod = Math.floor((v - 10) / 2);
+                  return (
+                    <div key={l} className="rounded py-1 bg-e-card">
+                      <p className="text-e-faint">{l}</p>
+                      <p className="font-bold">{v}</p>
+                      <p className="text-[10px]" style={{ color: mod >= 0 ? '#3dba72' : '#e05050' }}>
+                        {mod >= 0 ? `+${mod}` : mod}
+                      </p>
+                    </div>
+                  );
+                })}
               </div>
 
               {t.attacks.length > 0 && (
@@ -81,11 +88,17 @@ export default function EnemyTemplateList() {
 
               {t.drops.length > 0 && (
                 <div className="flex gap-1 flex-wrap">
-                  {t.drops.map((d, i) => (
-                    <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-e-card text-e-sub">
-                      {d.icon} {d.name}
+                  {t.drops.filter((d) => !d.goldDrop).map((d, i) => (
+                    <span key={i} className="text-xs px-1.5 py-0.5 rounded bg-e-card text-e-sub flex items-center gap-1">
+                      <ItemIcon name={d.icon || 'Package'} size={11} /> {d.name}
                     </span>
                   ))}
+                  {t.drops.some((d) => d.goldDrop) && (
+                    <span className="text-xs px-1.5 py-0.5 rounded flex items-center gap-1"
+                      style={{ background: '#2a2010', color: '#c8a050' }}>
+                      🪙 {t.drops.find((d) => d.goldDrop)?.goldDrop?.tier}
+                    </span>
+                  )}
                 </div>
               )}
             </div>

@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import type { EnemyInstance, Player } from '@/store/types';
 import DefeatModal from './DefeatModal';
+import CombatEntityPanel from './CombatEntityPanel';
 
 interface Props {
   enemy: EnemyInstance;
@@ -43,7 +44,7 @@ export default function EnemyCard({ enemy, players }: Props) {
   return (
     <>
       <div
-        className="rounded-lg border flex flex-col gap-2 p-3 text-e-enemy-text"
+        className="rounded-lg border flex flex-col gap-2 p-3 text-e-enemy-text cursor-default"
         style={{ background: '#1e1616', borderColor: '#4a2a2a' }}
       >
         {/* Header */}
@@ -65,7 +66,7 @@ export default function EnemyCard({ enemy, players }: Props) {
           </div>
           <button
             onClick={() => setShowDefeat(true)}
-            className="shrink-0 text-base leading-none opacity-60 hover:opacity-100 transition-opacity"
+            className="shrink-0 text-base leading-none opacity-60 hover:opacity-100 transition-opacity cursor-pointer"
             title="Derrota"
           >
             💀
@@ -136,32 +137,9 @@ export default function EnemyCard({ enemy, players }: Props) {
           ))}
         </div>
 
-        {/* Attacks */}
-        {enemy.attacks.length > 0 && (
-          <div className="flex flex-col gap-0.5">
-            {enemy.attacks.map((atk, i) => (
-              <div key={i} className="flex items-center justify-between text-xs">
-                <span className="truncate">{atk.name}</span>
-                <span className="font-mono shrink-0 ml-2" style={{ color: '#7a5050' }}>{atk.damage}</span>
-              </div>
-            ))}
-          </div>
-        )}
 
-        {/* Drops */}
-        {enemy.drops.length > 0 && (
-          <div className="flex gap-1 flex-wrap">
-            {enemy.drops.slice(0, 2).map((drop, i) => (
-              <span
-                key={i}
-                className="text-xs px-1.5 py-0.5 rounded flex items-center gap-1"
-                style={{ background: '#2a1818', color: '#e8d8d8' }}
-              >
-                {drop.icon} {drop.name}
-              </span>
-            ))}
-          </div>
-        )}
+        {/* Combat panel */}
+        <CombatEntityPanel entity={{ kind: 'enemy', data: enemy }} players={players} theme="enemy" />
 
         {/* Notes */}
         <textarea

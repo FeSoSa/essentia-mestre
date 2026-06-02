@@ -41,6 +41,7 @@ export interface Skill {
     attributes?: Record<string, number>;
     weaponRequired?: string;
   };
+  onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
 }
 
 interface Props {

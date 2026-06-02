@@ -4,10 +4,12 @@ import { useState } from 'react';
 import { Trash2, UserRound } from 'lucide-react';
 import { api } from '@/lib/api';
 import { proxyUrl } from '@/lib/gdrive';
-import type { CombatAlly } from '@/store/types';
+import type { CombatAlly, Player } from '@/store/types';
+import CombatEntityPanel from './CombatEntityPanel';
 
 interface Props {
   ally: CombatAlly;
+  players?: Player[];
 }
 
 const allyBg     = '#151e1a';
@@ -15,7 +17,7 @@ const allyBorder = '#2a4a3a';
 const allyMuted  = '#5a8a70';
 const allyText   = '#c8e8d8';
 
-export default function AllyCard({ ally }: Props) {
+export default function AllyCard({ ally, players = [] }: Props) {
   const [notes,     setNotes]     = useState(ally.notes ?? '');
   const [editingHp, setEditingHp] = useState(false);
   const [hpDraft,   setHpDraft]   = useState('');
@@ -127,6 +129,9 @@ export default function AllyCard({ ally }: Props) {
           {expanded && <p className="text-xs mt-1 leading-relaxed" style={{ color: allyMuted }}>{ally.desc}</p>}
         </div>
       )}
+
+      {/* Combat panel */}
+      <CombatEntityPanel entity={{ kind: 'ally', data: ally }} players={players} theme="ally" />
 
       {/* Notes */}
       <textarea value={notes} onChange={(e) => setNotes(e.target.value)} onBlur={saveNotes} rows={2}

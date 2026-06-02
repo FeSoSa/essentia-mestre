@@ -1,7 +1,9 @@
 'use client';
 
 import { useState } from 'react';
+import { Coins } from 'lucide-react';
 import { api } from '@/lib/api';
+import { ItemIcon } from '@/components/sections/Itens/ItemCard';
 import type { BossInstance, Player } from '@/store/types';
 import Button from '@/components/ui/Button';
 
@@ -13,10 +15,23 @@ interface Props {
 
 export default function BossDefeatModal({ boss, players, onClose }: Props) {
   const [selectedDrops, setSelectedDrops]     = useState<Set<number>>(new Set());
-  const [dropAssignments, setDropAssignments] = useState<Record<number, string>>({});
+  const [dropAssignments, setDropAssignments] = useState<Record<number, string>>(() => {
+    const init: Record<number, string> = {};
+    boss.drops.forEach((drop, i) => {
+      if (!drop.goldDrop && drop.targetPlayerId) init[i] = drop.targetPlayerId;
+    });
+    return init;
+  });
+  const [goldAssignment, setGoldAssignment]   = useState<string>(() => {
+    const gd = boss.drops.find((d) => d.goldDrop);
+    return gd?.targetPlayerId ?? '';
+  });
   const [rewardPlayerId, setRewardPlayerId]   = useState('');
   const [distributeXp, setDistributeXp]       = useState(true);
   const [loading, setLoading]                 = useState(false);
+
+  const itemDrops = boss.drops.map((d, i) => ({ drop: d, idx: i })).filter(({ drop }) => !drop.goldDrop);
+  const goldDrop  = boss.drops.find((d) => d.goldDrop);
 
   function toggleDrop(i: number) {
     setSelectedDrops((prev) => {
@@ -31,15 +46,24 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
     });
   }
 
+  function rollGold(): number {
+    const g = goldDrop!.goldDrop!;
+    return Math.floor(Math.random() * (g.max - g.min + 1)) + g.min;
+  }
+
   async function confirm() {
     setLoading(true);
     try {
+      const goldAmount = goldDrop ? rollGold() : 0;
       await api.post(`/combat/bosses/${boss.instanceId}/defeat`, {
         drops: [...selectedDrops].map((i) => ({
           name: boss.drops[i].name,
           icon: boss.drops[i].icon,
           playerId: dropAssignments[i] ?? '',
         })),
+        goldDrop: goldDrop && goldAssignment
+          ? { amount: goldAmount, playerId: goldAssignment }
+          : null,
         specialReward: boss.specialReward && rewardPlayerId
           ? { referenceId: boss.specialReward.referenceId, playerId: rewardPlayerId }
           : null,
@@ -65,26 +89,22 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
           {boss.name}
         </h2>
 
-        {/* Drops */}
-        {boss.drops.length > 0 && (
+        {/* Item Drops */}
+        {itemDrops.length > 0 && (
           <div className="flex flex-col gap-2">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Drops</p>
-            {boss.drops.map((drop, i) => (
-              <div key={i} className="flex items-center gap-2">
-                <input
-                  type="checkbox"
-                  id={`bdrop-${i}`}
-                  checked={selectedDrops.has(i)}
-                  onChange={() => toggleDrop(i)}
-                  className="accent-[#c8a050]"
-                />
-                <label htmlFor={`bdrop-${i}`} className="flex-1 text-sm flex items-center gap-1.5 cursor-pointer">
-                  {drop.icon} {drop.name}
+            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Drops de item</p>
+            {itemDrops.map(({ drop, idx }) => (
+              <div key={idx} className="flex items-center gap-2">
+                <input type="checkbox" id={`bdrop-${idx}`} checked={selectedDrops.has(idx)}
+                  onChange={() => toggleDrop(idx)} className="accent-[#c8a050]" />
+                <label htmlFor={`bdrop-${idx}`} className="flex-1 text-sm flex items-center gap-1.5 cursor-pointer">
+                  <span className="opacity-60"><ItemIcon name={drop.icon || 'Package'} size={13} /></span>
+                  {drop.name}
                 </label>
-                {selectedDrops.has(i) && (
+                {selectedDrops.has(idx) && (
                   <select
-                    value={dropAssignments[i] ?? ''}
-                    onChange={(e) => setDropAssignments((a) => ({ ...a, [i]: e.target.value }))}
+                    value={dropAssignments[idx] ?? ''}
+                    onChange={(e) => setDropAssignments((a) => ({ ...a, [idx]: e.target.value }))}
                     className="text-xs rounded px-2 py-1 outline-none"
                     style={selStyle}
                   >
@@ -96,6 +116,34 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
                 )}
               </div>
             ))}
+          </div>
+        )}
+
+        {/* Gold Drop */}
+        {goldDrop && (
+          <div className="flex flex-col gap-2 rounded-lg p-3 border" style={{ background: 'rgba(200,160,80,0.08)', borderColor: '#6a5a20' }}>
+            <div className="flex items-center gap-1.5 text-xs text-amber-400">
+              <Coins size={13} />
+              <span className="font-semibold">Drop de gold</span>
+              <span className="opacity-60 ml-1">
+                {goldDrop.goldDrop!.min}–{goldDrop.goldDrop!.max} 🪙
+                <span className="ml-1 capitalize">({goldDrop.goldDrop!.tier})</span>
+              </span>
+            </div>
+            <div>
+              <p className="text-[10px] font-bold uppercase tracking-widest opacity-50 mb-1">Enviar para</p>
+              <select
+                value={goldAssignment}
+                onChange={(e) => setGoldAssignment(e.target.value)}
+                className="w-full text-xs rounded px-2 py-1.5 outline-none"
+                style={selStyle}
+              >
+                <option value="">Selecionar jogador…</option>
+                {players.map((p) => (
+                  <option key={p.id} value={p.id}>{p.char.name}</option>
+                ))}
+              </select>
+            </div>
           </div>
         )}
 
@@ -127,13 +175,8 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
         {/* XP */}
         {boss.xp > 0 && (
           <div className="flex items-center gap-2">
-            <input
-              type="checkbox"
-              id="boss-xp"
-              checked={distributeXp}
-              onChange={(e) => setDistributeXp(e.target.checked)}
-              className="accent-[#3aaa60]"
-            />
+            <input type="checkbox" id="boss-xp" checked={distributeXp}
+              onChange={(e) => setDistributeXp(e.target.checked)} className="accent-[#3aaa60]" />
             <label htmlFor="boss-xp" className="text-sm cursor-pointer">
               Distribuir <span style={{ color: '#3aaa60' }}>⭐ {boss.xp} XP</span> para todos os jogadores
             </label>

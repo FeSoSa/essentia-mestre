@@ -17,12 +17,13 @@ export default function DamagePanel() {
     setLoading(req.requestId);
     try {
       await api.post('/master/damage/approve', {
-        requestId:  req.requestId,
-        playerId:   req.playerId,
-        targetId:   req.targetId,
-        targetType: req.targetType,
-        damage:     req.damage,
-        costs:      req.costs ?? {},
+        requestId:    req.requestId,
+        playerId:     req.playerId,
+        targetId:     req.targetId,
+        targetType:   req.targetType,
+        damage:       req.damage,
+        costs:        req.costs ?? {},
+        onHitEffects: req.onHitEffects ?? [],
       });
       removeDamageRequest(req.requestId);
     } catch {}
@@ -64,6 +65,18 @@ export default function DamagePanel() {
                   {req.targetType === 'boss' ? '★' : '⚔'} {req.targetName}
                 </p>
                 <p className="text-2xl font-black text-red-400 mt-1">{req.damage} dano</p>
+                {req.onHitEffects && req.onHitEffects.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mt-2">
+                    {req.onHitEffects.map((eff) => (
+                      <span key={eff.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300">
+                        {eff.icon && <span>{eff.icon}</span>}
+                        {eff.name}
+                        <span className="opacity-60">{eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}</span>
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
               <div className="flex gap-2">
                 <button

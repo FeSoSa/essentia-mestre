@@ -1,6 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { ChevronDown } from 'lucide-react';
 
 interface Option {
@@ -18,23 +19,40 @@ interface Props {
 
 export default function Select({ value, onChange, options, placeholder = 'Selecionar…', className = '' }: Props) {
   const [open, setOpen] = useState(false);
-  const ref = useRef<HTMLDivElement>(null);
+  const [dropPos, setDropPos] = useState<{ top: number; left: number; width: number } | null>(null);
+  const btnRef = useRef<HTMLButtonElement>(null);
+  const dropRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     function handleOutside(e: MouseEvent) {
-      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+      const target = e.target as Node;
+      if (
+        btnRef.current && !btnRef.current.contains(target) &&
+        dropRef.current && !dropRef.current.contains(target)
+      ) {
+        setOpen(false);
+      }
     }
     if (open) document.addEventListener('mousedown', handleOutside);
     return () => document.removeEventListener('mousedown', handleOutside);
   }, [open]);
 
+  function toggle() {
+    if (!open && btnRef.current) {
+      const rect = btnRef.current.getBoundingClientRect();
+      setDropPos({ top: rect.bottom + window.scrollY + 4, left: rect.left + window.scrollX, width: rect.width });
+    }
+    setOpen((o) => !o);
+  }
+
   const selected = options.find((o) => o.value === value);
 
   return (
-    <div ref={ref} className={`relative ${className}`}>
+    <div className={`relative ${className}`}>
       <button
+        ref={btnRef}
         type="button"
-        onClick={() => setOpen((o) => !o)}
+        onClick={toggle}
         className="w-full flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-[#303038] bg-[#111113] text-sm text-e-text hover:border-e-border2 transition-colors cursor-pointer focus:outline-none focus:border-e-accent"
       >
         <span className={selected ? 'text-e-text' : 'text-e-faint'}>
@@ -46,8 +64,18 @@ export default function Select({ value, onChange, options, placeholder = 'Seleci
         />
       </button>
 
-      {open && (
-        <div className="absolute z-50 mt-1 w-full bg-e-card border border-e-border rounded-lg shadow-xl overflow-hidden">
+      {open && dropPos && typeof document !== 'undefined' && createPortal(
+        <div
+          ref={dropRef}
+          className="bg-e-card border border-e-border rounded-lg shadow-xl overflow-hidden"
+          style={{
+            position: 'absolute',
+            top: dropPos.top,
+            left: dropPos.left,
+            width: dropPos.width,
+            zIndex: 9999,
+          }}
+        >
           {options.map((opt) => (
             <button
               key={opt.value}
@@ -62,7 +90,8 @@ export default function Select({ value, onChange, options, placeholder = 'Seleci
               {opt.label}
             </button>
           ))}
-        </div>
+        </div>,
+        document.body
       )}
     </div>
   );

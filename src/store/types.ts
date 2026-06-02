@@ -159,6 +159,7 @@ export interface DamageApprovalRequest {
   targetName: string;
   damage: number;
   costs?: Record<string, number>;
+  onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
 }
 
 export interface SobrecargaRequest {
@@ -240,11 +241,34 @@ export interface ItemCatalog {
 }
 
 export interface EnemyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
-export interface EnemyAttack { name: string; damage: string; }
-export interface EnemyDrop { name: string; icon: string; }
+export interface EnemyAttack {
+  name: string;
+  damage: string;
+  damageBase?: number;
+  damageAttribute?: string;
+  equilibrio?: number;
+  skillId?: string;
+  skillName?: string;
+}
+
+export type GoldDropTier = 'pobre' | 'comum' | 'rico' | 'tesouro';
+export interface GoldDrop { tier: GoldDropTier; min: number; max: number; }
+
+export interface EnemyDrop {
+  name: string; icon: string;
+  itemId?: string;
+  targetPlayerId?: string;
+  goldDrop?: GoldDrop;
+}
 
 export interface BossAbility { name: string; desc: string; cooldownTurns: number; }
-export interface BossImmunity { type: string; icon: string; }
+export interface BossImmunity {
+  type: string;
+  icon: string;
+  kind: 'total' | 'partial';
+  sources?: string[];
+  isFlag?: boolean;
+}
 export interface BossResistance { type: string; reduction: number; }
 export interface BossReward { type: string; referenceId: string; name: string; desc: string; }
 
@@ -259,26 +283,32 @@ export interface BossPhase {
 }
 
 export interface BossTemplate {
-  id: string; name: string; type: string; icon: string;
+  id: string; name: string; type: string; icon: string; imageUrl?: string;
   phases: BossPhase[]; immunities: BossImmunity[]; resistances: BossResistance[];
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
 }
 
 export interface BossInstance {
   instanceId: string; templateId?: string;
-  name: string; icon: string;
+  name: string; icon: string; imageUrl?: string;
   phases: BossPhase[]; currentPhase: number; hpCurrent: number;
   immunities: BossImmunity[]; resistances: BossResistance[];
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
+  statusEffects?: StatusEffect[];
 }
 
 export interface AllyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
-export interface AllyAttack { name: string; damage: string; }
+export interface AllyAttack {
+  name: string; damage: string;
+  damageBase?: number; damageAttribute?: string; equilibrio?: number;
+  skillId?: string; skillName?: string;
+}
 
 export interface AllyTemplate {
   id: string; name: string; type: string;
   hpMax: number; portraitUrl?: string;
   attributes: AllyAttributes; attacks: AllyAttack[];
+  immunities?: BossImmunity[];
   desc: string; notes: string;
 }
 
@@ -286,21 +316,26 @@ export interface CombatAlly {
   id: string; templateId?: string; name: string; type: string;
   hpCurrent: number; hpMax: number; portraitUrl?: string;
   attributes: AllyAttributes; attacks: AllyAttack[];
+  immunities?: BossImmunity[];
+  statusEffects?: StatusEffect[];
   desc: string; notes: string;
 }
 
 export interface EnemyTemplate {
-  id: string; name: string; type: string; icon: string;
+  id: string; name: string; type: string; icon: string; imageUrl?: string;
   hpMax: number; attributes: EnemyAttributes;
   attacks: EnemyAttack[]; drops: EnemyDrop[];
+  immunities?: BossImmunity[];
   xp: number; desc: string; notes: string;
 }
 
 export interface EnemyInstance {
   instanceId: string; templateId?: string;
-  name: string; type: string; icon: string;
+  name: string; type: string; icon: string; imageUrl?: string;
   hpCurrent: number; hpMax: number;
   attributes: EnemyAttributes;
   attacks: EnemyAttack[]; drops: EnemyDrop[];
+  immunities?: BossImmunity[];
+  statusEffects?: StatusEffect[];
   xp: number; desc: string; notes: string;
 }

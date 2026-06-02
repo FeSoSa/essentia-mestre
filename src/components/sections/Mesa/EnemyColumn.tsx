@@ -81,7 +81,7 @@ export default function EnemyColumn({ bosses, enemies, allies, players }: Props)
           </p>
         )}
         {allies.map((a) => (
-          <AllyCard key={a.id} ally={a} />
+          <AllyCard key={a.id} ally={a} players={players} />
         ))}
       </div>
 
