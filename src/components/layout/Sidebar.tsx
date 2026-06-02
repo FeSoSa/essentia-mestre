@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutGrid, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna } from 'lucide-react';
+import { LayoutGrid, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useStore, usePlayers } from '@/store';
 import type { SectionId } from '@/store/types';
@@ -11,6 +11,7 @@ const NAV: { id: SectionId; label: string; Icon: LucideIcon }[] = [
   { id: 'jogadores',   label: 'Jogadores', Icon: Users      },
   { id: 'inventario',  label: 'Inventário',Icon: Archive    },
   { id: 'itens',       label: 'Itens',     Icon: Package    },
+  { id: 'loja',        label: 'Loja',      Icon: ShoppingBag },
   { id: 'essencias',   label: 'Essências', Icon: Sparkles   },
   { id: 'bestiario',   label: 'Bestiário',   Icon: BookOpen   },
   { id: 'habilidades', label: 'Habilidades', Icon: Wand2        },

@@ -97,7 +97,7 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
           </span>
         )}
         <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate" style={{ color: rColor ?? '#fafafa' }}>{item.name}</p>
+          <p className="font-semibold text-sm truncate" style={{ color: rColor ?? '#fafafa' }} title={item.name}>{item.name}</p>
           <div className="flex items-center gap-1.5 flex-wrap">
             <span
               className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
@@ -183,7 +183,7 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
               className="w-2 h-2 rounded-full shrink-0"
               style={{ background: item.onUseEffect.color ?? "#a855f7" }}
             />
-            <span className="text-[10px] text-e-sub truncate">
+            <span className="text-[10px] text-e-sub truncate" title={item.onUseEffect.name || "Efeito ao usar"}>
               {item.onUseEffect.name || "Efeito ao usar"}
               {item.onUseEffect.durationTurns === -1
                 ? " · ∞"
@@ -193,7 +193,13 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
             </span>
           </div>
         )}
-        {item.desc && <p className="text-e-faint truncate">{item.desc}</p>}
+        {item.goldValue != null && (
+          <p className="flex items-center gap-1">
+            <Coins size={11} className="text-amber-400 shrink-0" />
+            <span className="font-mono text-amber-400">{item.goldValue} Tyd</span>
+          </p>
+        )}
+        {item.desc && <p className="text-e-faint truncate" title={item.desc}>{item.desc}</p>}
       </div>
     </div>
   );

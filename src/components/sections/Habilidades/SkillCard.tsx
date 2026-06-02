@@ -179,7 +179,7 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
       )}
 
       {skill.desc && (
-        <p className="text-[11px] text-e-faint line-clamp-2 leading-relaxed">{skill.desc}</p>
+        <p className="text-[11px] text-e-faint line-clamp-2 leading-relaxed" title={skill.desc}>{skill.desc}</p>
       )}
     </div>
   );

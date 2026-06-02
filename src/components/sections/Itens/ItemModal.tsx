@@ -574,6 +574,7 @@ export default function ItemModal({
   const [armorWeight, setArmorWeight] = useState(item?.armorWeight ?? "");
   const [rarity, setRarity] = useState(item?.rarity ?? "");
   const [twoHanded, setTwoHanded] = useState(item?.twoHanded ?? false);
+  const [goldValue, setGoldValue] = useState<number | "">(item?.goldValue ?? "");
 
   // Attribute bonuses — armors pre-populate 'defense'
   const [bonuses, setBonuses] = useState<[string, number][]>(() => {
@@ -753,6 +754,7 @@ export default function ItemModal({
       rarity: rarity || undefined,
       requirements,
       onUseEffect,
+      goldValue: goldValue !== "" ? Number(goldValue) : undefined,
     };
     if (isWeapon) {
       body.weaponType = weaponType;
@@ -837,6 +839,19 @@ export default function ItemModal({
                 </button>
               ))}
             </div>
+          </div>
+
+          {/* Valor em Ouro */}
+          <div>
+            <label className={lbl}>Valor em Tyd</label>
+            <input
+              type="number"
+              min={0}
+              value={goldValue}
+              onChange={(e) => setGoldValue(e.target.value === "" ? "" : Number(e.target.value))}
+              className={inp}
+              placeholder="Ex: 50"
+            />
           </div>
 
           {/* Ícone + Nome */}

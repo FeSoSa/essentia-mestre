@@ -1,4 +1,4 @@
-export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log';
+export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja';
 
 export interface Race {
   id: string;
@@ -238,7 +238,11 @@ export interface ItemCatalog {
   rarity?: string; twoHanded?: boolean;
   requirements?: ItemRequirements;
   onUseEffect?: OnUseEffect;
+  goldValue?: number;
 }
+
+export interface ShopItem { itemId: string; stockLimit?: number; }
+export interface Shop { id: string; name: string; items: ShopItem[]; active: boolean; }
 
 export interface EnemyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
 export interface EnemyAttack {
