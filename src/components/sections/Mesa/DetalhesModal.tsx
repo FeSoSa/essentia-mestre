@@ -2441,7 +2441,7 @@ export default function DetalhesModal({
                     Essências
                     {(currentPlayer.essenciasObtidas?.length ?? 0) > 0 && (
                       <span className="text-[9px] font-bold bg-purple-500/20 text-purple-300 rounded-full px-1.5 py-0.5">
-                        {currentPlayer.essenciasObtidas.length}
+                        {currentPlayer.essenciasObtidas?.length}
                       </span>
                     )}
                   </span>

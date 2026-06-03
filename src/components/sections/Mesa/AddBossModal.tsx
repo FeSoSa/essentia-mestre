@@ -46,7 +46,7 @@ export default function AddBossModal({ onClose }: Props) {
 
   /* immunities */
   function addImmunity() {
-    setImmunities((p) => [...p, { type: '', icon: '🛡️' }]);
+    setImmunities((p) => [...p, { type: '', icon: '🛡️', kind: 'total' }]);
   }
   function updateImmunity(i: number, field: keyof BossImmunity, val: string) {
     setImmunities((p) => p.map((x, j) => j === i ? { ...x, [field]: val } : x));

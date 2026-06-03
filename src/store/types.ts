@@ -220,7 +220,7 @@ export interface PlayerSkill {
 }
 
 export interface SkillTreeEntry {
-  skill: { id: string; name: string; desc: string; type: string; cooldownTurns: number; };
+  skill: { id: string; name: string; desc: string; type: string; cooldownTurns: number; ultimate?: boolean; };
   playerSkill?: PlayerSkill;
   status: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED';
 }

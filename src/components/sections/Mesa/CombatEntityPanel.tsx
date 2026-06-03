@@ -252,6 +252,7 @@ export default function CombatEntityPanel({ entity, players, theme = 'enemy' }: 
           entityKind={entity.kind}
           entityName={getEntityName()}
           attacks={attacks}
+          entityAttributes={getEntityAttributes(entity)}
           players={players}
           theme={t}
           onClose={() => setShowAttackModal(false)}
