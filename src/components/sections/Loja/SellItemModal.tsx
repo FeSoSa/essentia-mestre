@@ -1,8 +1,8 @@
-"use client";
+﻿"use client";
 
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
-import { usePlayers } from "@/store";
+import { useActivePlayers } from "@/store";
 import type { ItemCatalog, Shop } from "@/store/types";
 import { ChevronDown, Coins, Minus, Plus } from "lucide-react";
 import { useState } from "react";
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export default function SellItemModal({ shop, item, stockLimit, onClose }: Props) {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const [playerId, setPlayerId] = useState("");
   const [qty, setQty] = useState(1);
   const [open, setOpen] = useState(false);
@@ -167,3 +167,4 @@ export default function SellItemModal({ shop, item, stockLimit, onClose }: Props
     </div>
   );
 }
+

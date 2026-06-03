@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { useStore, useFastAction, usePlayers } from '@/store';
+import { useStore, useFastAction, useActivePlayers } from '@/store';
 import Button from '@/components/ui/Button';
 import SectionHeader from '@/components/ui/SectionHeader';
 import type { FastAction, FastActionOption } from '@/store/types';
@@ -10,7 +10,7 @@ import OptionBuilder from './OptionBuilder';
 
 export default function AcaoRapida() {
   const fastAction = useFastAction();
-  const players = usePlayers();
+  const players = useActivePlayers();
   const { setFastAction } = useStore();
   const [title, setTitle] = useState('');
   const [lockOne, setLockOne] = useState(false);
@@ -124,3 +124,4 @@ export default function AcaoRapida() {
     </div>
   );
 }
+

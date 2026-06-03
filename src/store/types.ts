@@ -144,6 +144,7 @@ export interface Player {
   sobrecargaNivel?: number;
   desviosRestantes?: number;
   customBars?: CustomBar[];
+  active?: boolean;
 }
 
 export interface CustomBar {

@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { AlertTriangle } from 'lucide-react';
 import { api } from '@/lib/api';
-import { usePlayers } from '@/store';
+import { useActivePlayers } from '@/store';
 import Button from '@/components/ui/Button';
 import SectionHeader from '@/components/ui/SectionHeader';
 import type { SkillTreeEntry, PlayerSkill } from '@/store/types';
@@ -14,7 +14,7 @@ interface PlayerSkillState {
 }
 
 export default function Maestria() {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const [skillData, setSkillData] = useState<PlayerSkillState[]>([]);
   const [saving, setSaving] = useState<string | null>(null);
   const [usesInput, setUsesInput] = useState<Record<string, number>>({});

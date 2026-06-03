@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { LayoutGrid, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import { useStore, usePlayers } from '@/store';
+import { useStore, useActivePlayers } from '@/store';
 import type { SectionId } from '@/store/types';
 
 const NAV: { id: SectionId; label: string; Icon: LucideIcon }[] = [
@@ -22,7 +22,7 @@ const NAV: { id: SectionId; label: string; Icon: LucideIcon }[] = [
 
 export default function Sidebar() {
   const { activeSection, setActiveSection } = useStore();
-  const players = usePlayers();
+  const players = useActivePlayers();
   const pendingTotal = players.reduce((acc, p) => acc + (p.pendingRequests?.length ?? 0), 0);
 
   return (
@@ -60,3 +60,4 @@ export default function Sidebar() {
     </aside>
   );
 }
+

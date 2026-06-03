@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useEffect, useState } from 'react';
 import { Dices, RotateCcw, ChevronRight, Zap, Skull, Shield } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useStore, usePlayers, useFastAction, useEnemies, useBosses, useAllies } from '@/store';
+import { useStore, useActivePlayers, useFastAction, useEnemies, useBosses, useAllies } from '@/store';
 import Button from '@/components/ui/Button';
 import type { Essencia, Player } from '@/store/types';
 import PlayerCard from './PlayerCard';
@@ -15,7 +15,7 @@ import InitiativeEditorModal from '@/components/sections/Turno/InitiativeEditorM
 import type { InitiativeEntry } from '@/store/types';
 
 export default function Mesa() {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const fastAction = useFastAction();
   const enemies = useEnemies();
   const bosses  = useBosses();
@@ -144,3 +144,4 @@ export default function Mesa() {
     </div>
   );
 }
+

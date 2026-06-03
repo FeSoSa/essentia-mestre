@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import {
@@ -25,7 +25,7 @@ function ItemIcon({ name }: { name: string }) {
   return <Icon size={14} />;
 }
 import { api } from '@/lib/api';
-import { usePlayers } from '@/store';
+import { useActivePlayers } from '@/store';
 import type { ItemCatalog } from '@/store/types';
 import Button from '@/components/ui/Button';
 
@@ -35,7 +35,7 @@ interface Props {
 }
 
 export default function SendItemModal({ item, onClose }: Props) {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const [playerId, setPlayerId] = useState('');
   const [qty, setQty]           = useState(1);
   const [loading, setLoading]   = useState(false);
@@ -115,3 +115,4 @@ export default function SendItemModal({ item, onClose }: Props) {
     </div>
   );
 }
+

@@ -1,8 +1,8 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { api } from '@/lib/api';
-import { useStore, usePlayers } from '@/store';
+import { useStore, useActivePlayers } from '@/store';
 import Button from '@/components/ui/Button';
 import SectionHeader from '@/components/ui/SectionHeader';
 import { getStatusIcon } from '@/lib/statusIcons';
@@ -10,7 +10,7 @@ import type { Player } from '@/store/types';
 import AddEffectModal from './AddEffectModal';
 
 export default function StatusEffects() {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const { setPlayer } = useStore();
   const [addingFor, setAddingFor] = useState<string | null>(null);
   const [removing, setRemoving]   = useState<string | null>(null);
@@ -86,3 +86,4 @@ export default function StatusEffects() {
     </div>
   );
 }
+

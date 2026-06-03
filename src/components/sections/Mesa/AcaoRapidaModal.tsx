@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useStore, useFastAction, usePlayers } from '@/store';
+import { useStore, useFastAction, useActivePlayers } from '@/store';
 import Button from '@/components/ui/Button';
 import type { FastAction, FastActionOption } from '@/store/types';
 
@@ -34,7 +34,7 @@ function OptionBuilder({
 
 export default function AcaoRapidaModal({ onClose }: { onClose: () => void }) {
   const fastAction = useFastAction();
-  const players = usePlayers();
+  const players = useActivePlayers();
   const { setFastAction } = useStore();
   const [title, setTitle] = useState('');
   const [lockOne, setLockOne] = useState(false);
@@ -159,3 +159,4 @@ export default function AcaoRapidaModal({ onClose }: { onClose: () => void }) {
     </div>
   );
 }
+

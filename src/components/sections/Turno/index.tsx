@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { Dices, RotateCcw, ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useStore, usePlayers } from '@/store';
+import { useStore, useActivePlayers } from '@/store';
 import type { InitiativeEntry } from '@/store/types';
 import Button from '@/components/ui/Button';
 import InitiativeList from './InitiativeList';
@@ -12,7 +12,7 @@ import SessionLog from './SessionLog';
 
 export default function Turno() {
   const { currentTurn, setCurrentTurn, initiative, setInitiative } = useStore();
-  const players = usePlayers();
+  const players = useActivePlayers();
   const enemies = useStore(s => s.enemies);
   const bosses  = useStore(s => s.bosses);
   const allies  = useStore(s => s.allies);
@@ -101,3 +101,4 @@ export default function Turno() {
     </div>
   );
 }
+

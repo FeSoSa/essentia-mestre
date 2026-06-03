@@ -1,6 +1,7 @@
 'use client';
 
 import { create } from 'zustand';
+import { useShallow } from 'zustand/react/shallow';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
@@ -153,7 +154,8 @@ export const useStore = create<RootState>((set) => ({
     })),
 }));
 
-export const usePlayers    = () => useStore((s) => s.players);
+export const usePlayers       = () => useStore((s) => s.players);
+export const useActivePlayers = () => useStore(useShallow((s) => s.players.filter((p) => p.active !== false)));
 export const useInitiative = () => useStore((s) => s.initiative);
 export const useLog        = () => useStore((s) => s.log);
 export const useImages     = () => useStore((s) => s.images);

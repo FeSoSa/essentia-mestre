@@ -1,9 +1,9 @@
-'use client';
+﻿'use client';
 
 import { useState } from 'react';
 import { CheckCircle, XCircle, Sword, Shield, Circle } from 'lucide-react';
 import { api } from '@/lib/api';
-import { useStore, usePlayers } from '@/store';
+import { useStore, useActivePlayers } from '@/store';
 import SectionHeader from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import type { Player, Equipment, Item } from '@/store/types';
@@ -38,7 +38,7 @@ function itemTypeBadge(type: string) {
 
 /* ── component ───────────────────────────────────────────────── */
 export default function Inventario() {
-  const players = usePlayers();
+  const players = useActivePlayers();
   const { setPlayer } = useStore();
   const [processing, setProcessing] = useState<string | null>(null);
 
@@ -207,3 +207,4 @@ export default function Inventario() {
     </div>
   );
 }
+

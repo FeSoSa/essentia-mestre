@@ -17,6 +17,7 @@ export default function Jogadores() {
   const [expPlayerId, setExpPlayerId] = useState<string | null>(null);
   const [expAmount, setExpAmount] = useState(0);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [toggling, setToggling] = useState<string | null>(null);
   useEffect(() => {
     api.get<Player[]>('/master/players').then((r) => setPlayers(r.data)).catch(() => {});
   }, [setPlayers]);
@@ -26,6 +27,15 @@ export default function Jogadores() {
     setDeleting(id);
     try { await api.delete(`/master/players/${id}`); removePlayer(id); } catch {}
     finally { setDeleting(null); }
+  }
+
+  async function handleToggleActive(p: Player) {
+    setToggling(p.id);
+    try {
+      const res = await api.post<Player>(`/master/players/${p.id}/toggle-active`);
+      setPlayers(players.map((pl) => (pl.id === p.id ? res.data : pl)));
+    } catch {}
+    finally { setToggling(null); }
   }
 
   async function handleExp(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -49,11 +59,25 @@ export default function Jogadores() {
         </div>
       ) : (
         <div className="flex flex-col gap-2">
-          {players.map((p) => (
-            <div key={p.id} className="flex items-center gap-4 bg-e-surface border border-e-border rounded-xl px-5 py-4 hover:border-e-border2 transition-colors">
+          {players.map((p) => {
+            const isActive = p.active !== false;
+            return (
+            <div
+              key={p.id}
+              className={`flex items-center gap-4 bg-e-surface border rounded-xl px-5 py-4 transition-colors ${
+                isActive ? 'border-e-border hover:border-e-border2' : 'border-e-border opacity-60'
+              }`}
+            >
               {/* Info */}
               <div className="flex-1 min-w-0">
-                <p className="font-semibold text-e-text truncate">{p.char.name}</p>
+                <div className="flex items-center gap-2">
+                  <p className={`font-semibold truncate ${isActive ? 'text-e-text' : 'text-e-faint'}`}>{p.char.name}</p>
+                  {!isActive && (
+                    <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-zinc-700/50 text-e-faint shrink-0">
+                      inativo
+                    </span>
+                  )}
+                </div>
                 <p className="text-xs text-e-sub mt-0.5">{p.char.race} · {p.char.skillClass} · Nv {p.char.level}</p>
               </div>
 
@@ -66,6 +90,21 @@ export default function Jogadores() {
               <div className="flex items-center gap-1 shrink-0">
                 <Button variant="gold"  size="sm" onClick={() => setExpPlayerId(p.id)}>EXP</Button>
                 <Button variant="ghost" size="sm" onClick={() => setEditPlayerId(p.id)}>Editar</Button>
+
+                <div className="w-px h-5 bg-e-border mx-1" />
+
+                <button
+                  title={isActive ? 'Desativar jogador' : 'Ativar jogador'}
+                  disabled={toggling === p.id}
+                  onClick={() => handleToggleActive(p)}
+                  className={`flex items-center gap-1 text-xs px-2.5 py-1.5 rounded-lg border transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed ${
+                    isActive
+                      ? 'border-lime-400/30 text-lime-400 hover:bg-lime-400/10'
+                      : 'border-e-border text-e-faint hover:text-e-text hover:bg-e-card'
+                  }`}
+                >
+                  {toggling === p.id ? '…' : isActive ? 'Ativo' : 'Inativo'}
+                </button>
 
                 <div className="w-px h-5 bg-e-border mx-1" />
 
@@ -90,7 +129,8 @@ export default function Jogadores() {
                 </Button>
               </div>
             </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
