@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react';
 import { Plus, Trash2, Shuffle, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { EnemyTemplate, EnemyInstance, EnemyAttack, EnemyDrop, ItemCatalog } from '@/store/types';
+import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import Button from '@/components/ui/Button';
 import EmojiPicker from '@/components/ui/EmojiPicker';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
@@ -42,27 +43,28 @@ const POOL: Record<Difficulty, { names: string[]; icons: string[] }> = {
   },
 };
 
-const STATS: Record<Difficulty, { hp: [number, number]; str: [number, number]; agi: [number, number]; int: [number, number]; def: [number, number]; xp: [number, number] }> = {
-  facil:   { hp: [40,  100], str: [5,  8],  agi: [5,  8],  int: [4,  7],  def: [3,  5],  xp: [8,   40]  },
-  medio:   { hp: [100, 220], str: [10, 14], agi: [10, 14], int: [8,  12], def: [6,  10], xp: [25,  130] },
-  dificil: { hp: [220, 400], str: [16, 22], agi: [15, 20], int: [12, 18], def: [12, 18], xp: [90,  350] },
-  extremo: { hp: [400, 800], str: [24, 32], agi: [22, 30], int: [20, 28], def: [20, 28], xp: [160, 500] },
+const STATS: Record<Difficulty, { hp: [number, number]; str: [number, number]; agi: [number, number]; int: [number, number]; def: [number, number]; xp: [number, number]; dmg: [number, number] }> = {
+  facil:   { hp: [40,  100], str: [5,  8],  agi: [5,  8],  int: [4,  7],  def: [3,  5],  xp: [8,   40],  dmg: [2,   8] },
+  medio:   { hp: [100, 220], str: [10, 14], agi: [10, 14], int: [8,  12], def: [6,  10], xp: [25,  130], dmg: [8,  20] },
+  dificil: { hp: [220, 400], str: [16, 22], agi: [15, 20], int: [12, 18], def: [12, 18], xp: [90,  350], dmg: [18, 38] },
+  extremo: { hp: [400, 800], str: [24, 32], agi: [22, 30], int: [20, 28], def: [20, 28], xp: [160, 500], dmg: [35, 60] },
 };
 
-interface GeneratedEnemy { name: string; icon: string; hpMax: number; str: number; agi: number; int: number; def: number; xp: number; }
+interface GeneratedEnemy { name: string; icon: string; hpMax: number; str: number; agi: number; int: number; def: number; xp: number; dmgBase: number; }
 
 function generate(diff: Difficulty): GeneratedEnemy {
   const pool = POOL[diff];
   const s    = STATS[diff];
   return {
-    name:  pick(pool.names),
-    icon:  pick(pool.icons),
-    hpMax: rng(...s.hp),
-    str:   rng(...s.str),
-    agi:   rng(...s.agi),
-    int:   rng(...s.int),
-    def:   rng(...s.def),
-    xp:    rng(...s.xp),
+    name:    pick(pool.names),
+    icon:    pick(pool.icons),
+    hpMax:   rng(...s.hp),
+    str:     rng(...s.str),
+    agi:     rng(...s.agi),
+    int:     rng(...s.int),
+    def:     rng(...s.def),
+    xp:      rng(...s.xp),
+    dmgBase: rng(...s.dmg),
   };
 }
 
@@ -223,24 +225,54 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
   const [hpMax, setHpMax] = useState(20);
   const [str, setStr]     = useState(10);
   const [agi, setAgi]     = useState(10);
-  const [int, setInt]     = useState(10);
+  const [int_, setInt]    = useState(10);
   const [def, setDef]     = useState(5);
-  const [attacks, setAttacks] = useState<EnemyAttack[]>([{ name: '', damage: '' }]);
-  const [drops, setDrops]     = useState<EnemyDrop[]>([]);
   const [xp, setXp]       = useState(50);
   const [loading, setLoading] = useState(false);
-  const [items, setItems] = useState<ItemCatalog[]>([]);
+
+  // Ataque básico
+  const [basicName,      setBasicName]      = useState('Ataque Básico');
+  const [basicDamageBase,setBasicDamageBase]= useState(0);
+  const [basicAttr,      setBasicAttr]      = useState('FOR');
+  const [basicEquil,     setBasicEquil]     = useState(4);
+
+  // Habilidades vinculadas (máx 2)
+  const [skillAtks,    setSkillAtks]    = useState<EnemyAttack[]>([]);
+  const [skillSearch,  setSkillSearch]  = useState<Record<number, string>>({});
+  const [skills,       setSkills]       = useState<Skill[]>([]);
+
+  // Drops
+  const [drops, setDrops]         = useState<EnemyDrop[]>([]);
+  const [items, setItems]         = useState<ItemCatalog[]>([]);
   const [itemSearch, setItemSearch] = useState<Record<number, string>>({});
 
   useEffect(() => {
     api.get<ItemCatalog[]>('/items').then((r) => setItems(r.data)).catch(() => {});
+    api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
   }, []);
 
-  function addAttack() { setAttacks((a) => [...a, { name: '', damage: '' }]); }
-  function updateAttack(i: number, field: keyof EnemyAttack, value: string) {
-    setAttacks((a) => a.map((x, j) => j === i ? { ...x, [field]: value } : x));
+  function buildBasicFormula(base: number, attr: string, equil: number) {
+    const parts = [base > 0 ? String(base) : null, `d20×${attr}/${equil}`].filter(Boolean);
+    return parts.join(' + ');
   }
-  function removeAttack(i: number) { setAttacks((a) => a.filter((_, j) => j !== i)); }
+
+  function addSkillAtk() {
+    if (skillAtks.length < 2) setSkillAtks((a) => [...a, { name: '', damage: '' }]);
+  }
+  function removeSkillAtk(i: number) {
+    setSkillAtks((a) => a.filter((_, j) => j !== i));
+    setSkillSearch((s) => { const n = { ...s }; delete n[i]; return n; });
+  }
+  function linkSkill(i: number, skill: Skill) {
+    setSkillAtks((a) => a.map((x, j) => j === i
+      ? { ...x, skillId: skill.id, skillName: skill.name, damage: skill.damage?.formula ?? x.damage, name: skill.name }
+      : x
+    ));
+    setSkillSearch((s) => ({ ...s, [i]: '' }));
+  }
+  function unlinkSkill(i: number) {
+    setSkillAtks((a) => a.map((x, j) => j === i ? { name: '', damage: '', skillId: undefined, skillName: undefined } : x));
+  }
 
   function addDrop() {
     if (drops.length >= 2) return;
@@ -261,6 +293,13 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
   async function addToCombat() {
     if (!name.trim()) return;
     setLoading(true);
+    const basicAttack: EnemyAttack = {
+      name: basicName.trim() || 'Ataque Básico',
+      damage: buildBasicFormula(basicDamageBase, basicAttr, basicEquil),
+      damageBase: basicDamageBase,
+      damageAttribute: basicAttr,
+      equilibrio: basicEquil,
+    };
     const instance: EnemyInstance = {
       instanceId: '',
       templateId: undefined,
@@ -269,8 +308,8 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
       icon,
       hpCurrent: hpMax,
       hpMax,
-      attributes: { strength: str, agility: agi, intelligence: int, defense: def },
-      attacks: attacks.filter((a) => a.name.trim()),
+      attributes: { strength: str, agility: agi, intelligence: int_, defense: def },
+      attacks: [basicAttack, ...skillAtks.filter((a) => a.skillId)],
       drops: drops.filter((d) => d.itemId),
       xp,
       desc: '',
@@ -284,8 +323,9 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
     }
   }
 
-  const inputCls = 'w-full text-sm rounded px-2 py-1.5 outline-none';
-  const inputStyle = { background: '#2a1818', color: '#e8d8d8', borderColor: '#4a2a2a' };
+  const inp  = { background: '#2a1818', color: '#e8d8d8', borderColor: '#4a2a2a' };
+  const iCls = 'w-full text-sm rounded px-2 py-1.5 outline-none';
+  const lbl  = (s: string) => <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: '#7a5050' }}>{s}</p>;
 
   return (
     <div className="flex flex-col gap-3">
@@ -293,49 +333,108 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
       <div className="flex gap-2 items-center">
         <EmojiPicker value={icon} onChange={setIcon} size="sm" />
         <input value={name} onChange={(e) => setName(e.target.value)}
-          className={`flex-1 ${inputCls}`} style={inputStyle} placeholder="Nome" />
+          className={`flex-1 ${iCls}`} style={inp} placeholder="Nome" />
       </div>
-
       <input value={type} onChange={(e) => setType(e.target.value)}
-        className={inputCls} style={inputStyle} placeholder="Tipo (ex: Besta, Humanoide…)" />
+        className={iCls} style={inp} placeholder="Tipo (ex: Besta, Humanoide…)" />
 
-      {/* HP + attributes */}
+      {/* Stats */}
       <div className="grid grid-cols-5 gap-2">
-        {[
-          { label: 'HP máx', value: hpMax, set: setHpMax },
-          { label: 'FOR',    value: str,   set: setStr   },
-          { label: 'AGI',    value: agi,   set: setAgi   },
-          { label: 'INT',    value: int,   set: setInt   },
-          { label: 'DEF',    value: def,   set: setDef   },
-        ].map(({ label, value, set }) => (
+        {([['HP máx', hpMax, setHpMax], ['FOR', str, setStr], ['AGI', agi, setAgi], ['INT', int_, setInt], ['DEF', def, setDef]] as [string, number, (n: number) => void][]).map(([label, value, set]) => (
           <div key={label}>
-            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: '#7a5050' }}>{label}</p>
+            {lbl(label)}
             <input type="number" value={value} onChange={(e) => set(Number(e.target.value))}
-              className="w-full text-sm rounded px-2 py-1.5 outline-none text-center" style={inputStyle} />
+              className="w-full text-sm rounded px-2 py-1.5 outline-none text-center" style={inp} />
           </div>
         ))}
       </div>
 
-      {/* Attacks */}
+      {/* Ataque básico */}
+      <div className="flex flex-col gap-1.5 rounded-lg p-2.5" style={{ background: '#1e1616', border: '1px solid #4a2a2a' }}>
+        {lbl('Ataque básico')}
+        <input value={basicName} onChange={(e) => setBasicName(e.target.value)}
+          className={iCls} style={inp} placeholder="Nome (ex: Mordida, Espada)" />
+        <div className="grid grid-cols-3 gap-2">
+          <div>
+            {lbl('Dano base')}
+            <input type="number" value={basicDamageBase} min={0}
+              onChange={(e) => setBasicDamageBase(Number(e.target.value))}
+              className="w-full text-sm rounded px-2 py-1.5 outline-none text-center" style={inp} />
+          </div>
+          <div>
+            {lbl('Atributo')}
+            <select value={basicAttr} onChange={(e) => setBasicAttr(e.target.value)}
+              className="w-full text-sm rounded px-2 py-1.5 outline-none" style={inp}>
+              <option value="FOR">FOR</option>
+              <option value="AGI">AGI</option>
+              <option value="INT">INT</option>
+            </select>
+          </div>
+          <div>
+            {lbl('Equilíbrio')}
+            <input type="number" value={basicEquil} min={1}
+              onChange={(e) => setBasicEquil(Number(e.target.value))}
+              className="w-full text-sm rounded px-2 py-1.5 outline-none text-center" style={inp} />
+          </div>
+        </div>
+        <p className="text-[10px] font-mono opacity-50 mt-0.5">
+          Fórmula: {buildBasicFormula(basicDamageBase, basicAttr, basicEquil)}
+        </p>
+      </div>
+
+      {/* Habilidades vinculadas */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: '#7a5050' }}>Ataques</p>
-          <button onClick={addAttack} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
-            <Plus size={12} /> Adicionar
-          </button>
+          <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: '#7a5050' }}>
+            Habilidades <span className="normal-case font-normal opacity-60">(máx 2)</span>
+          </p>
+          {skillAtks.length < 2 && (
+            <button onClick={addSkillAtk} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
+              <Plus size={12} /> Adicionar
+            </button>
+          )}
         </div>
-        {attacks.map((atk, i) => (
-          <div key={i} className="flex gap-2">
-            <input value={atk.name} onChange={(e) => updateAttack(i, 'name', e.target.value)}
-              className={`flex-1 ${inputCls}`} style={inputStyle} placeholder="Nome do ataque" />
-            <input value={atk.damage} onChange={(e) => updateAttack(i, 'damage', e.target.value)}
-              className="w-20 text-sm rounded px-2 py-1.5 outline-none font-mono" style={inputStyle} placeholder="1d6+2" />
-            <button onClick={() => removeAttack(i)} className="opacity-40 hover:opacity-80"><Trash2 size={13} /></button>
-          </div>
-        ))}
+        {skillAtks.map((atk, i) => {
+          const search = skillSearch[i] ?? '';
+          const filtered = search.length > 0
+            ? skills.filter((s) => s.name.toLowerCase().includes(search.toLowerCase())).slice(0, 5)
+            : [];
+          return (
+            <div key={i} className="flex items-center gap-2">
+              {atk.skillId ? (
+                <div className="flex-1 flex items-center gap-2 rounded px-2 py-1.5 text-xs" style={{ background: '#2a1818', border: '1px solid #4a2a2a' }}>
+                  <span style={{ color: '#c04040' }}>⚡</span>
+                  <span className="flex-1 truncate">{atk.skillName}</span>
+                  <span className="font-mono opacity-50">{atk.damage}</span>
+                  <button onClick={() => unlinkSkill(i)} className="opacity-50 hover:opacity-100 shrink-0 text-[10px]">Trocar</button>
+                </div>
+              ) : (
+                <div className="relative flex-1">
+                  <input value={search} onChange={(e) => setSkillSearch((s) => ({ ...s, [i]: e.target.value }))}
+                    className={iCls} style={inp} placeholder="Buscar habilidade…" />
+                  {filtered.length > 0 && (
+                    <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg overflow-hidden shadow-lg"
+                      style={{ background: '#1e1616', border: '1px solid #4a2a2a' }}>
+                      {filtered.map((sk) => (
+                        <button key={sk.id} onClick={() => linkSkill(i, sk)}
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 flex items-center gap-2"
+                          style={{ color: '#e8d8d8' }}>
+                          <span style={{ color: '#c04040' }}>⚡</span>
+                          <span>{sk.name}</span>
+                          {sk.damage && <span className="font-mono ml-auto opacity-50">{sk.damage.formula}</span>}
+                        </button>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+              <button onClick={() => removeSkillAtk(i)} className="opacity-40 hover:opacity-80 shrink-0"><Trash2 size={13} /></button>
+            </div>
+          );
+        })}
       </div>
 
-      {/* Drops — catálogo */}
+      {/* Drops */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: '#7a5050' }}>Drops <span className="normal-case font-normal opacity-60">(máx 2)</span></p>
@@ -363,13 +462,13 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
               ) : (
                 <div className="relative flex-1">
                   <input value={search} onChange={(e) => setItemSearch((s) => ({ ...s, [i]: e.target.value }))}
-                    className={`flex-1 ${inputCls}`} style={inputStyle} placeholder="Buscar item do catálogo…" />
+                    className={iCls} style={inp} placeholder="Buscar item do catálogo…" />
                   {filtered.length > 0 && (
                     <div className="absolute left-0 right-0 top-full mt-1 z-10 rounded-lg overflow-hidden shadow-lg"
                       style={{ background: '#1e1616', border: '1px solid #4a2a2a' }}>
                       {filtered.map((it) => (
                         <button key={it.id} onClick={() => linkItem(i, it)}
-                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 transition-colors flex items-center gap-2"
+                          className="w-full text-left px-3 py-1.5 text-xs hover:bg-white/5 flex items-center gap-2"
                           style={{ color: '#e8d8d8' }}>
                           <span className="opacity-60 shrink-0"><ItemIcon name={it.icon ?? 'Package'} size={12} /></span>
                           <span>{it.name}</span>
@@ -388,9 +487,9 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
 
       {/* XP */}
       <div>
-        <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: '#7a5050' }}>XP</p>
+        {lbl('XP')}
         <input type="number" value={xp} onChange={(e) => setXp(Number(e.target.value))}
-          className="w-24 text-sm rounded px-2 py-1.5 outline-none text-center" style={inputStyle} />
+          className="w-24 text-sm rounded px-2 py-1.5 outline-none text-center" style={inp} />
       </div>
 
       <Button variant="danger" size="sm" onClick={addToCombat} disabled={!name.trim() || loading}>
@@ -401,6 +500,19 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
 }
 
 /* ── Random Tab ─────────────────────────────────────────────── */
+function buildBasicAtk(str: number, agi: number, int_: number, dmgBase: number): EnemyAttack {
+  const best = str >= agi && str >= int_ ? 'FOR' : agi >= int_ ? 'AGI' : 'INT';
+  const equil = 4;
+  const damage = dmgBase > 0 ? `${dmgBase} + d20×${best}/${equil}` : `d20×${best}/${equil}`;
+  return {
+    name: 'Ataque Básico',
+    damage,
+    damageBase: dmgBase,
+    damageAttribute: best,
+    equilibrio: equil,
+  };
+}
+
 function RandomTab({ onClose }: { onClose: () => void }) {
   const [diff, setDiff] = useState<Difficulty>('medio');
   const [enemy, setEnemy] = useState<GeneratedEnemy>(() => generate('medio'));
@@ -422,6 +534,7 @@ function RandomTab({ onClose }: { onClose: () => void }) {
 
   async function addToCombat() {
     setLoading(true);
+    const basicAtk = buildBasicAtk(enemy.str, enemy.agi, enemy.int, enemy.dmgBase);
     const instance: EnemyInstance = {
       instanceId: '',
       templateId: undefined,
@@ -431,7 +544,7 @@ function RandomTab({ onClose }: { onClose: () => void }) {
       hpCurrent: enemy.hpMax,
       hpMax: enemy.hpMax,
       attributes: { strength: enemy.str, agility: enemy.agi, intelligence: enemy.int, defense: enemy.def },
-      attacks: [],
+      attacks: [basicAtk],
       drops: [],
       xp: enemy.xp,
       desc: '',
@@ -447,6 +560,9 @@ function RandomTab({ onClose }: { onClose: () => void }) {
 
   const diffLabels: Record<Difficulty, string> = { facil: 'Fácil', medio: 'Médio', dificil: 'Difícil', extremo: 'Extremo' };
   const diffColors: Record<Difficulty, string> = { facil: '#3aaa60', medio: '#d4a84e', dificil: '#c04040', extremo: '#a855f7' };
+
+  const basicAtk = buildBasicAtk(enemy.str, enemy.agi, enemy.int, enemy.dmgBase);
+  const mod = (v: number) => { const m = Math.floor((v - 10) / 2); return m >= 0 ? `+${m}` : String(m); };
 
   return (
     <div className="flex flex-col gap-4">
@@ -465,6 +581,7 @@ function RandomTab({ onClose }: { onClose: () => void }) {
       </div>
 
       <div className="rounded-lg p-4 flex flex-col gap-3 border" style={{ background: '#2a1818', borderColor: '#4a2a2a' }}>
+        {/* Header */}
         <div className="flex items-center gap-3">
           <span className="text-3xl w-12 h-12 flex items-center justify-center rounded-lg shrink-0" style={{ background: '#1e1616' }}>
             {enemy.icon}
@@ -473,10 +590,13 @@ function RandomTab({ onClose }: { onClose: () => void }) {
             <input value={customName} onChange={(e) => setCustomName(e.target.value)}
               className="font-bold text-base bg-transparent outline-none border-b w-full"
               style={{ borderColor: '#4a2a2a', color: '#e8d8d8' }} />
-            <p className="text-xs mt-0.5" style={{ color: diffColors[diff] }}>{diffLabels[diff]}</p>
+            <p className="text-xs mt-0.5" style={{ color: diffColors[diff] }}>
+              {diffLabels[diff]} · ⭐ {enemy.xp} XP
+            </p>
           </div>
         </div>
 
+        {/* HP */}
         <div className="flex flex-col gap-1">
           <div className="flex items-center justify-between text-xs mb-0.5">
             <span className="font-semibold uppercase tracking-wider" style={{ color: '#7a5050' }}>HP</span>
@@ -487,13 +607,23 @@ function RandomTab({ onClose }: { onClose: () => void }) {
           </div>
         </div>
 
+        {/* Attributes with modifiers */}
         <div className="grid grid-cols-4 gap-2 text-center">
-          {[['FOR', enemy.str], ['AGI', enemy.agi], ['INT', enemy.int], ['DEF', enemy.def]].map(([l, v]) => (
-            <div key={l} className="rounded-lg py-2" style={{ background: '#1e1616' }}>
+          {([['FOR', enemy.str], ['AGI', enemy.agi], ['INT', enemy.int], ['DEF', enemy.def]] as [string, number][]).map(([l, v]) => (
+            <div key={l} className="rounded-lg py-1.5" style={{ background: '#1e1616' }}>
               <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7a5050' }}>{l}</p>
-              <p className="text-lg font-black leading-tight">{v}</p>
+              <p className="text-base font-black leading-tight">{v}</p>
+              <p className="text-[9px] font-bold" style={{ color: Math.floor((v - 10) / 2) >= 0 ? '#3dba72' : '#e05050' }}>
+                {mod(v)}
+              </p>
             </div>
           ))}
+        </div>
+
+        {/* Basic attack preview */}
+        <div className="flex items-center justify-between text-xs rounded px-2 py-1.5" style={{ background: '#1e1616' }}>
+          <span style={{ color: '#9a6060' }}>⚔ Ataque Básico</span>
+          <span className="font-mono" style={{ color: '#7a5050' }}>{basicAtk.damage}</span>
         </div>
       </div>
 
