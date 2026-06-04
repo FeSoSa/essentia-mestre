@@ -97,6 +97,7 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
   const [slotsFree,     setSlotsFree]     = useState(String(player?.char.slotsFree    ?? DEFAULT_SLOTS_FREE));
   const [etherUnlocked,       setEtherUnlocked]       = useState(player?.ether?.unlocked ?? false);
   const [sobrecargaUnlocked,  setSobrecargaUnlocked]  = useState(player?.sobrecargaDesbloqueada ?? false);
+  const [inventorySize,       setInventorySize]       = useState(String(player?.inventorySize ?? 18));
   const [expAvailable,  setExpAvailable]  = useState(String(player?.exp?.available    ?? 0));
   const [expTotal,      setExpTotal]      = useState(String(player?.exp?.total        ?? 0));
   const [kitLoading,  setKitLoading]  = useState(false);
@@ -127,11 +128,14 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
     }
   }, [cls, allKits, player]);
 
-  // Quando a raça muda, preenche atributos iniciais (só no cadastro, não na edição)
+  // Quando a raça muda, preenche atributos iniciais e inventorySize (só no cadastro, não na edição)
   useEffect(() => {
     if (player || !race || allRaces.length === 0) return;
     const found = allRaces.find(r => r.name === race);
-    if (found) setAttrs(found.starterAttributes);
+    if (found) {
+      setAttrs(found.starterAttributes);
+      if (found.inventorySize) setInventorySize(String(found.inventorySize));
+    }
   }, [race, allRaces, player]);
 
 
@@ -149,6 +153,7 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
         sobrecargaDesbloqueada: sobrecargaUnlocked,
         expAvailable: Number(expAvailable),
         expTotal:     Number(expTotal),
+        inventorySize: isNaN(Number(inventorySize)) ? 18 : Number(inventorySize) || 18,
       };
       const res = player
         ? await api.put<Player>(`/master/players/${player.id}`, base)
@@ -299,6 +304,12 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
               <label className={lbl}>EXP total</label>
               <input type="number" min={0} value={expTotal}
                 onChange={e => setExpTotal(e.target.value)}
+                className="!text-center !text-sm !font-bold" />
+            </div>
+            <div>
+              <label className={lbl}>Slots de inventário</label>
+              <input type="number" min={1} max={64} value={inventorySize}
+                onChange={e => setInventorySize(e.target.value)}
                 className="!text-center !text-sm !font-bold" />
             </div>
             <div className="flex flex-col gap-2">

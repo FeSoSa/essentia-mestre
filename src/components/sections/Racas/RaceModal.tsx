@@ -34,12 +34,13 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
       flow: 0, wisdom: 0, presence: 0, defense: 0,
     }
   );
+  const [inventorySize, setInventorySize] = useState(String(race?.inventorySize ?? 18));
   const [loading, setLoading] = useState(false);
 
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
-    const body = { name: name.trim(), starterAttributes: attrs };
+    const body = { name: name.trim(), starterAttributes: attrs, inventorySize: Number(inventorySize) || 18 };
     try {
       const res = editing
         ? await api.put<Race>(`/master/races/${race!.id}`, body)
@@ -65,6 +66,16 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
             <label className={lbl}>Nome da raça</label>
             <input value={name} onChange={(e) => setName(e.target.value)}
               className={inp} placeholder="ex: Humano, Elfo, Anão…" />
+          </div>
+
+          <div>
+            <label className={lbl}>Slots de inventário</label>
+            <input
+              type="number" min={1} max={64}
+              value={inventorySize}
+              onChange={(e) => setInventorySize(e.target.value)}
+              className={`${inp} text-center`}
+            />
           </div>
 
           <div>

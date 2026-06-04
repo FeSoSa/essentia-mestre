@@ -750,7 +750,7 @@ function InventarioPanel({
   const eq = player.equipment ?? {};
   const allItems = player.items ?? [];
   const gridItems = allItems.filter((i) => i.type !== "currency");
-  const isFull = gridItems.length >= 16;
+  const isFull = gridItems.length >= (player.inventorySize ?? 18);
 
   const selectedWeapon = weaponEntries.find((e) => e.item.id === weaponId);
   const selectedArmor  = armorEntries.find((e) => e.item.id === armorId);
@@ -1009,7 +1009,7 @@ function InventarioPanel({
                   </>
                 )}
                 {isFull && (
-                  <p className="text-[10px] text-e-danger">Inventário cheio (16/16)</p>
+                  <p className="text-[10px] text-e-danger">Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})</p>
                 )}
                 <Button
                   type="button"
@@ -1059,7 +1059,7 @@ function InventarioPanel({
                   })()}
                 {isFull && (
                   <p className="text-[10px] text-e-danger">
-                    Inventário cheio (16/16)
+                    Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})
                   </p>
                 )}
                 <Button
@@ -1129,7 +1129,7 @@ function InventarioPanel({
                   })()}
                 {isFull && (
                   <p className="text-[10px] text-e-danger">
-                    Inventário cheio (16/16)
+                    Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})
                   </p>
                 )}
                 <Button
@@ -1158,9 +1158,9 @@ function InventarioPanel({
         <StatusBar player={player} />
 
         <section>
-          <p className={lbl}>Inventário ({gridItems.length}/16)</p>
-          <div className="grid grid-cols-4 gap-2">
-            {Array.from({ length: 16 }, (_, i) => {
+          <p className={lbl}>Inventário ({gridItems.length}/{player.inventorySize ?? 18})</p>
+          <div className="grid grid-cols-6 gap-1">
+            {Array.from({ length: player.inventorySize ?? 18 }, (_, i) => {
               const item = gridItems[i] ?? null;
               const isActive = activeSlot === i;
               const isEquip =
@@ -1180,7 +1180,7 @@ function InventarioPanel({
                         setSlotView("menu");
                       }
                     }}
-                    className={`w-full h-full rounded-xl border flex flex-col items-center justify-center gap-1 p-2 transition-colors ${
+                    className={`w-full h-full rounded-lg border flex flex-col items-center justify-center gap-0.5 p-1 transition-colors ${
                       item
                         ? isActive
                           ? "bg-e-card border-e-accent cursor-pointer"
@@ -1194,14 +1194,14 @@ function InventarioPanel({
                       <>
                         <ItemIcon
                           name={item.icon ?? iconForType(item.type)}
-                          size={20}
+                          size={14}
                           className="text-e-sub"
                         />
-                        <span className="text-[9px] text-e-sub text-center leading-tight line-clamp-2 w-full px-1">
+                        <span className="text-[7px] text-e-sub text-center leading-tight line-clamp-2 w-full">
                           {item.name}
                         </span>
                         {item.qty > 1 && (
-                          <span className="absolute top-1 right-1.5 text-[9px] font-black text-e-accent leading-none">
+                          <span className="absolute top-0.5 right-1 text-[7px] font-black text-e-accent leading-none">
                             {item.qty}
                           </span>
                         )}

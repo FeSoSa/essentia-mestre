@@ -4,6 +4,7 @@ export interface Race {
   id: string;
   name: string;
   starterAttributes: PlayerAttributes;
+  inventorySize?: number;
 }
 
 /* ── Backend models ─────────────────────────────────────────── */
@@ -144,6 +145,7 @@ export interface Player {
   sobrecargaNivel?: number;
   desviosRestantes?: number;
   customBars?: CustomBar[];
+  inventorySize?: number;
   active?: boolean;
 }
 
@@ -240,6 +242,7 @@ export interface ItemCatalog {
   requirements?: ItemRequirements;
   onUseEffect?: OnUseEffect;
   goldValue?: number;
+  subtype?: 'consumivel' | 'drop' | 'chave' | 'misc';
 }
 
 export interface ShopItem { itemId: string; stockLimit?: number; }

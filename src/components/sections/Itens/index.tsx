@@ -61,6 +61,13 @@ const EQUIP_SLOT_OPTS = [
   { value: "utility", label: "Utilitário" },
 ];
 
+const SUBTYPE_OPTS = [
+  { value: "consumivel", label: "Consumível" },
+  { value: "drop", label: "Drop" },
+  { value: "chave", label: "Chave" },
+  { value: "misc", label: "Misc" },
+];
+
 const RARITY_OPTS = RARITY_ORDER.map((r) => ({
   value: r,
   label: RARITY_LABELS[r],
@@ -144,6 +151,7 @@ export default function Itens() {
   const [filterWeaponType, setFilterWeaponType] = useState("");
   const [filterArmorWeight, setFilterArmorWeight] = useState("");
   const [filterEquipSlot, setFilterEquipSlot] = useState("");
+  const [filterSubtype, setFilterSubtype] = useState("");
   const [sortRarity, setSortRarity] = useState<"asc" | "desc" | "">("");
 
   useEffect(() => {
@@ -159,6 +167,7 @@ export default function Itens() {
     setFilterWeaponType("");
     setFilterArmorWeight("");
     setFilterEquipSlot("");
+    setFilterSubtype("");
   }
 
   function clearFilters() {
@@ -167,6 +176,7 @@ export default function Itens() {
     setFilterWeaponType("");
     setFilterArmorWeight("");
     setFilterEquipSlot("");
+    setFilterSubtype("");
     setSortRarity("");
   }
 
@@ -191,7 +201,8 @@ export default function Itens() {
     .filter((i) => !filterRarity || i.rarity === filterRarity)
     .filter((i) => !filterWeaponType || i.weaponType === filterWeaponType)
     .filter((i) => !filterArmorWeight || i.armorWeight === filterArmorWeight)
-    .filter((i) => !filterEquipSlot || i.equipSlot === filterEquipSlot);
+    .filter((i) => !filterEquipSlot || i.equipSlot === filterEquipSlot)
+    .filter((i) => !filterSubtype || i.subtype === filterSubtype);
   const visible = sortRarity
     ? [...filtered].sort((a, b) => {
         const ai = RARITY_ORDER.indexOf((a.rarity ?? "branco") as never);
@@ -206,6 +217,7 @@ export default function Itens() {
     filterWeaponType ||
     filterArmorWeight ||
     filterEquipSlot ||
+    filterSubtype ||
     sortRarity
   );
   const isFiltered = hasFilters && visible.length !== tabItems.length;
@@ -285,6 +297,15 @@ export default function Itens() {
               onChange={setFilterEquipSlot}
               placeholder="Slot"
               options={EQUIP_SLOT_OPTS}
+            />
+          )}
+
+          {tab === "itens" && (
+            <FilterDropdown
+              value={filterSubtype}
+              onChange={setFilterSubtype}
+              placeholder="Subtipo"
+              options={SUBTYPE_OPTS}
             />
           )}
 

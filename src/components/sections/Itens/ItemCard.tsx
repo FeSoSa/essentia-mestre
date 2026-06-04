@@ -70,6 +70,13 @@ const TYPE_BADGE: Record<string, { label: string; color: string }> = {
   chave: { label: "Chave", color: "#d4a84e" },
 };
 
+const SUBTYPE_BADGE: Record<string, { label: string; color: string }> = {
+  consumivel: { label: "Consumível", color: "#3dba72" },
+  drop: { label: "Drop", color: "#a855f7" },
+  chave: { label: "Chave", color: "#d4a84e" },
+  misc: { label: "Misc", color: "#71717a" },
+};
+
 function dmgStr(item: ItemCatalog) {
   if (item.type !== "weapon") return null;
   const parts = [];
@@ -111,6 +118,14 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
                 style={{ background: (RARITY_COLORS[item.rarity as Rarity] ?? '#71717a') + '22', color: RARITY_COLORS[item.rarity as Rarity] ?? '#71717a' }}
               >
                 {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
+              </span>
+            )}
+            {item.subtype && SUBTYPE_BADGE[item.subtype] && (
+              <span
+                className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
+                style={{ background: SUBTYPE_BADGE[item.subtype].color + '22', color: SUBTYPE_BADGE[item.subtype].color }}
+              >
+                {SUBTYPE_BADGE[item.subtype].label}
               </span>
             )}
           </div>

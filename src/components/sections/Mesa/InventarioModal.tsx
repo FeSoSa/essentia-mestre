@@ -264,7 +264,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
   const pending   = player.pendingRequests ?? [];
   const currency  = allItems.filter((i) => i.type === 'currency');
   const gridItems = allItems.filter((i) => i.type !== 'currency');
-  const isFull    = gridItems.length >= 16;
+  const isFull    = gridItems.length >= (player.inventorySize ?? 18);
 
   const weaponEntries = EQUIPMENT_CATALOG.filter(
     (e) => e.slot === 'mainHand' || e.slot === 'offHand',
@@ -413,7 +413,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
           <div>
             <h3 className="font-semibold text-e-text">{player.char.name} — Inventário</h3>
             <p className="text-xs text-e-sub mt-0.5">
-              {gridItems.length}/16 slots
+              {gridItems.length}/{player.inventorySize ?? 18} slots
               {pending.length > 0 ? ` · ${pending.length} solicitação${pending.length !== 1 ? 'ões' : ''}` : ''}
             </p>
           </div>
@@ -543,7 +543,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                   </div>
                   {isFull && createForm.type !== 'currency' && (
                     <p className="text-xs text-e-danger bg-e-danger/10 border border-e-danger/20 rounded-lg px-3 py-2">
-                      Inventário cheio (16/16)
+                      Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})
                     </p>
                   )}
                   <Button
@@ -588,7 +588,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                   })()}
                   {isFull && (
                     <p className="text-xs text-e-danger bg-e-danger/10 border border-e-danger/20 rounded-lg px-3 py-2">
-                      Inventário cheio (16/16)
+                      Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})
                     </p>
                   )}
                   <Button
@@ -632,7 +632,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                   })()}
                   {isFull && (
                     <p className="text-xs text-e-danger bg-e-danger/10 border border-e-danger/20 rounded-lg px-3 py-2">
-                      Inventário cheio (16/16)
+                      Inventário cheio ({player.inventorySize ?? 18}/{player.inventorySize ?? 18})
                     </p>
                   )}
                   <Button
@@ -714,9 +714,9 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
 
             {/* Inventory grid */}
             <section className="flex-1">
-              <p className={lbl}>Inventário ({gridItems.length}/16)</p>
+              <p className={lbl}>Inventário ({gridItems.length}/{player.inventorySize ?? 18})</p>
               <div className="grid grid-cols-4 gap-2">
-                {Array.from({ length: 16 }, (_, i) => {
+                {Array.from({ length: player.inventorySize ?? 18 }, (_, i) => {
                   const item = gridItems[i] ?? null;
                   const isActive = activeSlot === i;
                   const isEquipable = item && (item.type === 'weapon' || item.type === 'armor' || item.type === 'accessory');

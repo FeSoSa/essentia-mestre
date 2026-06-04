@@ -499,6 +499,12 @@ const TYPE_OPTS = [
   { value: "normal", label: "🎒  Normal" },
   { value: "chave", label: "🔑  Chave" },
 ];
+const SUBTYPE_OPTS = [
+  { value: "consumivel", label: "Consumível" },
+  { value: "drop", label: "Drop" },
+  { value: "chave", label: "Chave" },
+  { value: "misc", label: "Misc" },
+];
 const WEAPON_OPTS = [
   { value: "espadas", label: "Espadas" },
   { value: "rapieiras", label: "Rapieiras" },
@@ -573,6 +579,7 @@ export default function ItemModal({
   const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? "");
   const [armorWeight, setArmorWeight] = useState(item?.armorWeight ?? "");
   const [rarity, setRarity] = useState(item?.rarity ?? "");
+  const [subtype, setSubtype] = useState(item?.subtype ?? "");
   const [twoHanded, setTwoHanded] = useState(item?.twoHanded ?? false);
   const [goldValue, setGoldValue] = useState<number | "">(item?.goldValue ?? "");
 
@@ -664,6 +671,7 @@ export default function ItemModal({
     if (t === "armor" && !bonuses.find(([k]) => k === "defense")) {
       setBonuses((b) => [["defense", 0], ...b]);
     }
+    if (t !== "normal" && t !== "chave") setSubtype("");
   }
 
   function addBonus() {
@@ -755,6 +763,7 @@ export default function ItemModal({
       requirements,
       onUseEffect,
       goldValue: goldValue !== "" ? Number(goldValue) : undefined,
+      subtype: isConsumableType && subtype ? subtype as ItemCatalog["subtype"] : undefined,
     };
     if (isWeapon) {
       body.weaponType = weaponType;
@@ -1114,6 +1123,40 @@ export default function ItemModal({
                   </button>
                 </div>
               ))}
+            </div>
+          )}
+
+          {/* ── Subtipo (normal / chave) ── */}
+          {isConsumableType && (
+            <div>
+              <label className={lbl}>Subtipo</label>
+              <div className="flex gap-2 flex-wrap">
+                <button
+                  type="button"
+                  onClick={() => setSubtype("")}
+                  className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                    subtype === ""
+                      ? "border-e-border2 bg-e-card text-e-sub"
+                      : "border-e-border text-e-faint hover:border-e-border2"
+                  }`}
+                >
+                  Nenhum
+                </button>
+                {SUBTYPE_OPTS.map((opt) => (
+                  <button
+                    key={opt.value}
+                    type="button"
+                    onClick={() => setSubtype(opt.value)}
+                    className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                      subtype === opt.value
+                        ? "border-e-border2 bg-e-card text-e-accent"
+                        : "border-e-border text-e-faint hover:border-e-border2"
+                    }`}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
