@@ -4,13 +4,13 @@ import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, CombatAlly } from '@/store/types';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly } from '@/store/types';
 
 export function useSocket() {
   const {
     setPlayers, setPlayer, appendLog,
     setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses, setAllies,
-    addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest,
+    addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest, addEffectRequest,
   } = useStore();
 
   useEffect(() => {
@@ -90,6 +90,12 @@ export function useSocket() {
       client.subscribe('/topic/damage-request', (msg) => {
         const req: DamageApprovalRequest = JSON.parse(msg.body);
         addDamageRequest(req);
+      });
+
+      // Pedidos de aplicação de efeitos
+      client.subscribe('/topic/effect-request', (msg) => {
+        const req: EffectApprovalRequest = JSON.parse(msg.body);
+        addEffectRequest(req);
       });
 
       // Recupera estado de combate atual (perdido no refresh)

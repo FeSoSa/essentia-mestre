@@ -165,6 +165,15 @@ export interface DamageApprovalRequest {
   onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
 }
 
+export interface EffectApprovalRequest {
+  requestId: string;
+  playerId: string;
+  playerName: string;
+  targets: Array<{ targetId: string; targetType: 'enemy' | 'boss'; targetName: string }>;
+  onHitEffects: import('@/store/effectPresetsStore').EffectPreset[];
+  skillId?: string;
+}
+
 export interface SobrecargaRequest {
   playerId: string;
   playerName: string;
