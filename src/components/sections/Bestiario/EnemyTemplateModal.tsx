@@ -10,6 +10,7 @@ import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import EmojiPicker from '@/components/ui/EmojiPicker';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 
 interface Props {
   template?: EnemyTemplate;
@@ -61,13 +62,13 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
   const [xp,      setXp]      = useState(template?.xp     ?? 50);
   const [desc,    setDesc]    = useState(template?.desc    ?? '');
   const [notes,   setNotes]   = useState(template?.notes   ?? '');
-  // attacks[0] = ataque básico, attacks[1..2] = habilidades vinculadas
+  // attacks[0] = ataque básico, attacks[1..5] = habilidades vinculadas
   const rawAttacks = template?.attacks ?? [];
   const rawBasic = rawAttacks[0] ?? {};
   const [basicDmgBase,   setBasicDmgBase]   = useState<number>(rawBasic.damageBase ?? 0);
   const [basicAttr,      setBasicAttr]      = useState<string>(rawBasic.damageAttribute ?? 'FOR');
   const [basicEquilibrio,setBasicEquilibrio] = useState<number>(rawBasic.equilibrio ?? 4);
-  const [skillAttacks, setSkillAttacks] = useState<EnemyAttack[]>(rawAttacks.slice(1, 3));
+  const [skillAttacks, setSkillAttacks] = useState<EnemyAttack[]>(rawAttacks.slice(1, 6));
   const [drops,      setDrops]      = useState<EnemyDrop[]>(template?.drops        ?? []);
   const [goldDrop,   setGoldDrop]   = useState<GoldDrop | null>(
     template?.drops.find((d) => d.goldDrop)?.goldDrop ?? null
@@ -84,9 +85,9 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
     api.get<ItemCatalog[]>('/items').then((r) => setItems(r.data)).catch(() => {});
   }, []);
 
-  // Skill attacks (índices 0..1 do array skillAttacks = attacks[1..2])
+  // Skill attacks (índices 0..4 do array skillAttacks = attacks[1..5])
   function addSkillAttack() {
-    if (skillAttacks.length < 2) setSkillAttacks((a) => [...a, { name: '', damage: '' }]);
+    if (skillAttacks.length < 5) setSkillAttacks((a) => [...a, { name: '', damage: '' }]);
   }
   function removeSkillAttack(i: number) {
     setSkillAttacks((a) => a.filter((_, j) => j !== i));
@@ -166,7 +167,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
     ];
 
     const body = {
-      name: name.trim(), icon, imageUrl: imageUrl.trim() || undefined,
+      name: name.trim(), icon, imageUrl: imageUrl.trim() ? normalizeGdriveUrl(imageUrl.trim()) : undefined,
       type: type.trim(), hpMax,
       attributes: { strength: str, agility: agi, intelligence: int_, defense: def },
       attacks: allAttacks,
@@ -227,7 +228,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
             <div className="flex gap-2 items-center">
               {imageUrl.trim() && (
                 // eslint-disable-next-line @next/next/no-img-element
-                <img src={imageUrl.trim()} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 border border-e-border" />
+                <img src={proxyUrl(normalizeGdriveUrl(imageUrl.trim()))} alt="" className="w-10 h-10 rounded-lg object-cover shrink-0 border border-e-border" />
               )}
               <input value={imageUrl} onChange={(e) => setImageUrl(e.target.value)}
                 className={inp} placeholder="https://…" />
@@ -302,8 +303,8 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
           {/* Habilidades do catálogo */}
           <div className={sec}>
             <div className="flex items-center justify-between">
-              <p className={secLabel}>Habilidades <span className="normal-case font-normal text-e-faint">(máx 2)</span></p>
-              {skillAttacks.length < 2 && (
+              <p className={secLabel}>Habilidades <span className="normal-case font-normal text-e-faint">(máx 5)</span></p>
+              {skillAttacks.length < 5 && (
                 <button onClick={addSkillAttack} className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
                   <Plus size={12} /> Adicionar
                 </button>

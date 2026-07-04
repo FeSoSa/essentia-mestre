@@ -43,9 +43,9 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
     onChange({ ...phase, attacks: phase.attacks.map((a, j) => j === i ? { ...a, [field]: val } : a) });
   }
 
-  // attacks[0] = ataque básico, attacks[1..2] = habilidades
+  // attacks[0] = ataque básico, attacks[1..5] = habilidades
   const basicAtk   = phase.attacks[0] ?? { name: 'Ataque Básico', damage: '', damageBase: 0, damageAttribute: 'FOR', equilibrio: 4 };
-  const skillAtks  = phase.attacks.slice(1, 3);
+  const skillAtks  = phase.attacks.slice(1, 6);
 
   function setBasicField(field: keyof EnemyAttack, val: string | number) {
     const base = { ...basicAtk, [field]: val };
@@ -55,7 +55,7 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
   }
 
   function addSkillAtk() {
-    if (skillAtks.length < 2) onChange({ ...phase, attacks: [basicAtk, ...skillAtks, { name: '', damage: '' }] });
+    if (skillAtks.length < 5) onChange({ ...phase, attacks: [basicAtk, ...skillAtks, { name: '', damage: '' }] });
   }
 
   function removeSkillAtk(i: number) {
@@ -98,7 +98,7 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
         <span className="text-xs font-bold uppercase tracking-wider" style={{ color: '#c8a050' }}>
           Fase {index + 1}
         </span>
-        {total > 2 && (
+        {total > 1 && (
           <button onClick={onRemove} className="opacity-40 hover:opacity-80">
             <Trash2 size={13} />
           </button>
@@ -184,8 +184,8 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
       {/* Habilidades */}
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
-          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Habilidades <span className="normal-case font-normal opacity-60">(máx 2)</span></p>
-          {skillAtks.length < 2 && (
+          <p className="text-[10px] font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Habilidades <span className="normal-case font-normal opacity-60">(máx 5)</span></p>
+          {skillAtks.length < 5 && (
             <button onClick={addSkillAtk} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
               <Plus size={12} /> Adicionar
             </button>

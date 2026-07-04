@@ -1,9 +1,12 @@
 'use client';
 
-import { useState } from 'react';
-import { X, Swords } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { X, Swords, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { EnemyAttack, Player } from '@/store/types';
+import type { Skill } from '@/components/sections/Habilidades/SkillCard';
+import type { EffectPreset } from '@/store/effectPresetsStore';
+import { getStatusIcon } from '@/lib/statusIcons';
 
 interface Props {
   entityId: string;
@@ -16,7 +19,7 @@ interface Props {
   onClose: () => void;
 }
 
-type Step = 'attack' | 'hit' | 'damage' | 'result';
+type Step = 'attack' | 'hit' | 'damage' | 'effects' | 'result';
 
 function getModifier(value: number): number {
   if (value <= 7)  return -1;
@@ -74,6 +77,12 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
   const [isCrit, setIsCrit] = useState(false);
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ damage: number; targetName: string } | null>(null);
+  const [skills, setSkills] = useState<Skill[]>([]);
+  const [appliedEffects, setAppliedEffects] = useState<Set<number>>(new Set());
+
+  useEffect(() => {
+    api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
+  }, []);
 
   const targetPlayer = players.find((p) => p.id === targetId);
   const defVal = targetPlayer ? targetPlayer.attributes.defense : 10;
@@ -91,6 +100,9 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     ? calcDamage(selectedAttack, dmgValue, entityAttributes, isCrit)
     : null;
 
+  const linkedSkill = selectedAttack?.skillId ? skills.find((s) => s.id === selectedAttack.skillId) : undefined;
+  const hitEffects: EffectPreset[] = linkedSkill?.onHitEffects ?? [];
+
   function reset() {
     setStep('attack');
     setSelectedAttack(null);
@@ -98,6 +110,22 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     setDmgInput('');
     setIsCrit(false);
     setResult(null);
+    setAppliedEffects(new Set());
+  }
+
+  async function applyHitEffect(effect: EffectPreset, index: number) {
+    if (!targetId) return;
+    try {
+      await api.post(`/master/status-effect`, {
+        playerId: targetId,
+        effect: {
+          id: crypto.randomUUID(), name: effect.name, icon: effect.icon, desc: effect.desc ?? '',
+          durationTurns: effect.durationTurns, effects: effect.effects,
+          hitBonus: effect.hitBonus, attackBonus: effect.attackBonus,
+        },
+      });
+      setAppliedEffects((prev) => new Set([...prev, index]));
+    } catch {}
   }
 
   async function sendAttack(damage: number) {
@@ -109,7 +137,7 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
         damage,
       });
       setResult({ damage, targetName: targetPlayer?.char.name ?? 'Alvo' });
-      setStep('result');
+      setStep(hitEffects.length > 0 ? 'effects' : 'result');
     } catch {}
     finally { setLoading(false); }
   }
@@ -276,6 +304,54 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
                   className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors disabled:opacity-30 cursor-pointer"
                   style={{ background: t.accent, color: '#000' }}>
                   {loading ? 'Aplicando…' : 'Aplicar Dano →'}
+                </button>
+              </div>
+            </>
+          )}
+
+          {/* Passo 4: Efeitos da habilidade */}
+          {step === 'effects' && result && (
+            <>
+              <div className="text-center">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1 flex items-center justify-center gap-1.5">
+                  <Sparkles size={12} style={{ color: t.accent }} />
+                  {selectedAttack?.skillName} → {result.targetName}
+                </p>
+                <p className="text-xs text-e-faint">Aplicar os efeitos desta habilidade no alvo?</p>
+              </div>
+
+              <div className="flex flex-col gap-1.5">
+                {hitEffects.map((eff, i) => {
+                  const applied = appliedEffects.has(i);
+                  const EffIcon = getStatusIcon(eff.icon);
+                  return (
+                    <div key={eff.id} className="flex items-center gap-2 rounded-lg border px-3 py-2"
+                      style={{ borderColor: t.border, background: applied ? t.accentBg : 'transparent' }}>
+                      {EffIcon && <EffIcon size={14} className="shrink-0" style={{ color: t.accent }} />}
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate text-e-text">{eff.name}</p>
+                        <p className="text-[10px] text-e-faint">
+                          {eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => applyHitEffect(eff, i)}
+                        disabled={applied}
+                        className="px-3 py-1.5 text-xs font-semibold rounded-lg transition-colors disabled:opacity-50 cursor-pointer shrink-0"
+                        style={applied
+                          ? { background: 'transparent', color: t.accent, border: `1px solid ${t.border}` }
+                          : { background: t.accent, color: '#000' }}>
+                        {applied ? 'Aplicado ✓' : 'Aplicar'}
+                      </button>
+                    </div>
+                  );
+                })}
+              </div>
+
+              <div className="flex gap-2 justify-end pt-1">
+                <button onClick={() => setStep('result')} className="px-4 py-2 text-xs font-semibold rounded-lg transition-colors cursor-pointer"
+                  style={{ background: t.accent, color: '#000' }}>
+                  Continuar →
                 </button>
               </div>
             </>

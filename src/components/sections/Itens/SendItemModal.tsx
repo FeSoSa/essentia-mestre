@@ -11,6 +11,7 @@ import {
   Zap, Star, Sparkles, BookOpen, Shirt, Scroll,
   type LucideIcon,
 } from 'lucide-react';
+import { proxyUrl } from '@/lib/gdrive';
 
 const ICON_MAP: Record<string, LucideIcon> = {
   Anchor, Footprints, HardHat, Ribbon,
@@ -20,7 +21,7 @@ const ICON_MAP: Record<string, LucideIcon> = {
 };
 
 function ItemIcon({ name }: { name: string }) {
-  if (name.startsWith('img:')) return <img src={name.slice(4)} alt="" width={14} height={14} className="object-cover rounded" />;
+  if (name.startsWith('img:')) return <img src={proxyUrl(name.slice(4))} alt="" width={14} height={14} className="object-cover rounded" />;
   const Icon = ICON_MAP[name] ?? Package;
   return <Icon size={14} />;
 }

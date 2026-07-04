@@ -1,6 +1,7 @@
 "use client";
 
 import type { ItemCatalog } from "@/store/types";
+import { proxyUrl } from "@/lib/gdrive";
 import { RARITY_COLORS, RARITY_LABELS, rarityColor, type Rarity } from "@/lib/rarity";
 import {
   Activity, Amphora, Anchor, Apple, Axe, Backpack, Bandage, Barrel, Bird, Bomb,
@@ -43,7 +44,7 @@ export function ItemIcon({ name, size = 18 }: { name: string; size?: number }) {
   if (name.startsWith("img:")) {
     return (
       <img
-        src={name.slice(4)}
+        src={proxyUrl(name.slice(4))}
         alt=""
         width={size}
         height={size}

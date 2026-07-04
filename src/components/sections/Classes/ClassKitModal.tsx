@@ -3,6 +3,7 @@
 import type { Skill } from "@/components/sections/Habilidades/SkillCard";
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
+import { RARITY_LABELS, rarityColor } from "@/lib/rarity";
 import type { ClassKit, ClassPerks, ItemCatalog } from "@/store/types";
 import { ChevronDown, Trash2 } from "lucide-react";
 import { useState } from "react";
@@ -30,10 +31,29 @@ const WEAPON_TYPES = [
   { value: "armas-colossais", label: "Armas colossais" },
   { value: "adagas", label: "Adagas" },
   { value: "garras", label: "Garras" },
+  { value: "cajado", label: "Cajado" },
+  { value: "grimorio", label: "Grimório" },
+  { value: "orbe", label: "Orbe" },
   { value: "a-distancia", label: "À distância" },
   { value: "luvas-manoplas", label: "Luvas & manoplas" },
   { value: "escudos", label: "Escudos" },
 ];
+
+const WEAPON_TYPE_LABELS = Object.fromEntries(
+  WEAPON_TYPES.map(({ value, label }) => [value, label]),
+);
+
+const ARMOR_WEIGHT_LABELS: Record<string, string> = {
+  leve: "Leve",
+  média: "Média",
+  pesada: "Pesada",
+};
+
+function itemSubtype(i: ItemCatalog): string | undefined {
+  if (i.type === "weapon" && i.weaponType) return WEAPON_TYPE_LABELS[i.weaponType] ?? i.weaponType;
+  if (i.type === "armor" && i.armorWeight) return ARMOR_WEIGHT_LABELS[i.armorWeight] ?? i.armorWeight;
+  return undefined;
+}
 
 const ATTR_ABBREV_OPTS = [
   { value: "FOR", label: "FOR — Força" },
@@ -419,11 +439,26 @@ export default function ClassKitModal({
                       key={i.id}
                       type="button"
                       onClick={() => addItem(i.id)}
-                      className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text flex items-center justify-between"
+                      className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text flex items-center justify-between gap-2"
                     >
-                      <span>{i.name}</span>
-                      <span className="text-[10px] text-e-faint capitalize">
-                        {i.type}
+                      <span className="flex-1 truncate">{i.name}</span>
+                      <span className="flex items-center gap-1.5 shrink-0">
+                        {i.rarity && (
+                          <span
+                            className="text-[10px] font-medium"
+                            style={{ color: rarityColor(i.rarity) }}
+                          >
+                            {RARITY_LABELS[i.rarity as keyof typeof RARITY_LABELS] ?? i.rarity}
+                          </span>
+                        )}
+                        {itemSubtype(i) && (
+                          <span className="text-[10px] text-e-faint">
+                            {itemSubtype(i)}
+                          </span>
+                        )}
+                        <span className="text-[10px] text-e-faint capitalize">
+                          {i.type}
+                        </span>
                       </span>
                     </button>
                   ))
@@ -439,8 +474,21 @@ export default function ClassKitModal({
                       key={id}
                       className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-e-card"
                     >
-                      <span className="flex-1 text-sm text-e-text">
+                      <span className="flex-1 text-sm text-e-text flex items-center gap-1.5 truncate">
                         {item?.name ?? id}
+                        {item?.rarity && (
+                          <span
+                            className="text-[10px] font-medium shrink-0"
+                            style={{ color: rarityColor(item.rarity) }}
+                          >
+                            {RARITY_LABELS[item.rarity as keyof typeof RARITY_LABELS] ?? item.rarity}
+                          </span>
+                        )}
+                        {item && itemSubtype(item) && (
+                          <span className="text-[10px] text-e-faint shrink-0">
+                            {itemSubtype(item)}
+                          </span>
+                        )}
                       </span>
                       <div className="flex items-center gap-1">
                         <button

@@ -13,7 +13,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
 
   const [name,        setName]        = useState(skill?.name ?? '');
   const [desc,        setDesc]        = useState(skill?.desc ?? '');
-  const [type,        setType]        = useState<'class' | 'weapon' | 'essencia' | 'mestre'>((skill?.type as any) ?? 'class');
+  const [type,        setType]        = useState<'class' | 'weapon' | 'essencia' | 'mestre' | 'inimigo'>((skill?.type as any) ?? 'class');
   const [skillClass,  setSkillClass]  = useState(skill?.skillClass ?? '');
   const [weaponTypes, setWeaponTypes] = useState<string[]>(
     (skill as any)?.weaponTypes ?? (skill?.weaponType ? [skill.weaponType] : ['espadas'])

@@ -17,10 +17,14 @@ export default function Classes() {
   const [editing, setEditing] = useState<ClassKit | undefined>();
   const [showNew, setShowNew] = useState(false);
 
-  useEffect(() => {
+  function loadCatalogs() {
     api.get<ClassKit[]>('/master/kits').then((r) => setKits(r.data)).catch(() => {});
     api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
     api.get<ItemCatalog[]>('/items').then((r) => setItems(r.data)).catch(() => {});
+  }
+
+  useEffect(() => {
+    loadCatalogs();
   }, []);
 
   function handleSaved(k: ClassKit) {
@@ -45,7 +49,7 @@ export default function Classes() {
         title="Classes"
         subtitle="Kits iniciais de cada classe — atributos, slots, habilidades e itens de partida"
         action={
-          <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
+          <Button variant="primary" size="sm" onClick={() => { loadCatalogs(); setShowNew(true); }} className="gap-1.5">
             <Plus size={14} /> Nova classe
           </Button>
         }
@@ -63,7 +67,7 @@ export default function Classes() {
               kit={k}
               skillNames={skillNames}
               itemNames={itemNames}
-              onEdit={() => setEditing(k)}
+              onEdit={() => { loadCatalogs(); setEditing(k); }}
               onDelete={() => handleDelete(k)}
             />
           ))}

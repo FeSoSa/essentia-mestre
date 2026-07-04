@@ -257,7 +257,7 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
   }
 
   function addSkillAtk() {
-    if (skillAtks.length < 2) setSkillAtks((a) => [...a, { name: '', damage: '' }]);
+    if (skillAtks.length < 5) setSkillAtks((a) => [...a, { name: '', damage: '' }]);
   }
   function removeSkillAtk(i: number) {
     setSkillAtks((a) => a.filter((_, j) => j !== i));
@@ -386,9 +386,9 @@ function TemporaryTab({ onClose }: { onClose: () => void }) {
       <div className="flex flex-col gap-1.5">
         <div className="flex items-center justify-between">
           <p className="text-xs uppercase tracking-wider font-semibold" style={{ color: '#7a5050' }}>
-            Habilidades <span className="normal-case font-normal opacity-60">(máx 2)</span>
+            Habilidades <span className="normal-case font-normal opacity-60">(máx 5)</span>
           </p>
-          {skillAtks.length < 2 && (
+          {skillAtks.length < 5 && (
             <button onClick={addSkillAtk} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
               <Plus size={12} /> Adicionar
             </button>

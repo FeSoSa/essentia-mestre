@@ -1,14 +1,19 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus, UserRound } from 'lucide-react';
+import { Pencil, Trash2, Plus, UserRound, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { proxyUrl } from '@/lib/gdrive';
-import type { AllyTemplate } from '@/store/types';
+import type { AllyTemplate, EnemyTemplate } from '@/store/types';
 import Button from '@/components/ui/Button';
 import AllyTemplateModal from './AllyTemplateModal';
+import { allyToEnemyTemplate } from '@/lib/convertBeast';
 
-export default function AllyTemplateList() {
+interface Props {
+  onCopied?: () => void;
+}
+
+export default function AllyTemplateList({ onCopied }: Props) {
   const [templates, setTemplates] = useState<AllyTemplate[]>([]);
   const [editing,   setEditing]   = useState<AllyTemplate | undefined>();
   const [showNew,   setShowNew]   = useState(false);
@@ -28,6 +33,12 @@ export default function AllyTemplateList() {
     if (!confirm(`Deletar "${t.name}"?`)) return;
     await api.delete(`/allies/${t.id}`).catch(() => {});
     setTemplates((prev) => prev.filter((x) => x.id !== t.id));
+  }
+
+  async function copyToEnemy(t: AllyTemplate) {
+    if (!confirm(`Copiar "${t.name}" para o catálogo de inimigos?`)) return;
+    await api.post<EnemyTemplate>('/enemies', allyToEnemyTemplate(t)).catch(() => null);
+    onCopied?.();
   }
 
   return (
@@ -66,6 +77,10 @@ export default function AllyTemplateList() {
                   <button onClick={() => setEditing(t)}
                     className="w-6 h-6 rounded flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity">
                     <Pencil size={12} />
+                  </button>
+                  <button onClick={() => copyToEnemy(t)} title="Copiar para inimigos"
+                    className="w-6 h-6 rounded flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity">
+                    <Copy size={12} />
                   </button>
                   <button onClick={() => remove(t)}
                     className="w-6 h-6 rounded flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity hover:text-red-400">

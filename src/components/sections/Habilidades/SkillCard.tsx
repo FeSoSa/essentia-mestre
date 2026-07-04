@@ -56,6 +56,16 @@ const TYPE_COLOR: Record<string, string> = {
   class:    '#a3e635',
   weapon:   '#e05050',
   essencia: '#a855f7',
+  mestre:   '#f59e0b',
+  inimigo:  '#71717a',
+};
+
+const TYPE_LABEL: Record<string, string> = {
+  class:    'Classe',
+  weapon:   'Arma',
+  essencia: 'Essência',
+  mestre:   'Mestre',
+  inimigo:  'Inimigos',
 };
 
 const COST_LABEL: Record<string, string> = {
@@ -127,7 +137,7 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
           <div className="flex items-center gap-1.5">
             <span className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
               style={{ background: color + '22', color }}>
-              {skill.type === 'class' ? 'Classe' : skill.type === 'weapon' ? 'Arma' : 'Essência'}
+              {TYPE_LABEL[skill.type] ?? skill.type}
             </span>
             <span className="text-[10px] text-e-sub font-medium">· {catLabel}</span>
           </div>

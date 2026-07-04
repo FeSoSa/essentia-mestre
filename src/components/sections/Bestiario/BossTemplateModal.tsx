@@ -9,6 +9,7 @@ import Checkbox from "@/components/ui/Checkbox";
 import EmojiPicker from "@/components/ui/EmojiPicker";
 import Select from "@/components/ui/Select";
 import { api } from "@/lib/api";
+import { normalizeGdriveUrl, proxyUrl } from "@/lib/gdrive";
 import type {
   BossAttributes,
   BossImmunity,
@@ -85,7 +86,7 @@ export default function BossTemplateModal({
   });
 
   const [phases, setPhases] = useState<BossPhase[]>(
-    template?.phases ?? [initPhase(1, 100), initPhase(2, 80)],
+    template?.phases ?? [initPhase(1, 100)],
   );
   const [immunities, setImmunities] = useState<BossImmunity[]>(
     template?.immunities ?? [],
@@ -186,7 +187,7 @@ export default function BossTemplateModal({
   }
 
   async function save() {
-    if (!name.trim() || phases.length < 2) return;
+    if (!name.trim() || phases.length < 1) return;
     setLoading(true);
 
     const allDrops: EnemyDrop[] = [...drops.filter((d) => d.itemId)];
@@ -197,7 +198,7 @@ export default function BossTemplateModal({
     const body = {
       name: name.trim(),
       icon,
-      imageUrl: imageUrl.trim() || undefined,
+      imageUrl: imageUrl.trim() ? normalizeGdriveUrl(imageUrl.trim()) : undefined,
       type: "Boss",
       phases,
       immunities,
@@ -303,7 +304,7 @@ export default function BossTemplateModal({
                   {imageUrl.trim() && (
                     // eslint-disable-next-line @next/next/no-img-element
                     <img
-                      src={imageUrl.trim()}
+                      src={proxyUrl(normalizeGdriveUrl(imageUrl.trim()))}
                       alt=""
                       className="w-10 h-10 rounded-lg object-cover shrink-0 border border-e-boss-border"
                     />
@@ -342,9 +343,9 @@ export default function BossTemplateModal({
                     onRemove={() => removePhase(i)}
                   />
                 ))}
-                {phases.length < 2 && (
+                {phases.length < 1 && (
                   <p className="text-xs text-red-400 bg-red-400/10 border border-red-400/30 rounded-lg px-3 py-2">
-                    Mínimo de 2 fases necessário.
+                    Mínimo de 1 fase necessário.
                   </p>
                 )}
               </div>
@@ -752,7 +753,7 @@ export default function BossTemplateModal({
               variant="gold"
               size="sm"
               onClick={save}
-              disabled={!name.trim() || phases.length < 2 || loading}
+              disabled={!name.trim() || phases.length < 1 || loading}
             >
               {loading ? "Salvando…" : editing ? "Salvar" : "Criar"}
             </Button>

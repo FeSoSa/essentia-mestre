@@ -42,9 +42,9 @@ export default function Bestiario() {
         ))}
       </div>
 
-      {tab === 'inimigos' && <EnemyTemplateList />}
+      {tab === 'inimigos' && <EnemyTemplateList onCopied={() => setTab('aliados')} />}
       {tab === 'bosses'   && <BossTemplateList />}
-      {tab === 'aliados'  && <AllyTemplateList />}
+      {tab === 'aliados'  && <AllyTemplateList onCopied={() => setTab('inimigos')} />}
     </div>
   );
 }

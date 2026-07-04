@@ -2,6 +2,7 @@
 
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
+import { normalizeGdriveUrl, proxyUrl } from "@/lib/gdrive";
 import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
 import type { AutoEffect, ItemCatalog, ItemRequirements, OnUseEffect } from "@/store/types";
 import {
@@ -216,7 +217,7 @@ function ItemIconPreview({
   if (value?.startsWith("img:")) {
     return (
       <img
-        src={value.slice(4)}
+        src={proxyUrl(value.slice(4))}
         alt=""
         width={size * 1.5}
         height={size * 1.5}
@@ -410,7 +411,7 @@ function IconPicker({
                   {imgUrl && (
                     <div className="flex items-center gap-2">
                       <img
-                        src={imgUrl}
+                        src={proxyUrl(imgUrl)}
                         alt=""
                         className="w-8 h-8 object-cover rounded"
                         onError={(e) => {
@@ -426,7 +427,7 @@ function IconPicker({
                     variant="primary"
                     size="sm"
                     onClick={() => {
-                      onChange(`img:${imgUrl}`);
+                      onChange(`img:${normalizeGdriveUrl(imgUrl)}`);
                       close();
                     }}
                     disabled={!imgUrl.trim()}
@@ -515,6 +516,9 @@ const WEAPON_OPTS = [
   { value: "armas-colossais", label: "Armas colossais" },
   { value: "adagas", label: "Adagas" },
   { value: "garras", label: "Garras" },
+  { value: "cajado", label: "Cajado" },
+  { value: "grimorio", label: "Grimório" },
+  { value: "orbe", label: "Orbe" },
   { value: "a-distancia", label: "À distância" },
   { value: "luvas-manoplas", label: "Luvas & manoplas" },
   { value: "escudos", label: "Escudos" },

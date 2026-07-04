@@ -4,6 +4,7 @@ import { useEffect, useRef } from 'react';
 import { api } from '@/lib/api';
 import { useStore, useLog, useInitiative, usePlayers } from '@/store';
 import type { LogEntry } from '@/store/types';
+import NotesPanel from './NotesPanel';
 
 // Types that get collapsed when consecutive from same player (within 5s window)
 const COLLAPSIBLE = new Set(['hp', 'flow', 'ether', 'attr']);
@@ -117,7 +118,7 @@ export default function Log() {
       </div>
 
       {/* Log */}
-      <div className="flex-1 flex flex-col overflow-hidden">
+      <div className="w-[420px] shrink-0 border-r border-e-border flex flex-col overflow-hidden">
         <div className="px-5 py-3.5 border-b border-e-border shrink-0 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-e-faint">Log da Sessão</p>
           <span className="text-xs text-e-faint tabular-nums">
@@ -162,6 +163,9 @@ export default function Log() {
           )}
         </div>
       </div>
+
+      {/* Anotações */}
+      <NotesPanel />
     </div>
   );
 }

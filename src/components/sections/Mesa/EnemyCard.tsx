@@ -3,6 +3,7 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import type { EnemyInstance, Player } from '@/store/types';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 import DefeatModal from './DefeatModal';
 import CombatEntityPanel from './CombatEntityPanel';
 
@@ -49,12 +50,21 @@ export default function EnemyCard({ enemy, players }: Props) {
       >
         {/* Header */}
         <div className="flex items-start gap-2">
-          <span
-            className="text-xl leading-none shrink-0 flex items-center justify-center w-8 h-8 rounded"
-            style={{ background: '#2a1818' }}
-          >
-            {enemy.icon}
-          </span>
+          {enemy.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={proxyUrl(normalizeGdriveUrl(enemy.imageUrl))}
+              alt=""
+              className="w-8 h-8 rounded object-cover shrink-0"
+            />
+          ) : (
+            <span
+              className="text-xl leading-none shrink-0 flex items-center justify-center w-8 h-8 rounded"
+              style={{ background: '#2a1818' }}
+            >
+              {enemy.icon}
+            </span>
+          )}
           <div className="flex-1 min-w-0">
             <p className="font-semibold text-sm leading-tight truncate">{enemy.name}</p>
             <p className="text-xs mt-0.5" style={{ color: '#7a5050' }}>

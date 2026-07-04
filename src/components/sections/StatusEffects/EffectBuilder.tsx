@@ -21,6 +21,9 @@ const TYPES = [
   { value: 'modify_damage_received', label: 'Mod. dano recebido' },
 ];
 
+// Tipos passivos: ficam ativos o tempo todo que o status effect durar, não dependem do Trigger
+const PASSIVE_TYPES = ['block_skill', 'modify_attribute', 'modify_damage_dealt', 'modify_damage_received'];
+
 const ATTRS = [
   { value: 'strength',     label: 'Força' },
   { value: 'agility',      label: 'Agilidade' },
@@ -57,15 +60,17 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
           </div>
 
           <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className={label}>Trigger</label>
-              <Select
-                value={eff.trigger}
-                onChange={(v) => update(i, { trigger: v })}
-                options={TRIGGERS}
-              />
-            </div>
-            <div>
+            {!PASSIVE_TYPES.includes(eff.type) && (
+              <div>
+                <label className={label}>Trigger</label>
+                <Select
+                  value={eff.trigger}
+                  onChange={(v) => update(i, { trigger: v })}
+                  options={TRIGGERS}
+                />
+              </div>
+            )}
+            <div className={PASSIVE_TYPES.includes(eff.type) ? 'col-span-2' : ''}>
               <label className={label}>Tipo</label>
               <Select
                 value={eff.type}
@@ -74,17 +79,28 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
               />
             </div>
 
-            <div>
-              <label className={label}>Valor fixo</label>
-              <input type="number" value={eff.value ?? 0}
-                onChange={(e) => update(i, { value: Number(e.target.value) })} min={0} />
-            </div>
+            {PASSIVE_TYPES.includes(eff.type) && (
+              <p className="col-span-2 text-[10px] text-e-faint -mt-1">
+                Passivo: ativo enquanto o efeito durar, sem depender de um gatilho.
+              </p>
+            )}
 
-            <div>
-              <label className={label}>Percentual (%)</label>
-              <input type="number" value={eff.percentual ?? 0}
-                onChange={(e) => update(i, { percentual: Number(e.target.value) })} min={0} max={100} />
-            </div>
+            {eff.type !== 'block_skill' && (
+              <div>
+                <label className={label}>Valor fixo</label>
+                <input type="number" value={eff.value ?? 0}
+                  onChange={(e) => update(i, { value: Number(e.target.value) })}
+                  min={eff.type === 'modify_attribute' ? undefined : 0} />
+              </div>
+            )}
+
+            {eff.type !== 'block_skill' && (
+              <div>
+                <label className={label}>Percentual (%)</label>
+                <input type="number" value={eff.percentual ?? 0}
+                  onChange={(e) => update(i, { percentual: Number(e.target.value) })} />
+              </div>
+            )}
 
             {eff.type === 'modify_attribute' && (
               <div className="col-span-2">

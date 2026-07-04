@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { BossTemplate } from '@/store/types';
 import Button from '@/components/ui/Button';
 import BossTemplateModal from './BossTemplateModal';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 
 export default function BossTemplateList() {
   const [templates, setTemplates] = useState<BossTemplate[]>([]);
@@ -47,9 +48,14 @@ export default function BossTemplateList() {
               style={{ background: '#1a1810', borderColor: '#6a5a20', color: '#f0e8d0' }}
             >
               <div className="flex items-start gap-2">
-                <span className="text-2xl w-9 h-9 flex items-center justify-center rounded-lg shrink-0" style={{ background: '#2a2410' }}>
-                  {t.icon}
-                </span>
+                {t.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={proxyUrl(normalizeGdriveUrl(t.imageUrl))} alt="" className="w-9 h-9 rounded-lg object-cover shrink-0" />
+                ) : (
+                  <span className="text-2xl w-9 h-9 flex items-center justify-center rounded-lg shrink-0" style={{ background: '#2a2410' }}>
+                    {t.icon}
+                  </span>
+                )}
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <p className="font-bold text-sm truncate">{t.name}</p>

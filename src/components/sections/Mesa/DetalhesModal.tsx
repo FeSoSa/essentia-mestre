@@ -5,6 +5,7 @@ import Checkbox from "@/components/ui/Checkbox";
 import EffectBuilder from "@/components/sections/StatusEffects/EffectBuilder";
 import { api } from "@/lib/api";
 import type { CatalogEntry, EquipSlot } from "@/lib/equipmentCatalog";
+import { proxyUrl } from "@/lib/gdrive";
 import { useStore } from "@/store";
 import type {
   Essencia,
@@ -113,7 +114,7 @@ function ItemIcon({
     const px = size * 4;
     return (
       <img
-        src={name.slice(4)}
+        src={proxyUrl(name.slice(4))}
         alt=""
         width={px}
         height={px}
@@ -1389,6 +1390,17 @@ function HabilidadesPanel({
     }
   }
 
+  async function toggleSkillBlocked(entry: SkillTreeEntry) {
+    const ps = entry.playerSkill;
+    if (!ps) return;
+    try {
+      await api.put(`/master/players/${player.id}/skill/${entry.skill.id}/block`, {
+        blocked: !ps.blocked,
+      });
+      await fetchSkills();
+    } catch {}
+  }
+
   const unlocked = skills.filter(
     (e) => e.status === "UNLOCKED" && e.playerSkill,
   );
@@ -1532,9 +1544,14 @@ function HabilidadesPanel({
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
-                              <p className="text-sm font-medium text-e-text break-words">
-                                {entry.skill.name}
-                              </p>
+                              <div className="flex items-center gap-1.5">
+                                <p className="text-sm font-medium text-e-text break-words">
+                                  {entry.skill.name}
+                                </p>
+                                {entry.skill.ultimate && (
+                                  <span className="text-[8px] font-bold px-1 py-0.5 rounded bg-amber-500/15 text-amber-400 shrink-0">ULT</span>
+                                )}
+                              </div>
                               <p className="text-[10px] text-e-faint mt-0.5">
                                 {entry.skill.type}
                                 {entry.skill.cooldownTurns > 0
@@ -1555,6 +1572,17 @@ function HabilidadesPanel({
                               <span className="text-[9px] text-e-gold font-bold">
                                 Nv {m.level}
                               </span>
+                              {entry.skill.ultimate && (
+                                <button
+                                  onClick={() => toggleSkillBlocked(entry)}
+                                  title={ps.blocked ? "Desbloquear uso desta ultimate" : "Bloquear uso desta ultimate"}
+                                  className={`text-[9px] font-medium mt-0.5 cursor-pointer transition-colors ${
+                                    ps.blocked ? "text-e-danger hover:text-e-text" : "text-e-faint hover:text-e-text"
+                                  }`}
+                                >
+                                  {ps.blocked ? "bloqueada ⛔" : "liberada"}
+                                </button>
+                              )}
                               <button
                                 onClick={() => resetSkill(entry)}
                                 title="Remover habilidade do jogador"
@@ -1607,25 +1635,29 @@ function HabilidadesPanel({
 // ── EfeitosPanel ─────────────────────────────────────────────────────────────
 
 function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Player) => void }) {
-  const { presets, addPreset, removePreset } = useEffectPresetsStore();
+  const { presets, addPreset, updatePreset, removePreset } = useEffectPresetsStore();
 
-  const [name,        setName]        = useState('');
-  const [icon,        setIcon]        = useState('');
-  const [color,       setColor]       = useState('');
-  const [colorInput,  setColorInput]  = useState('');
-  const [desc,        setDesc]        = useState('');
-  const [duration,    setDuration]    = useState(3);
-  const [permanent,   setPermanent]   = useState(false);
-  const [autoEffects, setAutoEffects] = useState<AutoEffect[]>([]);
-  const [removing,      setRemoving]      = useState<string | null>(null);
-  const [removingAll,   setRemovingAll]   = useState(false);
-  const [removeError,   setRemoveError]   = useState<string | null>(null);
-  const [saving,      setSaving]      = useState(false);
-  const [applying,    setApplying]    = useState<string | null>(null);
+  const [name,             setName]             = useState('');
+  const [icon,             setIcon]             = useState('');
+  const [color,            setColor]            = useState('');
+  const [colorInput,       setColorInput]       = useState('');
+  const [desc,             setDesc]             = useState('');
+  const [duration,         setDuration]         = useState(3);
+  const [permanent,        setPermanent]        = useState(false);
+  const [autoEffects,      setAutoEffects]      = useState<AutoEffect[]>([]);
+  const [hitBonus,         setHitBonus]         = useState('');
+  const [attackBonus,      setAttackBonus]      = useState('');
+  const [editingPresetId,  setEditingPresetId]  = useState<string | null>(null);
+  const [presetSearch,     setPresetSearch]     = useState('');
+  const [removing,         setRemoving]         = useState<string | null>(null);
+  const [removingAll,      setRemovingAll]       = useState(false);
+  const [removeError,      setRemoveError]      = useState<string | null>(null);
+  const [saving,           setSaving]           = useState(false);
+  const [applying,         setApplying]         = useState<string | null>(null);
 
   const currentEffects = player.statusEffects ?? [];
 
-  function loadPreset(p: EffectPreset) {
+  function loadPreset(p: EffectPreset, forEdit = false) {
     setName(p.name);
     setIcon(p.icon ?? '');
     setColor(p.color ?? '');
@@ -1634,6 +1666,15 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
     setDuration(p.durationTurns === -1 ? 3 : p.durationTurns);
     setPermanent(p.durationTurns === -1);
     setAutoEffects(p.effects);
+    setHitBonus(p.hitBonus != null ? String(p.hitBonus) : '');
+    setAttackBonus(p.attackBonus != null ? String(p.attackBonus) : '');
+    setEditingPresetId(forEdit ? p.id : null);
+  }
+
+  function clearForm() {
+    setName(''); setIcon(''); setColor(''); setColorInput(''); setDesc('');
+    setDuration(3); setPermanent(false); setAutoEffects([]);
+    setHitBonus(''); setAttackBonus(''); setEditingPresetId(null);
   }
 
   async function applyPreset(p: EffectPreset) {
@@ -1641,25 +1682,31 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
     try {
       const res = await api.post<Player>('/master/status-effect', {
         playerId: player.id,
-        effect: { id: crypto.randomUUID(), name: p.name, icon: p.icon, desc: p.desc ?? '', durationTurns: p.durationTurns, effects: p.effects },
+        effect: { id: crypto.randomUUID(), name: p.name, icon: p.icon, desc: p.desc ?? '', durationTurns: p.durationTurns, effects: p.effects, hitBonus: p.hitBonus, attackBonus: p.attackBonus },
       });
       onUpdate(res.data);
     } catch {}
     finally { setApplying(null); }
   }
 
-  function saveAsPreset() {
+  async function saveAsPreset() {
     if (!name.trim()) return;
-    const newPreset: EffectPreset = {
-      id: `custom-${Date.now()}`,
+    const data = {
       name: name.trim(),
       icon: icon || undefined,
       color: color || undefined,
       desc: desc || undefined,
       durationTurns: permanent ? -1 : duration,
       effects: autoEffects,
+      hitBonus:    hitBonus    !== '' ? Number(hitBonus)    : undefined,
+      attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined,
     };
-    addPreset(newPreset);
+    if (editingPresetId) {
+      await updatePreset(editingPresetId, { id: editingPresetId, ...data });
+    } else {
+      await addPreset(data);
+    }
+    clearForm();
   }
 
   async function handleAdd(e: React.SyntheticEvent<HTMLFormElement>) {
@@ -1668,10 +1715,10 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
     try {
       const res = await api.post<Player>('/master/status-effect', {
         playerId: player.id,
-        effect: { id: crypto.randomUUID(), name, icon: icon || undefined, color: color || undefined, desc, durationTurns: permanent ? -1 : duration, effects: autoEffects },
+        effect: { id: crypto.randomUUID(), name, icon: icon || undefined, color: color || undefined, desc, durationTurns: permanent ? -1 : duration, effects: autoEffects, hitBonus: hitBonus !== '' ? Number(hitBonus) : undefined, attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined },
       });
       onUpdate(res.data);
-      setName(''); setIcon(''); setColor(''); setColorInput(''); setDesc(''); setDuration(3); setPermanent(false); setAutoEffects([]);
+      clearForm();
     } catch {}
     finally { setSaving(false); }
   }
@@ -1728,8 +1775,14 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
         {/* Predefinidos */}
         <div>
           <p className={lbl}>Predefinidos</p>
+          <input
+            value={presetSearch}
+            onChange={(e) => setPresetSearch(e.target.value)}
+            placeholder="Buscar…"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors mb-2"
+          />
           <div className="flex flex-col gap-1">
-            {presets.map((p) => {
+            {presets.filter((p) => !presetSearch.trim() || p.name.toLowerCase().includes(presetSearch.toLowerCase())).map((p) => {
               const isApplying = applying === p.id;
               return (
                 <div key={p.id} className="flex items-center gap-1 group">
@@ -1750,8 +1803,8 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
                     }
                   </button>
                   <button
-                    onClick={() => loadPreset(p)}
-                    title="Editar no formulário"
+                    onClick={() => loadPreset(p, true)}
+                    title="Editar predefinido"
                     className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-text hover:bg-e-card transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                   >
                     <Pencil size={11} />
@@ -1821,7 +1874,14 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
       {/* ── Right: form ── */}
       <div className="flex-1 overflow-y-auto p-4">
         <form onSubmit={handleAdd} className="flex flex-col gap-4 max-w-lg">
-          <p className={lbl}>Personalizado</p>
+          <div className="flex items-center justify-between">
+            <p className={lbl + ' !mb-0'}>{editingPresetId ? 'Editando predefinido' : 'Personalizado'}</p>
+            {editingPresetId && (
+              <button type="button" onClick={clearForm} className="text-[10px] text-e-faint hover:text-e-sub transition-colors cursor-pointer">
+                Cancelar edição
+              </button>
+            )}
+          </div>
 
           <div>
             <label className={lbl}>Nome</label>
@@ -1895,6 +1955,21 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
             )}
           </div>
 
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Bônus de acerto</label>
+              <input type="number" value={hitBonus}
+                onChange={(e) => setHitBonus(e.target.value)}
+                placeholder="Ex: -2" className="text-center" />
+            </div>
+            <div>
+              <label className={lbl}>Bônus de ataque</label>
+              <input type="number" value={attackBonus}
+                onChange={(e) => setAttackBonus(e.target.value)}
+                placeholder="Ex: -3" className="text-center" />
+            </div>
+          </div>
+
           <div>
             <p className={lbl}>Efeitos automáticos</p>
             <EffectBuilder effects={autoEffects} onChange={setAutoEffects} />
@@ -1904,9 +1979,9 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
             <button type="button"
               onClick={saveAsPreset}
               disabled={!name.trim()}
-              title="Salvar como predefinido para uso futuro"
+              title={editingPresetId ? 'Atualizar predefinido' : 'Salvar como predefinido para uso futuro'}
               className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-e-border text-e-faint hover:text-e-sub hover:border-e-border2 text-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
-              ☆ Salvar predefinido
+              {editingPresetId ? '✎ Atualizar predefinido' : '☆ Salvar predefinido'}
             </button>
             <button type="submit"
               disabled={saving || !name.trim()}

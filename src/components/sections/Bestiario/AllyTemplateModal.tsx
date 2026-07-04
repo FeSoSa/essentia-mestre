@@ -49,7 +49,7 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
   const [basicDmgBase,    setBasicDmgBase]    = useState<number>(rawAttacks[0]?.damageBase ?? 0);
   const [basicAttr,       setBasicAttr]       = useState<string>(rawAttacks[0]?.damageAttribute ?? 'FOR');
   const [basicEquilibrio, setBasicEquilibrio] = useState<number>(rawAttacks[0]?.equilibrio ?? 4);
-  const [skillAttacks,    setSkillAttacks]    = useState<AllyAttack[]>(rawAttacks.slice(1, 3));
+  const [skillAttacks,    setSkillAttacks]    = useState<AllyAttack[]>(rawAttacks.slice(1, 6));
   const [immunities,  setImmunities]  = useState<BossImmunity[]>(template?.immunities ?? []);
   const [desc,        setDesc]        = useState(template?.desc        ?? '');
   const [notes,       setNotes]       = useState(template?.notes       ?? '');
@@ -62,7 +62,7 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
   }, []);
 
   function addSkillAttack() {
-    if (skillAttacks.length < 2) setSkillAttacks((a) => [...a, { name: '', damage: '' }]);
+    if (skillAttacks.length < 5) setSkillAttacks((a) => [...a, { name: '', damage: '' }]);
   }
   function removeSkillAttack(i: number) {
     setSkillAttacks((a) => a.filter((_, j) => j !== i));
@@ -234,8 +234,8 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
           {/* Habilidades */}
           <div className="flex flex-col gap-3 mt-5 pt-5 border-t" style={aBorder}>
             <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-widest" style={aLabel}>Habilidades <span className="normal-case font-normal opacity-60">(máx 2)</span></p>
-              {skillAttacks.length < 2 && (
+              <p className="text-[9px] font-bold uppercase tracking-widest" style={aLabel}>Habilidades <span className="normal-case font-normal opacity-60">(máx 5)</span></p>
+              {skillAttacks.length < 5 && (
                 <button onClick={addSkillAttack} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
                   <Plus size={12} /> Adicionar
                 </button>

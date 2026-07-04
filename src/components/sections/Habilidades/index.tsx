@@ -9,8 +9,8 @@ import SkillCard, { type Skill, type Essencia } from './SkillCard';
 import SkillModal from './SkillModal';
 import type { ItemCatalog, ClassKit } from '@/store/types';
 
-type Tab = 'general' | 'class' | 'weapon' | 'essencia' | 'mestre';
-const TAB_LABELS: Record<Tab, string> = { general: 'Geral', class: 'Classe', weapon: 'Arma', essencia: 'Essência', mestre: 'Mestre' };
+type Tab = 'general' | 'class' | 'weapon' | 'essencia' | 'mestre' | 'inimigo';
+const TAB_LABELS: Record<Tab, string> = { general: 'Geral', class: 'Classe', weapon: 'Arma', essencia: 'Essência', mestre: 'Mestre', inimigo: 'Inimigos' };
 
 const WEAPON_TYPE_OPTS = [
   { value: 'espadas',            label: 'Espadas'            },
@@ -22,6 +22,9 @@ const WEAPON_TYPE_OPTS = [
   { value: 'armas-colossais',    label: 'Armas colossais'    },
   { value: 'adagas',             label: 'Adagas'             },
   { value: 'garras',             label: 'Garras'             },
+  { value: 'cajado',             label: 'Cajado'             },
+  { value: 'grimorio',           label: 'Grimório'           },
+  { value: 'orbe',               label: 'Orbe'               },
   { value: 'arcos',              label: 'Arcos'              },
   { value: 'bestas',             label: 'Bestas'             },
   { value: 'pistolas',           label: 'Pistolas'           },
@@ -133,6 +136,7 @@ export default function Habilidades() {
     if (t === 'general') return s.type === 'class' && !s.skillClass;
     if (t === 'class')   return s.type === 'class' && !!s.skillClass;
     if (t === 'mestre')  return s.type === 'mestre';
+    if (t === 'inimigo') return s.type === 'inimigo';
     return s.type === t;
   }
 

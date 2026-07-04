@@ -189,6 +189,10 @@ export interface LogEntry {
   type?: string;
 }
 
+export interface Note {
+  id: string; text: string; color: string; timestamp: string;
+}
+
 export interface ImageEntry {
   id: string; url: string; title: string; timestamp: string; active: boolean;
 }
@@ -227,7 +231,7 @@ export interface Maestria {
 export interface PlayerSkill {
   id: string; playerId: string; skillId: string;
   used: boolean; equipped: boolean; slotId?: string;
-  maestria: Maestria;
+  maestria: Maestria; blocked?: boolean;
 }
 
 export interface SkillTreeEntry {

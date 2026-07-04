@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { ChevronRight } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { BossInstance, Player } from '@/store/types';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 import BossDefeatModal from './BossDefeatModal';
 import CombatEntityPanel from './CombatEntityPanel';
 
@@ -63,12 +64,21 @@ export default function BossCard({ boss, players }: Props) {
       >
         {/* Header */}
         <div className="flex items-start gap-2">
-          <span
-            className="text-2xl leading-none shrink-0 flex items-center justify-center w-9 h-9 rounded-lg"
-            style={{ background: '#2a2410' }}
-          >
-            {boss.icon}
-          </span>
+          {boss.imageUrl ? (
+            // eslint-disable-next-line @next/next/no-img-element
+            <img
+              src={proxyUrl(normalizeGdriveUrl(boss.imageUrl))}
+              alt=""
+              className="w-9 h-9 rounded-lg object-cover shrink-0"
+            />
+          ) : (
+            <span
+              className="text-2xl leading-none shrink-0 flex items-center justify-center w-9 h-9 rounded-lg"
+              style={{ background: '#2a2410' }}
+            >
+              {boss.icon}
+            </span>
+          )}
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-1.5 flex-wrap">
               <p className="font-bold text-sm leading-tight truncate">{boss.name}</p>

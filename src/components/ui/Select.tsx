@@ -67,12 +67,13 @@ export default function Select({ value, onChange, options, placeholder = 'Seleci
       {open && dropPos && typeof document !== 'undefined' && createPortal(
         <div
           ref={dropRef}
-          className="bg-e-card border border-e-border rounded-lg shadow-xl overflow-hidden"
+          className="bg-e-card border border-e-border rounded-lg shadow-xl overflow-y-auto"
           style={{
             position: 'absolute',
             top: dropPos.top,
             left: dropPos.left,
             width: dropPos.width,
+            maxHeight: 160,
             zIndex: 9999,
           }}
         >

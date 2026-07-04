@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Sparkles, Check, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
+import { getStatusIcon } from '@/lib/statusIcons';
 
 export default function EffectPanel() {
   const requests          = useStore((s) => s.effectRequests);
@@ -64,14 +65,17 @@ export default function EffectPanel() {
                     : `${req.targets.length} alvos: ${req.targets.map((t) => t.targetName).join(', ')}`}
                 </p>
                 <div className="flex flex-wrap gap-1 mt-2">
-                  {req.onHitEffects.map((eff) => (
-                    <span key={eff.id}
-                      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300">
-                      {eff.icon && <span>{eff.icon}</span>}
-                      {eff.name}
-                      <span className="opacity-60">{eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}</span>
-                    </span>
-                  ))}
+                  {req.onHitEffects.map((eff) => {
+                    const EffIcon = getStatusIcon(eff.icon);
+                    return (
+                      <span key={eff.id}
+                        className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-medium bg-purple-500/15 border border-purple-500/30 text-purple-300">
+                        {EffIcon && <EffIcon size={11} />}
+                        {eff.name}
+                        <span className="opacity-60">{eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}</span>
+                      </span>
+                    );
+                  })}
                 </div>
               </div>
               <div className="flex gap-2">

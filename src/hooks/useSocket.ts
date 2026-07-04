@@ -4,13 +4,14 @@ import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly } from '@/store/types';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly, Note } from '@/store/types';
 
 export function useSocket() {
   const {
     setPlayers, setPlayer, appendLog,
     setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses, setAllies,
     addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest, addEffectRequest,
+    setNotes,
   } = useStore();
 
   useEffect(() => {
@@ -98,6 +99,12 @@ export function useSocket() {
         addEffectRequest(req);
       });
 
+      // Notas fixas
+      client.subscribe('/topic/notes', (msg) => {
+        const notes: Note[] = JSON.parse(msg.body);
+        setNotes(notes);
+      });
+
       // Recupera estado de combate atual (perdido no refresh)
       Promise.all([
         api.get<EnemyInstance[]>('/combat/enemies').then(r => setEnemies(r.data)),
@@ -107,6 +114,7 @@ export function useSocket() {
           setInitiative(r.data.initiative);
           setCurrentTurn(r.data.totalTurns);
         }),
+        api.get<Note[]>('/master/notes').then(r => setNotes(r.data)),
       ]).catch(() => {});
     };
 

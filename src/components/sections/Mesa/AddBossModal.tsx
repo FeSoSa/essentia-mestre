@@ -22,7 +22,6 @@ export default function AddBossModal({ onClose }: Props) {
 
   const [phases, setPhases] = useState<BossPhase[]>([
     { phaseNumber: 1, name: '', hpMax: 100, attributes: { ...EMPTY_ATTRS }, attacks: [], specialAbility: undefined },
-    { phaseNumber: 2, name: '', hpMax: 80,  attributes: { ...EMPTY_ATTRS }, attacks: [], specialAbility: undefined },
   ]);
 
   const [immunities, setImmunities]   = useState<BossImmunity[]>([]);
@@ -67,7 +66,7 @@ export default function AddBossModal({ onClose }: Props) {
   }
 
   async function addToCombat() {
-    if (!name.trim() || phases.length < 2) return;
+    if (!name.trim() || phases.length < 1) return;
     setLoading(true);
     const instance: BossInstance = {
       instanceId: '',
@@ -284,7 +283,7 @@ export default function AddBossModal({ onClose }: Props) {
           variant="primary"
           size="sm"
           onClick={addToCombat}
-          disabled={!name.trim() || phases.length < 2 || loading}
+          disabled={!name.trim() || phases.length < 1 || loading}
         >
           {loading ? 'Adicionando…' : 'Adicionar boss ao combate'}
         </Button>

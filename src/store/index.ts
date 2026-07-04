@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
-  SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly,
+  SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly, Note,
 } from './types';
 
 interface RootState {
@@ -63,6 +63,9 @@ interface RootState {
   effectRequests: EffectApprovalRequest[];
   addEffectRequest: (r: EffectApprovalRequest) => void;
   removeEffectRequest: (requestId: string) => void;
+
+  notes: Note[];
+  setNotes: (n: Note[]) => void;
 }
 
 export const useStore = create<RootState>((set) => ({
@@ -163,6 +166,9 @@ export const useStore = create<RootState>((set) => ({
         p.id === playerId ? { ...p, sobrecargaDesbloqueada: unlocked } : p
       ),
     })),
+
+  notes: [],
+  setNotes: (notes) => set({ notes }),
 }));
 
 export const usePlayers       = () => useStore((s) => s.players);
@@ -174,3 +180,4 @@ export const useFastAction = () => useStore((s) => s.fastAction);
 export const useEnemies    = () => useStore((s) => s.enemies);
 export const useBosses     = () => useStore((s) => s.bosses);
 export const useAllies     = () => useStore((s) => s.allies);
+export const useNotes      = () => useStore((s) => s.notes);

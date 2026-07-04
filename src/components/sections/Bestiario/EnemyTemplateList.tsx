@@ -1,14 +1,20 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2, Plus, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
-import type { EnemyTemplate } from '@/store/types';
+import type { EnemyTemplate, AllyTemplate } from '@/store/types';
 import Button from '@/components/ui/Button';
 import EnemyTemplateModal from './EnemyTemplateModal';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
+import { enemyToAllyTemplate } from '@/lib/convertBeast';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 
-export default function EnemyTemplateList() {
+interface Props {
+  onCopied?: () => void;
+}
+
+export default function EnemyTemplateList({ onCopied }: Props) {
   const [templates, setTemplates] = useState<EnemyTemplate[]>([]);
   const [editing,   setEditing]   = useState<EnemyTemplate | undefined>();
   const [showNew,   setShowNew]   = useState(false);
@@ -30,6 +36,12 @@ export default function EnemyTemplateList() {
     setTemplates((prev) => prev.filter((x) => x.id !== t.id));
   }
 
+  async function copyToAlly(t: EnemyTemplate) {
+    if (!confirm(`Copiar "${t.name}" para o catálogo de aliados? (drops e XP não são copiados)`)) return;
+    await api.post<AllyTemplate>('/allies', enemyToAllyTemplate(t)).catch(() => null);
+    onCopied?.();
+  }
+
   return (
     <div className="flex flex-col gap-4">
       <div className="flex justify-end">
@@ -45,7 +57,12 @@ export default function EnemyTemplateList() {
           {templates.map((t) => (
             <div key={t.id} className="rounded-lg border border-e-border bg-e-surface p-3 flex flex-col gap-2">
               <div className="flex items-start gap-2">
-                <span className="text-xl w-8 h-8 flex items-center justify-center rounded bg-e-card shrink-0">{t.icon}</span>
+                {t.imageUrl ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img src={proxyUrl(normalizeGdriveUrl(t.imageUrl))} alt="" className="w-8 h-8 rounded object-cover shrink-0" />
+                ) : (
+                  <span className="text-xl w-8 h-8 flex items-center justify-center rounded bg-e-card shrink-0">{t.icon}</span>
+                )}
                 <div className="flex-1 min-w-0">
                   <p className="font-semibold text-sm truncate">{t.name}</p>
                   <p className="text-xs text-e-sub">{t.type} · HP {t.hpMax} · ⭐ {t.xp} XP</p>
@@ -53,6 +70,9 @@ export default function EnemyTemplateList() {
                 <div className="flex gap-1 shrink-0">
                   <button onClick={() => setEditing(t)} className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-text hover:bg-e-card">
                     <Pencil size={12} />
+                  </button>
+                  <button onClick={() => copyToAlly(t)} title="Copiar para aliados" className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-accent hover:bg-e-card">
+                    <Copy size={12} />
                   </button>
                   <button onClick={() => remove(t)} className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-danger hover:bg-e-card">
                     <Trash2 size={12} />

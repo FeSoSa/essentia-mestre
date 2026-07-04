@@ -29,8 +29,17 @@ interface Props {
 export default function EmojiPicker({ value, onChange, size = 'md', align = 'left' }: Props) {
   const [open, setOpen]   = useState(false);
   const [pos,  setPos]    = useState({ top: 0, left: 0 });
+  const [custom, setCustom] = useState('');
   const btnRef    = useRef<HTMLButtonElement>(null);
   const portalRef = useRef<HTMLDivElement>(null);
+
+  function applyCustom() {
+    const v = custom.trim();
+    if (!v) return;
+    onChange(v);
+    setCustom('');
+    setOpen(false);
+  }
 
   useEffect(() => {
     if (!open) return;
@@ -93,6 +102,28 @@ export default function EmojiPicker({ value, onChange, size = 'md', align = 'lef
               </div>
             </div>
           ))}
+
+          <div>
+            <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint mb-1.5 px-0.5">
+              Outro
+            </p>
+            <div className="flex gap-1.5">
+              <input
+                value={custom}
+                onChange={(e) => setCustom(e.target.value)}
+                onKeyDown={(e) => { if (e.key === 'Enter') applyCustom(); }}
+                placeholder="Cole um emoji…"
+                className="flex-1 w-0 text-sm rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text placeholder:text-e-faint outline-none focus:border-e-border2"
+              />
+              <button
+                type="button"
+                onClick={applyCustom}
+                className="px-2.5 py-1.5 rounded-lg text-xs font-medium bg-e-accent/15 text-e-accent hover:bg-e-accent/25 transition-colors shrink-0"
+              >
+                Usar
+              </button>
+            </div>
+          </div>
         </div>,
         document.body
       )}

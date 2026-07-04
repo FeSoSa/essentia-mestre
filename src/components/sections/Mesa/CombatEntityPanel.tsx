@@ -7,6 +7,7 @@ import { useStore } from '@/store';
 import type { EnemyInstance, BossInstance, CombatAlly, Player, StatusEffect, AutoEffect } from '@/store/types';
 import EffectBuilder from '@/components/sections/StatusEffects/EffectBuilder';
 import EnemyAttackModal from './EnemyAttackModal';
+import { getStatusIcon } from '@/lib/statusIcons';
 
 type CombatEntity =
   | { kind: 'enemy'; data: EnemyInstance }
@@ -208,10 +209,12 @@ export default function CombatEntityPanel({ entity, players, theme = 'enemy' }: 
       {/* Effects tab */}
       {activeTab === 'effects' && (
         <div className="flex flex-col gap-1.5 px-3 pb-3">
-          {effects.map((ef) => (
+          {effects.map((ef) => {
+            const EfIcon = getStatusIcon(ef.icon);
+            return (
             <div key={ef.id} className="flex items-center gap-2 rounded px-2 py-1"
               style={{ background: 'rgba(0,0,0,0.25)', border: `1px solid ${t.border}` }}>
-              {ef.icon && <span className="text-sm shrink-0">{ef.icon}</span>}
+              {EfIcon && <EfIcon size={14} className="shrink-0" />}
               <div className="flex-1 min-w-0">
                 <p className="text-xs font-medium truncate" style={{ color: '#ddd' }}>{ef.name}</p>
                 <p className="text-[10px] opacity-50">
@@ -222,7 +225,8 @@ export default function CombatEntityPanel({ entity, players, theme = 'enemy' }: 
                 <X size={11} />
               </button>
             </div>
-          ))}
+            );
+          })}
           {effects.length === 0 && <p className="text-xs opacity-40 italic">Nenhum efeito ativo.</p>}
           <button
             onClick={() => setShowAddEffect(true)}
