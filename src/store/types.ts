@@ -248,7 +248,7 @@ export interface ItemRequirements {
 export interface ItemCatalog {
   id: string; name: string; desc: string; type: string; icon?: string;
   weaponType?: string; damageBase?: number; damageAttribute?: string;
-  equilibrio?: number; properties?: string;
+  equilibrio?: number; properties?: string; critThreshold?: number;
   damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
   rarity?: string; twoHanded?: boolean;

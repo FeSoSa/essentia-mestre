@@ -579,6 +579,7 @@ export default function ItemModal({
 
   const [weaponType, setWeaponType] = useState(item?.weaponType ?? "curta");
   const [damageBase, setDamageBase] = useState(item?.damageBase ?? 0);
+  const [critThreshold, setCritThreshold] = useState(item?.critThreshold ?? 20);
   const dmgAttrParts = item?.damageAttribute?.split("/") ?? [];
   const [dmgAttr1, setDmgAttr1] = useState(dmgAttrParts[0] ?? "");
   const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? "");
@@ -777,6 +778,7 @@ export default function ItemModal({
         [dmgAttr1, dmgAttr2].filter(Boolean).join("/") || undefined;
       body.properties = properties || undefined;
       body.twoHanded = twoHanded || undefined;
+      body.critThreshold = critThreshold;
     }
     if (type === "armor") {
       body.damageReduction = attrBonus?.defense ?? 0;
@@ -917,6 +919,24 @@ export default function ItemModal({
                     type="number"
                     value={damageBase}
                     onChange={(e) => setDamageBase(Number(e.target.value))}
+                    className={`text-center ${inp}`}
+                  />
+                </div>
+              </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className={lbl}>
+                    Crítico{" "}
+                    <span className="normal-case font-normal">
+                      (mín. no d20)
+                    </span>
+                  </label>
+                  <input
+                    type="number"
+                    min={1}
+                    max={20}
+                    value={critThreshold}
+                    onChange={(e) => setCritThreshold(Number(e.target.value))}
                     className={`text-center ${inp}`}
                   />
                 </div>
