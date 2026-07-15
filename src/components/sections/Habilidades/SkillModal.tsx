@@ -31,6 +31,7 @@ const WEAPON_OPTS = [
   { value: 'alabardas',          label: 'Alabardas'          },
   { value: 'lancas',             label: 'Lanças'             },
   { value: 'machados-de-guerra', label: 'Machados de guerra' },
+  { value: 'machadinhas',        label: 'Machadinhas'        },
   { value: 'martelos',           label: 'Martelos'           },
   { value: 'armas-colossais',    label: 'Armas colossais'    },
   { value: 'adagas',             label: 'Adagas'             },
@@ -364,40 +365,120 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               </label>
               {f.hasDamage && (
                 <div className="rounded-xl border border-e-border bg-e-bg p-3 flex flex-col gap-3">
-                  <div className="flex gap-3 items-start flex-wrap">
-                    <div className="w-24">
-                      <label className={lbl}>Dano base</label>
-                      <input type="number" min={0} value={f.dmgFixed}
-                        onChange={(e) => f.setDmgFixed(e.target.value)} className={`text-center ${inp}`} />
-                    </div>
-                    <div className="w-24">
-                      <label className={lbl}>Equilíbrio</label>
-                      <input type="number" min={1} value={f.dmgEquilibrio}
-                        onChange={(e) => f.setDmgEquilibrio(e.target.value)}
-                        placeholder="—" className={`text-center ${inp}`} />
-                    </div>
-                    <div className="flex gap-2 items-start">
-                      <div className="w-[120px]">
-                        <label className={lbl}>Atributo 1</label>
-                        <Dropdown
-                          value={f.dmgAttr1}
-                          onChange={(v) => { f.setDmgAttr1(v); if (!v) f.setDmgAttr2(''); }}
-                          options={[{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS]}
-                        />
-                      </div>
-                      <div className="w-[120px]">
-                        <label className={lbl}>Atributo 2</label>
-                        <Dropdown
-                          value={f.dmgAttr2}
-                          onChange={f.setDmgAttr2}
-                          options={[{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS.filter((o) => o.value !== f.dmgAttr1)]}
-                        />
-                      </div>
-                    </div>
+                  <div className="flex gap-1.5">
+                    {(['formula', 'weapon'] as const).map((s) => (
+                      <button key={s} onClick={() => f.setDamageSource(s)}
+                        className={`flex-1 text-xs font-semibold rounded-lg px-3 py-1.5 border transition-colors ${
+                          f.damageSource === s
+                            ? 'border-e-accent bg-e-accent/10 text-e-accent'
+                            : 'border-e-border text-e-faint hover:text-e-text'
+                        }`}>
+                        {s === 'formula' ? 'Fórmula' : 'Arma equipada'}
+                      </button>
+                    ))}
                   </div>
-                  <p className="text-xs text-e-sub border-t border-e-border pt-2.5">
-                    Fórmula: <span className="font-mono text-e-text">⚔ {f.buildFormula() || '—'}</span>
-                  </p>
+
+                  {f.damageSource === 'formula' ? <>
+                    <div className="flex gap-3 items-start flex-wrap">
+                      <div className="w-24">
+                        <label className={lbl}>Dano base</label>
+                        <input type="number" min={0} value={f.dmgFixed}
+                          onChange={(e) => f.setDmgFixed(e.target.value)} className={`text-center ${inp}`} />
+                      </div>
+                      <div className="w-24">
+                        <label className={lbl}>Equilíbrio</label>
+                        <input type="number" min={1} value={f.dmgEquilibrio}
+                          onChange={(e) => f.setDmgEquilibrio(e.target.value)}
+                          placeholder="—" className={`text-center ${inp}`} />
+                      </div>
+                      <div className="flex gap-2 items-start">
+                        <div className="w-[120px]">
+                          <label className={lbl}>Atributo 1</label>
+                          <Dropdown
+                            value={f.dmgAttr1}
+                            onChange={(v) => { f.setDmgAttr1(v); if (!v) f.setDmgAttr2(''); }}
+                            options={[{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS]}
+                          />
+                        </div>
+                        <div className="w-[120px]">
+                          <label className={lbl}>Atributo 2</label>
+                          <Dropdown
+                            value={f.dmgAttr2}
+                            onChange={f.setDmgAttr2}
+                            options={[{ value: '', label: 'Nenhum' }, ...ATTR_ABBREV_OPTS.filter((o) => o.value !== f.dmgAttr1)]}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                    <p className="text-xs text-e-sub border-t border-e-border pt-2.5">
+                      Fórmula: <span className="font-mono text-e-text">⚔ {f.buildFormula() || '—'}</span>
+                    </p>
+                  </> : <>
+                    <div className="w-[220px]">
+                      <label className={lbl}>Mão</label>
+                      <Dropdown
+                        value={f.weaponSlot}
+                        onChange={(v) => f.setWeaponSlot(v as 'mainHand' | 'offHand')}
+                        options={[
+                          { value: 'mainHand', label: 'Mão principal' },
+                          { value: 'offHand',  label: 'Mão secundária' },
+                        ]}
+                      />
+                    </div>
+
+                    <div className="flex flex-col gap-2 border-t border-e-border pt-2.5">
+                      <div className="flex items-center justify-between">
+                        <label className={`${lbl} mb-0`}>Modificadores de dano</label>
+                        <button onClick={f.addWeaponDamageModifier}
+                          className="flex items-center gap-1 text-xs text-e-accent hover:opacity-80">
+                          <Plus size={13} /> Adicionar
+                        </button>
+                      </div>
+                      {f.weaponDamageModifiers.map((mod, i) => (
+                        <div key={i} className="flex gap-2 items-center">
+                          <div className="w-32">
+                            <Dropdown
+                              value={mod.type}
+                              onChange={(v) => f.updateWeaponDamageModifier(i, {
+                                type: v as 'flat' | 'percent' | 'extra_dice',
+                                value: undefined, percentual: undefined, dice: undefined,
+                              })}
+                              options={[
+                                { value: 'flat',       label: 'Fixo' },
+                                { value: 'percent',    label: 'Percentual' },
+                                { value: 'extra_dice', label: 'Dado extra' },
+                              ]}
+                            />
+                          </div>
+                          {mod.type === 'flat' && (
+                            <input type="number" value={mod.value ?? 0}
+                              onChange={(e) => f.updateWeaponDamageModifier(i, { value: Number(e.target.value) })}
+                              placeholder="valor" className={`w-20 text-center ${smallInp}`} />
+                          )}
+                          {mod.type === 'percent' && (
+                            <input type="number" value={mod.percentual ?? 0}
+                              onChange={(e) => f.updateWeaponDamageModifier(i, { percentual: Number(e.target.value) })}
+                              placeholder="%" className={`w-20 text-center ${smallInp}`} />
+                          )}
+                          {mod.type === 'extra_dice' && <>
+                            <input type="number" min={1} value={mod.dice?.quantity ?? 1}
+                              onChange={(e) => f.updateWeaponDamageModifier(i, { dice: { quantity: Number(e.target.value) || 1, die: mod.dice?.die ?? 'd6' } })}
+                              placeholder="qtd" className={`w-14 text-center ${smallInp}`} />
+                            <div className="w-20">
+                              <Dropdown
+                                value={mod.dice?.die ?? 'd6'}
+                                onChange={(v) => f.updateWeaponDamageModifier(i, { dice: { quantity: mod.dice?.quantity ?? 1, die: v } })}
+                                options={['d4', 'd6', 'd8', 'd10', 'd12', 'd20'].map((d) => ({ value: d, label: d }))}
+                              />
+                            </div>
+                          </>}
+                          <button onClick={() => f.removeWeaponDamageModifier(i)} className="opacity-40 hover:opacity-80 shrink-0">
+                            <Trash2 size={13} />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  </>}
                 </div>
               )}
             </div>

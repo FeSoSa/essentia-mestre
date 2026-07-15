@@ -29,12 +29,28 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     ((skill as any)?.actionType as 'main' | 'bonus' | 'both') ?? 'main'
   );
 
-  const [hasDamage,     setHasDamage]     = useState(!!skill?.damage);
+  const [hasDamage,     setHasDamage]     = useState(!!skill?.damage || skill?.damageSource === 'weapon');
   const [dmgFixed,      setDmgFixed]      = useState(String(skill?.damage?.baseFixed ?? 0));
   const [dmgEquilibrio, setDmgEquilibrio] = useState(String(skill?.damage?.equilibrio ?? ''));
   const dmgAtributoRaw = skill?.damage?.atributo?.split('/') ?? [];
   const [dmgAttr1, setDmgAttr1] = useState(dmgAtributoRaw[0] ?? '');
   const [dmgAttr2, setDmgAttr2] = useState(dmgAtributoRaw[1] ?? '');
+
+  const [damageSource, setDamageSource] = useState<'formula' | 'weapon'>(skill?.damageSource ?? 'formula');
+  const [weaponSlot,   setWeaponSlot]   = useState<'mainHand' | 'offHand'>(skill?.weaponSlot ?? 'mainHand');
+  const [weaponDamageModifiers, setWeaponDamageModifiers] = useState<NonNullable<Skill['weaponDamageModifiers']>>(
+    skill?.weaponDamageModifiers ?? []
+  );
+
+  function addWeaponDamageModifier() {
+    setWeaponDamageModifiers((m) => [...m, { type: 'flat', value: 0 }]);
+  }
+  function removeWeaponDamageModifier(i: number) {
+    setWeaponDamageModifiers((m) => m.filter((_, j) => j !== i));
+  }
+  function updateWeaponDamageModifier(i: number, patch: Partial<NonNullable<Skill['weaponDamageModifiers']>[number]>) {
+    setWeaponDamageModifiers((m) => m.map((x, j) => j === i ? { ...x, ...patch } : x));
+  }
 
   const [costs, setCosts] = useState<CostEntry[]>(
     skill?.costs.map((c) => ({
@@ -175,6 +191,8 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       id?: string; passive?: boolean; pressaoDice?: boolean;
       passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number;
       weaponTypes?: string[]; onHitEffects?: EffectPreset[]; critThreshold?: number;
+      damageSource?: 'formula' | 'weapon'; weaponSlot?: 'mainHand' | 'offHand';
+      weaponDamageModifiers?: Skill['weaponDamageModifiers'];
     } = {
       ...(editing ? { id: skill!.id } : {}),
       name: name.trim(), desc, type, ultimate, toggle, passive, pressaoDice, actionType,
@@ -202,12 +220,17 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
         value:      c.value      !== '' ? Number(c.value)      : undefined,
         percentual: c.percentual !== '' ? Number(c.percentual) : undefined,
       })),
-      damage: hasDamage ? {
+      damage: hasDamage && damageSource === 'formula' ? {
         formula:    buildFormula(),
         baseFixed:  Number(dmgFixed) || 0,
         atributo:   buildAtributo(),
         equilibrio: dmgEquilibrio !== '' ? Number(dmgEquilibrio) : undefined,
       } : undefined,
+      damageSource: hasDamage ? damageSource : undefined,
+      weaponSlot: hasDamage && damageSource === 'weapon' ? weaponSlot : undefined,
+      weaponDamageModifiers: hasDamage && damageSource === 'weapon' && weaponDamageModifiers.length > 0
+        ? weaponDamageModifiers
+        : undefined,
       requirements,
       onHitEffects: onHitEffects.length > 0 ? onHitEffects : undefined,
     };
@@ -242,6 +265,8 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     hasDamage, setHasDamage, dmgFixed, setDmgFixed,
     dmgEquilibrio, setDmgEquilibrio, dmgAttr1, setDmgAttr1, dmgAttr2, setDmgAttr2,
     buildFormula,
+    damageSource, setDamageSource, weaponSlot, setWeaponSlot,
+    weaponDamageModifiers, addWeaponDamageModifier, removeWeaponDamageModifier, updateWeaponDamageModifier,
     // multi-target
     hasMultiTarget, setHasMultiTarget, multiMaxTargets, setMultiMaxTargets,
     multiDamageMode, setMultiDamageMode, multiSpecificDmg, setMultiSpecificDmg,

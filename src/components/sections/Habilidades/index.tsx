@@ -18,6 +18,7 @@ const WEAPON_TYPE_OPTS = [
   { value: 'alabardas',          label: 'Alabardas'          },
   { value: 'lancas',             label: 'Lanças'             },
   { value: 'machados-de-guerra', label: 'Machados de guerra' },
+  { value: 'machadinhas',        label: 'Machadinhas'        },
   { value: 'martelos',           label: 'Martelos'           },
   { value: 'armas-colossais',    label: 'Armas colossais'    },
   { value: 'adagas',             label: 'Adagas'             },

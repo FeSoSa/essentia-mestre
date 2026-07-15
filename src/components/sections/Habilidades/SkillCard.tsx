@@ -21,6 +21,14 @@ export interface Skill {
     atributo?: string;
     equilibrio?: number;
   };
+  damageSource?: 'formula' | 'weapon';
+  weaponSlot?: 'mainHand' | 'offHand';
+  weaponDamageModifiers?: {
+    type: 'flat' | 'percent' | 'extra_dice';
+    value?: number;
+    percentual?: number;
+    dice?: { quantity: number; die: string };
+  }[];
   cooldownTurns: number;
   ultimate: boolean;
   toggle: boolean;
@@ -80,7 +88,7 @@ const ATTR_SHORT: Record<string, string> = {
 
 const WEAPON_LABEL: Record<string, string> = {
   espadas: 'Espadas', rapieiras: 'Rapieiras', alabardas: 'Alabardas', lancas: 'Lanças',
-  'machados-de-guerra': 'Machados de guerra', martelos: 'Martelos', 'armas-colossais': 'Armas colossais',
+  'machados-de-guerra': 'Machados de guerra', machadinhas: 'Machadinhas', martelos: 'Martelos', 'armas-colossais': 'Armas colossais',
   adagas: 'Adagas', garras: 'Garras', arcos: 'Arcos', bestas: 'Bestas', pistolas: 'Pistolas',
   'luvas-manoplas': 'Luvas & manoplas', escudos: 'Escudos',
 };
@@ -157,7 +165,11 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
 
       {/* ── Stats ── */}
       <div className="flex gap-1.5 flex-wrap text-[11px]">
-        {skill.damage && (
+        {skill.damageSource === 'weapon' ? (
+          <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-e-card text-e-text font-mono">
+            ⚔ Arma ({skill.weaponSlot === 'offHand' ? 'mão secundária' : 'mão principal'})
+          </span>
+        ) : skill.damage && (
           <span className="flex items-center gap-1 px-2 py-0.5 rounded bg-e-card text-e-text font-mono">
             ⚔ {dmgDisplay(skill.damage)}
           </span>
