@@ -88,6 +88,11 @@ export default function Log() {
     return players.find((p) => p.id === id)?.char.name ?? id;
   }
 
+  async function handleClearLog() {
+    if (!confirm('Apagar todo o log da sessão? Esta ação não pode ser desfeita.')) return;
+    try { await api.delete('/log'); setLog([]); } catch {}
+  }
+
   const collapsed = collapseLog([...log].reverse()).reverse();
 
   return (
@@ -121,12 +126,21 @@ export default function Log() {
       <div className="w-[420px] shrink-0 border-r border-e-border flex flex-col overflow-hidden">
         <div className="px-5 py-3.5 border-b border-e-border shrink-0 flex items-center justify-between">
           <p className="text-xs font-semibold uppercase tracking-wider text-e-faint">Log da Sessão</p>
-          <span className="text-xs text-e-faint tabular-nums">
-            {collapsed.length} eventos
-            {collapsed.length !== log.length && (
-              <span className="text-e-faint/60 ml-1">({log.length} raw)</span>
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-e-faint tabular-nums">
+              {collapsed.length} eventos
+              {collapsed.length !== log.length && (
+                <span className="text-e-faint/60 ml-1">({log.length} raw)</span>
+              )}
+            </span>
+            {log.length > 0 && (
+              <button onClick={handleClearLog}
+                className="text-xs text-e-faint hover:text-red-400 transition-colors"
+                title="Apagar log da sessão">
+                Limpar
+              </button>
             )}
-          </span>
+          </div>
         </div>
         <div className="flex-1 overflow-y-auto min-h-0">
           {collapsed.length === 0 ? (

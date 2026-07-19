@@ -22,7 +22,6 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   const [cooldown,      setCooldown]      = useState(String(skill?.cooldownTurns ?? 0));
   const [critThreshold, setCritThreshold] = useState(String((skill as any)?.critThreshold ?? ''));
   const [ultimate,    setUltimate]    = useState(skill?.ultimate ?? false);
-  const [toggle,      setToggle]      = useState(skill?.toggle ?? false);
   const [passive,     setPassive]     = useState((skill as any)?.passive ?? false);
   const [pressaoDice, setPressaoDice] = useState((skill as any)?.pressaoDice ?? false);
   const [actionType,  setActionType]  = useState<'main' | 'bonus' | 'both'>(
@@ -87,6 +86,10 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   const [expandedHitEffect,  setExpandedHitEffect]  = useState<Set<number>>(new Set());
   const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
 
+  const [selfEffects,            setSelfEffects]            = useState<EffectPreset[]>((skill as any)?.selfEffects ?? []);
+  const [expandedSelfEffect,     setExpandedSelfEffect]     = useState<Set<number>>(new Set());
+  const [presetDropdownOpenSelf, setPresetDropdownOpenSelf] = useState(false);
+
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
 
@@ -96,12 +99,6 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     const v = !passive;
     setPassive(v);
     if (v) { setHasDamage(false); setCosts([]); }
-  }
-
-  function toggleToggle() {
-    const v = !toggle;
-    setToggle(v);
-    if (v) setHasDamage(false);
   }
 
   // ── Costs ─────────────────────────────────────────────────────────────────
@@ -134,6 +131,30 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   }
   function toggleHitExpand(i: number) {
     setExpandedHitEffect((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  }
+
+  // ── Self effects (efeitos no usuário) ───────────────────────────────────────
+
+  function addPresetAsSelfEffect(preset: EffectPreset) {
+    const entry: EffectPreset = { ...preset, id: `${preset.id}-${Date.now()}` };
+    setSelfEffects((e) => [...e, entry]);
+    setExpandedSelfEffect((s) => new Set([...s, selfEffects.length]));
+    setPresetDropdownOpenSelf(false);
+  }
+  function addCustomSelfEffect() {
+    const entry: EffectPreset = { id: `custom-${Date.now()}`, name: '', durationTurns: 1, effects: [] };
+    setSelfEffects((e) => [...e, entry]);
+    setExpandedSelfEffect((s) => new Set([...s, selfEffects.length]));
+  }
+  function removeSelfEffect(i: number) {
+    setSelfEffects((e) => e.filter((_, j) => j !== i));
+    setExpandedSelfEffect((s) => { const n = new Set(s); n.delete(i); return n; });
+  }
+  function updateSelfEffect(i: number, patch: Partial<EffectPreset>) {
+    setSelfEffects((e) => e.map((x, j) => j === i ? { ...x, ...patch } : x));
+  }
+  function toggleSelfExpand(i: number) {
+    setExpandedSelfEffect((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
   }
 
   // ── Requirement attrs ─────────────────────────────────────────────────────
@@ -190,12 +211,12 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     const body: Omit<Skill, 'id'> & {
       id?: string; passive?: boolean; pressaoDice?: boolean;
       passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number;
-      weaponTypes?: string[]; onHitEffects?: EffectPreset[]; critThreshold?: number;
+      weaponTypes?: string[]; onHitEffects?: EffectPreset[]; selfEffects?: EffectPreset[]; critThreshold?: number;
       damageSource?: 'formula' | 'weapon'; weaponSlot?: 'mainHand' | 'offHand';
       weaponDamageModifiers?: Skill['weaponDamageModifiers'];
     } = {
       ...(editing ? { id: skill!.id } : {}),
-      name: name.trim(), desc, type, ultimate, toggle, passive, pressaoDice, actionType,
+      name: name.trim(), desc, type, ultimate, passive, pressaoDice, actionType,
       multiTarget: hasMultiTarget ? {
         maxTargets:     Number(multiMaxTargets) || 2,
         damageMode:     multiDamageMode,
@@ -207,9 +228,9 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       essenciaId:  type === 'essencia' ? essenciaId || undefined : undefined,
       passiveAttributes: toAttrMap(passiveAttrs),
       buffAttributes:    toAttrMap(buffAttrs),
-      buffDurationTurns: toggle
-        ? (buffDuration ? Number(buffDuration) : undefined)
-        : ((buffAttrs.length > 0 || hitBonus !== '' || attackBonus !== '' || damageBonus !== '') && buffDuration ? Number(buffDuration) : undefined),
+      buffDurationTurns: (buffAttrs.length > 0 || hitBonus !== '' || attackBonus !== '' || damageBonus !== '') && buffDuration
+        ? Number(buffDuration)
+        : undefined,
       hitBonus:    hitBonus    !== '' ? Number(hitBonus)    : undefined,
       attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined,
       damageBonus: damageBonus !== '' ? Number(damageBonus) : undefined,
@@ -233,6 +254,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
         : undefined,
       requirements,
       onHitEffects: onHitEffects.length > 0 ? onHitEffects : undefined,
+      selfEffects: selfEffects.length > 0 ? selfEffects : undefined,
     };
 
     try {
@@ -256,7 +278,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     essenciaId, setEssenciaId, essenciaOpts,
     // behavior
     passive, togglePassive, ultimate, setUltimate,
-    toggle, toggleToggle, pressaoDice, setPressaoDice,
+    pressaoDice, setPressaoDice,
     // turn
     actionType, setActionType, cooldown, setCooldown, critThreshold, setCritThreshold,
     // costs
@@ -274,6 +296,10 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     onHitEffects, presets, presetDropdownOpen, setPresetDropdownOpen,
     expandedHitEffect, addPresetAsHitEffect, addCustomHitEffect,
     removeHitEffect, updateHitEffect, toggleHitExpand,
+    // self effects (efeitos no usuário)
+    selfEffects, presetDropdownOpenSelf, setPresetDropdownOpenSelf,
+    expandedSelfEffect, addPresetAsSelfEffect, addCustomSelfEffect,
+    removeSelfEffect, updateSelfEffect, toggleSelfExpand,
     // passive / buff effects
     passiveAttrs, setPassiveAttrs, buffAttrs, setBuffAttrs,
     buffDuration, setBuffDuration,

@@ -31,7 +31,6 @@ export interface Skill {
   }[];
   cooldownTurns: number;
   ultimate: boolean;
-  toggle: boolean;
   actionType?: string;
   pressaoDice?: boolean;
   buffAttributes?: Record<string, number>;
@@ -50,6 +49,7 @@ export interface Skill {
     weaponRequired?: string;
   };
   onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
+  selfEffects?: import('@/store/effectPresetsStore').EffectPreset[];
 }
 
 interface Props {
@@ -129,9 +129,6 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
             <p className="font-semibold text-sm leading-tight">{skill.name}</p>
             {skill.ultimate && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-amber-400/20 text-amber-400 shrink-0">ult</span>
-            )}
-            {skill.toggle && (
-              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-sky-400/20 text-sky-400 shrink-0">por turno</span>
             )}
             {skill.pressaoDice && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-orange-500/20 text-orange-400 shrink-0">pressão</span>

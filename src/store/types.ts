@@ -36,6 +36,7 @@ export interface AutoEffect {
   trigger: string; type: string;
   value?: number; percentual?: number;
   attribute?: string; dice?: Dice;
+  costType?: string;
 }
 
 export interface OnExpireEffect {
@@ -163,6 +164,8 @@ export interface DamageApprovalRequest {
   damage: number;
   costs?: Record<string, number>;
   onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
+  slotId?: string;
+  skillId?: string;
 }
 
 export interface EffectApprovalRequest {

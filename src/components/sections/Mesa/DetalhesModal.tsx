@@ -2,7 +2,7 @@
 
 import Button from "@/components/ui/Button";
 import Checkbox from "@/components/ui/Checkbox";
-import EffectBuilder from "@/components/sections/StatusEffects/EffectBuilder";
+import EffectBuilder, { describeAutoEffect } from "@/components/sections/StatusEffects/EffectBuilder";
 import { api } from "@/lib/api";
 import type { CatalogEntry, EquipSlot } from "@/lib/equipmentCatalog";
 import { proxyUrl } from "@/lib/gdrive";
@@ -1848,21 +1848,28 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
               {currentEffects.map((ef) => {
                 const IconComp = getStatusIcon(ef.icon);
                 return (
-                  <div key={ef.id || ef.name} className="flex items-center gap-2 bg-e-card border border-e-border rounded-xl px-3 py-2">
-                    {IconComp
-                      ? <IconComp size={13} className="text-e-sub shrink-0" />
-                      : ef.icon ? <span className="text-sm shrink-0">{ef.icon}</span> : null}
-                    <span className="flex-1 text-xs font-medium text-e-text truncate">{ef.name}</span>
-                    <span className="text-[10px] font-mono text-e-sub shrink-0">
-                      {ef.durationTurns === -1 ? '∞' : `${ef.durationTurns}t`}
-                    </span>
-                    <button
-                      onClick={() => handleRemove(ef.id)}
-                      disabled={removing === ef.id}
-                      className="p-1 rounded hover:bg-e-danger/20 text-e-faint hover:text-e-danger disabled:opacity-40 cursor-pointer transition-colors shrink-0"
-                    >
-                      <Trash2 size={12} />
-                    </button>
+                  <div key={ef.id || ef.name} className="flex flex-col gap-1 bg-e-card border border-e-border rounded-xl px-3 py-2">
+                    <div className="flex items-center gap-2">
+                      {IconComp
+                        ? <IconComp size={13} className="text-e-sub shrink-0" />
+                        : ef.icon ? <span className="text-sm shrink-0">{ef.icon}</span> : null}
+                      <span className="flex-1 text-xs font-medium text-e-text truncate">{ef.name}</span>
+                      <span className="text-[10px] font-mono text-e-sub shrink-0">
+                        {ef.durationTurns === -1 ? '∞' : `${ef.durationTurns}t`}
+                      </span>
+                      <button
+                        onClick={() => handleRemove(ef.id)}
+                        disabled={removing === ef.id}
+                        className="p-1 rounded hover:bg-e-danger/20 text-e-faint hover:text-e-danger disabled:opacity-40 cursor-pointer transition-colors shrink-0"
+                      >
+                        <Trash2 size={12} />
+                      </button>
+                    </div>
+                    {ef.effects.length > 0 && (
+                      <p className="text-[10px] text-e-accent pl-[21px] truncate">
+                        {ef.effects.map(describeAutoEffect).join(' · ')}
+                      </p>
+                    )}
                   </div>
                 );
               })}

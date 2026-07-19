@@ -2,6 +2,7 @@
 
 import type { AutoEffect } from '@/store/types';
 import Select from '@/components/ui/Select';
+import { COST_OPTS } from '@/lib/costOptions';
 
 const TRIGGERS = [
   { value: 'on_turn_start',      label: 'Início do turno' },
@@ -19,10 +20,17 @@ const TYPES = [
   { value: 'modify_attribute',       label: 'Modificar atributo' },
   { value: 'modify_damage_dealt',    label: 'Mod. dano causado' },
   { value: 'modify_damage_received', label: 'Mod. dano recebido' },
+  { value: 'modify_resource_cost',   label: 'Reduzir custo por recurso' },
 ];
 
 // Tipos passivos: ficam ativos o tempo todo que o status effect durar, não dependem do Trigger
-const PASSIVE_TYPES = ['block_skill', 'modify_attribute', 'modify_damage_dealt', 'modify_damage_received'];
+const PASSIVE_TYPES = ['block_skill', 'modify_attribute', 'modify_damage_dealt', 'modify_damage_received', 'modify_resource_cost'];
+
+// Tipos cujo "Valor fixo" aceita negativo (ex: -32 para reduzir dano)
+const SIGNED_VALUE_TYPES = ['modify_attribute', 'modify_damage_dealt', 'modify_damage_received', 'modify_resource_cost'];
+
+// Tipos que não usam o campo "Valor fixo" (só percentual, ou nenhum valor)
+const NO_FIXED_VALUE_TYPES = ['block_skill', 'modify_resource_cost'];
 
 const ATTRS = [
   { value: 'strength',     label: 'Força' },
@@ -38,6 +46,42 @@ const ATTRS = [
 
 function emptyEffect(): AutoEffect {
   return { trigger: 'on_turn_start', type: 'damage_hp' };
+}
+
+const ATTR_LABEL: Record<string, string> = Object.fromEntries(ATTRS.map((a) => [a.value, a.label]));
+const COST_LABEL: Record<string, string> = Object.fromEntries(COST_OPTS.map((c) => [c.value, c.label]));
+const TYPE_LABEL: Record<string, string> = Object.fromEntries(TYPES.map((t) => [t.value, t.label]));
+
+function signed(n: number): string {
+  return n > 0 ? `+${n}` : `${n}`;
+}
+
+/** Descrição curta e legível de um AutoEffect, ex: "Força +3" ou "Dano HP 12". */
+export function describeAutoEffect(eff: AutoEffect): string {
+  switch (eff.type) {
+    case 'modify_attribute': {
+      const attr = eff.attribute ? (ATTR_LABEL[eff.attribute] ?? eff.attribute) : '?';
+      const parts: string[] = [];
+      if (eff.value) parts.push(signed(eff.value));
+      if (eff.percentual) parts.push(`${signed(eff.percentual)}%`);
+      return `${attr} ${parts.join(' ') || '+0'}`;
+    }
+    case 'modify_resource_cost': {
+      const cost = eff.costType ? (COST_LABEL[eff.costType] ?? eff.costType) : '?';
+      return `Custo ${cost} ${signed(eff.percentual ?? 0)}%`;
+    }
+    case 'modify_damage_dealt':
+    case 'modify_damage_received': {
+      const parts: string[] = [];
+      if (eff.value) parts.push(signed(eff.value));
+      if (eff.percentual) parts.push(`${signed(eff.percentual)}%`);
+      return `${TYPE_LABEL[eff.type]} ${parts.join(' ') || '+0'}`;
+    }
+    case 'block_skill':
+      return TYPE_LABEL[eff.type] ?? eff.type;
+    default:
+      return `${TYPE_LABEL[eff.type] ?? eff.type} ${eff.value ?? 0}`;
+  }
 }
 
 export default function EffectBuilder({ effects, onChange }: { effects: AutoEffect[]; onChange: (e: AutoEffect[]) => void }) {
@@ -85,12 +129,12 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
               </p>
             )}
 
-            {eff.type !== 'block_skill' && (
+            {!NO_FIXED_VALUE_TYPES.includes(eff.type) && (
               <div>
                 <label className={label}>Valor fixo</label>
                 <input type="number" value={eff.value ?? 0}
                   onChange={(e) => update(i, { value: Number(e.target.value) })}
-                  min={eff.type === 'modify_attribute' ? undefined : 0} />
+                  min={SIGNED_VALUE_TYPES.includes(eff.type) ? undefined : 0} />
               </div>
             )}
 
@@ -112,6 +156,30 @@ export default function EffectBuilder({ effects, onChange }: { effects: AutoEffe
                   placeholder="Selecionar atributo…"
                 />
               </div>
+            )}
+
+            {eff.type === 'modify_resource_cost' && (
+              <div className="col-span-2">
+                <label className={label}>Recurso</label>
+                <Select
+                  value={eff.costType ?? ''}
+                  onChange={(v) => update(i, { costType: v })}
+                  options={COST_OPTS}
+                  placeholder="Selecionar recurso…"
+                />
+              </div>
+            )}
+
+            {(eff.type === 'modify_damage_dealt' || eff.type === 'modify_damage_received') && (
+              <p className="col-span-2 text-[10px] text-e-faint -mt-1">
+                Use negativo para reduzir (ex: -32 de dano fixo, -20% percentual). Os dois se somam ao dano base.
+              </p>
+            )}
+
+            {eff.type === 'modify_resource_cost' && (
+              <p className="col-span-2 text-[10px] text-e-faint -mt-1">
+                Reduz o custo (percentual) de qualquer habilidade que use o recurso selecionado. Use negativo para reduzir (ex: -20%).
+              </p>
             )}
 
           </div>

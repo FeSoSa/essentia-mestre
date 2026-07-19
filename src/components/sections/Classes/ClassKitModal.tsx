@@ -196,14 +196,9 @@ export default function ClassKitModal({
 
     const builtItems = starterItems.map(({ id, qty }) => {
       const catalog = items.find((i) => i.id === id);
-      return {
-        id,
-        name: catalog?.name ?? "",
-        desc: catalog?.desc ?? "",
-        qty,
-        type: catalog?.type ?? "normal",
-        icon: catalog?.icon,
-      };
+      return catalog
+        ? { ...catalog, qty }
+        : { id, name: "", desc: "", qty, type: "normal" };
     });
 
     const attrStr = [unarmedAttr1, unarmedAttr2].filter(Boolean).join("/");

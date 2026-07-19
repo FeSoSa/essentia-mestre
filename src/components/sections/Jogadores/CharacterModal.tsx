@@ -138,6 +138,14 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
     }
   }, [race, allRaces, player]);
 
+  // Resincroniza os atributos exibidos quando o jogador é atualizado externamente
+  // (ex.: via socket, enquanto o modal está aberto), desde que o mestre ainda não
+  // tenha editado nada no formulário — para não sobrescrever uma edição em andamento.
+  const [attrsTouched, setAttrsTouched] = useState(false);
+  useEffect(() => {
+    if (player && !attrsTouched) setAttrs(player.attributes);
+  }, [player, attrsTouched]);
+
 
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -265,7 +273,7 @@ export default function CharacterModal({ player, onClose }: { player?: Player; o
                       type="number"
                       title={label}
                       value={score}
-                      onChange={(e) => setAttrs(p => ({ ...p, [key]: Number(e.target.value) }))}
+                      onChange={(e) => { setAttrsTouched(true); setAttrs(p => ({ ...p, [key]: Number(e.target.value) })); }}
                       className="!text-center !text-base !font-bold !text-e-text !bg-transparent !border-0 !p-0 !shadow-none !w-full"
                     />
                   </div>

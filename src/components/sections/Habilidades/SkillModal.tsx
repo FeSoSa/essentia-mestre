@@ -9,6 +9,7 @@ import Checkbox from '@/components/ui/Checkbox';
 import EffectBuilder from '../StatusEffects/EffectBuilder';
 import { useSkillForm } from './useSkillForm';
 import { STATUS_ICONS, getStatusIcon } from '@/lib/statusIcons';
+import { COST_OPTS } from '@/lib/costOptions';
 
 interface Props {
   skill?: Skill;
@@ -68,16 +69,6 @@ const ATTR_OPTS = [
   ['defense',      'DEF — Defesa'       ],
 ].map(([v, l]) => ({ value: v, label: l }));
 
-const COST_OPTS = [
-  { value: 'flow',            label: 'Fluxo'   },
-  { value: 'hp',              label: 'HP'      },
-  { value: 'ether',           label: 'Éter'    },
-  { value: 'charge',          label: 'Carga'   },
-  { value: 'percentual_flow', label: 'Fluxo %' },
-  { value: 'percentual_hp',   label: 'HP %'    },
-  { value: 'pressao',         label: 'Pressão' },
-];
-
 function Dropdown<T extends string>({ value, onChange, options, placeholder }: {
   value: T; onChange: (v: T) => void;
   options: { value: T; label: string }[];
@@ -115,13 +106,14 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
   const f = useSkillForm(skill, essencias);
   const [tab, setTab] = useState<TabId>('base');
   const [presetSearch, setPresetSearch] = useState('');
+  const [presetSearchSelf, setPresetSearchSelf] = useState('');
 
   const isEnemy = f.type === 'inimigo';
 
   const tabs = [
     { id: 'base'    as TabId, label: 'Base'          },
     !f.passive && !isEnemy && { id: 'turno'   as TabId, label: 'Turno & Custos' },
-    !f.passive && !f.toggle && { id: 'combate' as TabId, label: 'Combate'        },
+    !f.passive && { id: 'combate' as TabId, label: 'Combate'        },
     { id: 'efeitos' as TabId, label: 'Efeitos & Req' },
   ].filter(Boolean) as { id: TabId; label: string }[];
 
@@ -241,13 +233,11 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                 {([
                   { key: 'passive',  label: 'Passiva',      sub: 'Sem custo ativo',             active: f.passive,     color: 'teal',   disabled: false },
                   { key: 'ultimate', label: 'Ultimate',     sub: 'Habilidade de poder máximo',  active: f.ultimate,    color: 'amber',  disabled: false },
-                  { key: 'toggle',   label: 'Por turno',    sub: 'Custo renovado a cada turno', active: f.toggle,      color: 'sky',    disabled: false },
                   { key: 'pressao',  label: 'Pressão Dice', sub: 'd20 + pontos de Pressão',     active: f.pressaoDice, color: 'orange', disabled: f.passive },
                 ] as const).map(({ key, label, sub, active, color, disabled }) => {
                   const colors: Record<string, string> = {
                     teal:   active ? 'border-teal-500/60   bg-teal-500/10   text-teal-300'   : '',
                     amber:  active ? 'border-amber-500/60  bg-amber-500/10  text-amber-300'  : '',
-                    sky:    active ? 'border-sky-500/60    bg-sky-500/10    text-sky-300'    : '',
                     orange: active ? 'border-orange-500/60 bg-orange-500/10 text-orange-300' : '',
                   };
                   return (
@@ -255,7 +245,6 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                       onClick={() => {
                         if (key === 'passive')  { f.togglePassive(); if (!f.passive) setTab('base'); }
                         if (key === 'ultimate') f.setUltimate((v: boolean) => !v);
-                        if (key === 'toggle')   { f.toggleToggle(); if (!f.toggle && (tab as TabId) === 'combate') setTab('base'); }
                         if (key === 'pressao')  f.setPressaoDice((v: boolean) => !v);
                       }}
                       className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border transition-colors text-left
@@ -300,20 +289,12 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                 <input type="number" min={0} value={f.cooldown}
                   onChange={(e) => f.setCooldown(e.target.value)} className={`text-center ${inp}`} />
               </div>
-              {f.toggle ? (
-                <div className="w-36">
-                  <label className={lbl}>Limite ativo (turnos, -1=∞)</label>
-                  <input type="number" min={-1} value={f.buffDuration}
-                    onChange={(e) => f.setBuffDuration(e.target.value)} className={`text-center ${inp}`} />
-                </div>
-              ) : (
-                <div className="w-36">
-                  <label className={lbl}>Crítico mínimo</label>
-                  <input type="number" min={1} max={20} value={f.critThreshold}
-                    onChange={(e) => f.setCritThreshold(e.target.value)}
-                    placeholder="20" className={`text-center ${inp}`} />
-                </div>
-              )}
+              <div className="w-36">
+                <label className={lbl}>Crítico mínimo</label>
+                <input type="number" min={1} max={20} value={f.critThreshold}
+                  onChange={(e) => f.setCritThreshold(e.target.value)}
+                  placeholder="20" className={`text-center ${inp}`} />
+              </div>
             </div>
           </div>
 
@@ -773,7 +754,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                   </div>
                 ))}
               </div>
-              {!f.toggle && (f.hitBonus !== '' || f.attackBonus !== '' || f.damageBonus !== '' || f.buffAttrs.length > 0) && (
+              {(f.hitBonus !== '' || f.attackBonus !== '' || f.damageBonus !== '' || f.buffAttrs.length > 0) && (
                 <div className="flex items-center gap-3">
                   <span className={lbl + ' mb-0'}>Duração</span>
                   <input type="number" min={-1} value={f.buffDuration}
@@ -783,6 +764,174 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                 </div>
               )}
             </div>
+          </div>
+
+          {/* ── Efeitos no Usuário ── */}
+          <div className={sec}>
+            <div className="flex items-center justify-between">
+              <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint">Efeitos no Usuário</p>
+              <div className="flex items-center gap-2">
+                <div className="relative">
+                  <button type="button" onClick={() => f.setPresetDropdownOpenSelf((v) => !v)}
+                    className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
+                    <Plus size={12} /> Preset
+                  </button>
+                  {f.presetDropdownOpenSelf && (
+                    <div className="absolute right-0 z-50 mt-1 w-52 bg-e-surface border border-e-border rounded-xl shadow-2xl">
+                      <div className="p-2 border-b border-e-border">
+                        <input
+                          autoFocus
+                          value={presetSearchSelf}
+                          onChange={(e) => setPresetSearchSelf(e.target.value)}
+                          placeholder="Buscar…"
+                          className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
+                        />
+                      </div>
+                      <div className="max-h-48 overflow-y-auto">
+                        {f.presets.filter((p) => !presetSearchSelf.trim() || p.name.toLowerCase().includes(presetSearchSelf.toLowerCase())).map((p) => {
+                          const PresetIcon = getStatusIcon(p.icon);
+                          return (
+                            <button key={p.id} type="button"
+                              onClick={() => { f.addPresetAsSelfEffect(p); setPresetSearchSelf(''); }}
+                              className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text flex items-center">
+                              {PresetIcon && <PresetIcon size={13} className="mr-1.5 shrink-0" />}
+                              <span className="flex-1 truncate">{p.name}</span>
+                              <span className="ml-1.5 text-[10px] text-e-faint shrink-0">{p.durationTurns === -1 ? '∞' : `${p.durationTurns}t`}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  )}
+                </div>
+                <button type="button" onClick={f.addCustomSelfEffect}
+                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
+                  <Plus size={12} /> Personalizado
+                </button>
+              </div>
+            </div>
+
+            {f.selfEffects.length === 0 && (
+              <p className="text-xs text-e-faint italic">Nenhum efeito aplicado no usuário.</p>
+            )}
+
+            {f.selfEffects.map((eff, i) => {
+              const expanded = f.expandedSelfEffect.has(i);
+              const EffIcon = getStatusIcon(eff.icon);
+              return (
+                <div key={eff.id} className="rounded-xl border border-e-border bg-e-bg overflow-hidden">
+                  <div className="flex items-center gap-2 px-3 py-2.5">
+                    {EffIcon && <EffIcon size={15} className="shrink-0" />}
+                    <span className={`flex-1 text-sm font-medium truncate ${eff.name ? 'text-e-text' : 'text-e-faint italic'}`}>
+                      {eff.name || 'Sem nome'}
+                    </span>
+                    <span className="text-xs text-e-faint shrink-0">
+                      {eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}
+                    </span>
+                    <button type="button" onClick={() => f.toggleSelfExpand(i)}
+                      className="opacity-50 hover:opacity-100 transition-opacity shrink-0">
+                      {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
+                    </button>
+                    <button type="button" onClick={() => f.removeSelfEffect(i)}
+                      className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
+                      <Trash2 size={13} />
+                    </button>
+                  </div>
+                  {expanded && (
+                    <div className="px-3 pb-3 flex flex-col gap-3 border-t border-e-border pt-3">
+                      <div>
+                        <label className={lbl}>Nome</label>
+                        <input value={eff.name} onChange={(e) => f.updateSelfEffect(i, { name: e.target.value })}
+                          className={inp} placeholder="Nome do efeito" />
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Descrição</label>
+                        <textarea value={eff.desc ?? ''} onChange={(e) => f.updateSelfEffect(i, { desc: e.target.value })}
+                          placeholder="O que este efeito faz em quem usa…" rows={2}
+                          className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text resize-none outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint" />
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Ícone</label>
+                        <div className="grid grid-cols-9 gap-1.5">
+                          {STATUS_ICONS.map(({ name: n, Icon }) => (
+                            <button key={n} type="button" title={n}
+                              onClick={() => f.updateSelfEffect(i, { icon: eff.icon === n ? '' : n })}
+                              className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center ${
+                                eff.icon === n
+                                  ? 'border-e-accent bg-e-accent/10 text-e-accent'
+                                  : 'border-e-border hover:border-e-border2 text-e-faint hover:text-e-sub'
+                              }`}
+                              style={eff.icon === n && eff.color ? { borderColor: eff.color, backgroundColor: eff.color + '22', color: eff.color } : {}}
+                            >
+                              <Icon size={14} />
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Cor</label>
+                        <div className="flex flex-col gap-2">
+                          <div className="grid grid-cols-6 gap-1.5">
+                            {['#ef4444','#f97316','#facc15','#4ade80','#06b6d4','#3b82f6','#a855f7','#ec4899','#d4a84e','#e2e8f0','#71717a','#7c3aed'].map((c) => (
+                              <button key={c} type="button" onClick={() => f.updateSelfEffect(i, { color: c })}
+                                className={`h-7 rounded-lg border-2 transition-all cursor-pointer ${eff.color === c ? 'scale-110 border-white/50' : 'border-transparent hover:scale-105'}`}
+                                style={{ backgroundColor: c }} />
+                            ))}
+                            <button type="button" onClick={() => f.updateSelfEffect(i, { color: undefined })}
+                              className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!eff.color ? 'border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
+                              auto
+                            </button>
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-4">
+                        <label className="flex items-center gap-2 cursor-pointer select-none">
+                          <Checkbox checked={eff.durationTurns === -1}
+                            onChange={(checked) => f.updateSelfEffect(i, { durationTurns: checked ? -1 : 1 })} />
+                          <span className="text-sm text-e-sub">Permanente</span>
+                        </label>
+                        {eff.durationTurns !== -1 && (
+                          <div className="flex items-center gap-2">
+                            <span className="text-sm text-e-sub shrink-0">Duração:</span>
+                            <input type="number" min={1} value={eff.durationTurns}
+                              onChange={(e) => f.updateSelfEffect(i, { durationTurns: Number(e.target.value) })}
+                              className="!w-20 text-center" />
+                            <span className="text-sm text-e-faint">turnos</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-3">
+                        <div>
+                          <label className={lbl}>Bônus de acerto</label>
+                          <input type="number" value={eff.hitBonus ?? ''}
+                            onChange={(e) => f.updateSelfEffect(i, { hitBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                            placeholder="Ex: -2" className={`text-center ${inp}`} />
+                        </div>
+                        <div>
+                          <label className={lbl}>Bônus de ataque</label>
+                          <input type="number" value={eff.attackBonus ?? ''}
+                            onChange={(e) => f.updateSelfEffect(i, { attackBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
+                            placeholder="Ex: -3" className={`text-center ${inp}`} />
+                        </div>
+                      </div>
+
+                      <div>
+                        <label className={lbl}>Auto-efeitos</label>
+                        <EffectBuilder
+                          effects={eff.effects}
+                          onChange={(effects) => f.updateSelfEffect(i, { effects })}
+                        />
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
 
           {/* ── Pré-requisitos ── */}

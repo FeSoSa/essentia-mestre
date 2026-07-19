@@ -147,11 +147,11 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-sm shadow-2xl flex flex-col overflow-hidden"
+      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-sm shadow-2xl flex flex-col max-h-[90vh]"
         style={{ borderColor: t.border }}>
 
         {/* Header */}
-        <div className="flex items-center justify-between px-5 py-3 shrink-0"
+        <div className="flex items-center justify-between px-5 py-3 shrink-0 rounded-t-2xl"
           style={{ background: t.accentBg, borderBottom: `1px solid ${t.border}` }}>
           <div className="flex items-center gap-2">
             <Swords size={14} style={{ color: t.accent }} />
@@ -163,7 +163,7 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
           </button>
         </div>
 
-        <div className="p-5 flex flex-col gap-4">
+        <div className="p-5 flex flex-col gap-4 overflow-y-auto">
 
           {/* Passo 1: Selecionar ataque + alvo */}
           {step === 'attack' && (

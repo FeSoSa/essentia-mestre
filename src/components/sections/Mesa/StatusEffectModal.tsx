@@ -7,7 +7,7 @@ import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
-import EffectBuilder from '@/components/sections/StatusEffects/EffectBuilder';
+import EffectBuilder, { describeAutoEffect } from '@/components/sections/StatusEffects/EffectBuilder';
 import type { Player, AutoEffect } from '@/store/types';
 
 export default function StatusEffectModal({ player, onClose }: { player: Player; onClose: () => void }) {
@@ -71,13 +71,20 @@ export default function StatusEffectModal({ player, onClose }: { player: Player;
                 {currentEffects.map((effect) => {
                   const IconComp = getStatusIcon(effect.icon);
                   return (
-                  <div key={effect.id} className="flex items-center gap-3 bg-e-card border border-e-border rounded-xl px-3 py-2.5">
-                    {IconComp ? <IconComp size={15} className="text-e-sub shrink-0" /> : effect.icon ? <span className="text-base">{effect.icon}</span> : null}
-                    <span className="flex-1 text-sm font-medium text-e-text">{effect.name}</span>
-                    <span className="text-xs font-mono text-e-sub">{effect.durationTurns === -1 ? '∞' : `${effect.durationTurns}t`}</span>
-                    <Button variant="danger" size="sm" disabled={removing === effect.id} onClick={() => handleRemove(effect.id)}>
-                      {removing === effect.id ? '…' : 'Remover'}
-                    </Button>
+                  <div key={effect.id} className="flex flex-col gap-1 bg-e-card border border-e-border rounded-xl px-3 py-2.5">
+                    <div className="flex items-center gap-3">
+                      {IconComp ? <IconComp size={15} className="text-e-sub shrink-0" /> : effect.icon ? <span className="text-base">{effect.icon}</span> : null}
+                      <span className="flex-1 text-sm font-medium text-e-text">{effect.name}</span>
+                      <span className="text-xs font-mono text-e-sub">{effect.durationTurns === -1 ? '∞' : `${effect.durationTurns}t`}</span>
+                      <Button variant="danger" size="sm" disabled={removing === effect.id} onClick={() => handleRemove(effect.id)}>
+                        {removing === effect.id ? '…' : 'Remover'}
+                      </Button>
+                    </div>
+                    {effect.effects.length > 0 && (
+                      <p className="text-xs text-e-accent pl-7 truncate">
+                        {effect.effects.map(describeAutoEffect).join(' · ')}
+                      </p>
+                    )}
                   </div>
                 );})}
               </div>

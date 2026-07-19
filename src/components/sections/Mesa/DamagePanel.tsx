@@ -25,6 +25,8 @@ export default function DamagePanel() {
         damage:       req.damage,
         costs:        req.costs ?? {},
         onHitEffects: req.onHitEffects ?? [],
+        slotId:       req.slotId,
+        skillId:      req.skillId,
       });
       removeDamageRequest(req.requestId);
     } catch {}

@@ -8,7 +8,7 @@ import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyIn
 
 export function useSocket() {
   const {
-    setPlayers, setPlayer, appendLog,
+    setPlayers, setPlayer, appendLog, setLog,
     setFastAction, setInitiative, setImages, setActiveImage, setEnemies, setBosses, setAllies,
     addSobrecargaRequest, setCurrentTurn, incrementTurn, addDamageRequest, addEffectRequest,
     setNotes,
@@ -36,6 +36,11 @@ export function useSocket() {
       client.subscribe('/topic/log', (msg) => {
         const entry: LogEntry = JSON.parse(msg.body);
         appendLog(entry);
+      });
+
+      // Log da sessão limpo (por outro cliente/aba)
+      client.subscribe('/topic/log-cleared', () => {
+        setLog([]);
       });
 
       // Fast action
