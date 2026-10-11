@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
 import type { Essencia, Player } from '@/store/types';
+import { CapacidadeEssencia, NivelEssencia } from '@/components/shared/EssenciaNivel';
 
 const ATTR_PT: Record<string, string> = {
   strength: 'For', agility: 'Agi', intelligence: 'Int',
@@ -14,6 +15,7 @@ const ATTR_PT: Record<string, string> = {
 };
 
 const TYPE_CLS: Record<string, string> = {
+  Elemental: 'bg-e-gold/10 text-e-gold border-e-gold/20',
   Grande:  'bg-e-gold/10 text-e-gold border-e-gold/20',
   Mitica:  'bg-purple-500/10 text-purple-300 border-purple-500/20',
   Derivada: 'bg-blue-500/10 text-blue-300 border-blue-500/20',
@@ -65,7 +67,7 @@ export default function EssenciaModal({ player, onClose }: { player: Player; onC
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-e-border shrink-0">
           <div>
-            <h3 className="font-semibold text-e-text">{player.char.name} — Essências</h3>
+            <h3 className="font-semibold text-e-text">Essências de {player.char.name}</h3>
             <p className="text-xs text-e-sub mt-0.5">{obtained.size} concedida{obtained.size !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={onClose} className="text-e-faint hover:text-e-text cursor-pointer p-1 rounded-lg hover:bg-e-card transition-colors">
@@ -73,7 +75,8 @@ export default function EssenciaModal({ player, onClose }: { player: Player; onC
           </button>
         </div>
 
-        <div className="px-6 pt-4 shrink-0">
+        <div className="px-6 pt-4 shrink-0 flex flex-col gap-3">
+          <CapacidadeEssencia player={player} />
           <div className="relative">
             <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2 text-e-faint pointer-events-none" />
             <input
@@ -110,6 +113,7 @@ export default function EssenciaModal({ player, onClose }: { player: Player; onC
                     </span>
                   </div>
                   {essencia.desc && <p className="text-xs text-e-sub mt-0.5 line-clamp-2">{essencia.desc}</p>}
+                  {has && <div className="mt-1.5"><NivelEssencia player={player} essenciaId={essencia.id} /></div>}
                   {bonusEntries.length > 0 && (
                     <div className="flex flex-wrap gap-1 mt-1.5">
                       {bonusEntries.map(([attr, val]) => (

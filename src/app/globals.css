@@ -3,11 +3,11 @@
 /* ─── Tokens ───────────────────────────────────────────────── */
 @theme {
   /* zinc scale do Tailwind — steps distintos e contrastantes */
-  --color-e-bg:       #09090b;   /* zinc-950 */
-  --color-e-surface:  #27272a;   /* zinc-800 — painéis e cards */
-  --color-e-card:     #3f3f46;   /* zinc-700 — elementos elevados */
-  --color-e-border:   #52525b;   /* zinc-600 — bordas visíveis */
-  --color-e-border2:  #71717a;   /* zinc-500 — hover de bordas */
+  --color-e-bg:       #0c0c0e;   /* fundo das seções, igual à Mesa */
+  --color-e-surface:  #18181b;   /* painéis e cards */
+  --color-e-card:     #232327;   /* elementos dentro de cards */
+  --color-e-border:   #2e2e33;   /* bordas */
+  --color-e-border2:  #45454d;   /* hover de bordas */
   --color-e-text:     #fafafa;   /* zinc-50  — texto principal */
   --color-e-sub:      #a1a1aa;   /* zinc-400 — texto secundário */
   --color-e-faint:    #71717a;   /* zinc-500 — labels/placeholders */
@@ -89,4 +89,10 @@ input[type='color'] {
 input[type='checkbox'] {
   width: 15px; height: 15px;
   accent-color: #a3e635; cursor: pointer; flex-shrink: 0;
+}
+
+/* Gaveta lateral da Mesa */
+@keyframes slideIn {
+  from { transform: translateX(24px); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
 }

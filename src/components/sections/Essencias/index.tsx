@@ -5,16 +5,21 @@ import { Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { Essencia } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
-import SectionHeader from '@/components/ui/SectionHeader';
+import SectionHeader, { Page } from '@/components/ui/SectionHeader';
+import SearchInput, { Tabs } from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
-import EssenciaCard from '@/components/sections/Itens/EssenciaCard';
+import EssenciaCard, { TYPE_LABEL } from '@/components/sections/Itens/EssenciaCard';
 import EssenciaModal from '@/components/sections/Itens/EssenciaModal';
+
+type Filtro = 'todas' | 'Elemental' | 'Mitica' | 'Derivada';
 
 export default function Essencias() {
   const [essencias, setEssencias] = useState<Essencia[]>([]);
   const [skills,    setSkills]    = useState<Skill[]>([]);
   const [editing,   setEditing]   = useState<Essencia | undefined>();
   const [showNew,   setShowNew]   = useState(false);
+  const [filtro,    setFiltro]    = useState<Filtro>('todas');
+  const [search,    setSearch]    = useState('');
 
   useEffect(() => {
     api.get<Essencia[]>('/master/essencias').then((r) => setEssencias(r.data)).catch(() => {});
@@ -40,29 +45,49 @@ export default function Essencias() {
     setEssencias((prev) => prev.filter((x) => x.id !== e.id));
   }
 
-  const TYPE_ORDER = ['Grande', 'Mitica', 'Derivada'];
-  const sorted = [...essencias].sort(
-    (a, b) => TYPE_ORDER.indexOf(a.type) - TYPE_ORDER.indexOf(b.type)
+  const TYPE_ORDER = ['Elemental', 'Mitica', 'Derivada'];
+  // "Grande" é o nome antigo de Elemental (até a migração renomear no banco)
+  const tipoDe = (e: Essencia) => (e.type === 'Grande' ? 'Elemental' : e.type);
+  const doTipo = (t: Filtro) => (e: Essencia) => t === 'todas' || tipoDe(e) === t;
+  const busca = (e: Essencia) => {
+    if (!search) return true;
+    const q = search.toLowerCase();
+    return e.name.toLowerCase().includes(q)
+      || skills.some((s) => s.essenciaId === e.id && s.name.toLowerCase().includes(q));
+  };
+  const sorted = essencias.filter(doTipo(filtro)).filter(busca).sort(
+    (a, b) => TYPE_ORDER.indexOf(tipoDe(a)) - TYPE_ORDER.indexOf(tipoDe(b))
   );
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <Page>
       <SectionHeader
         title="Essências"
-        subtitle="Catálogo de essências — concedem atributos e desbloqueiam habilidades"
+        count={essencias.length}
+        subtitle="Concedem atributos e liberam habilidades. A busca também encontra pelo nome da habilidade."
         action={
-          <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
-            <Plus size={14} /> Nova essência
+          <Button variant="primary" onClick={() => setShowNew(true)}>
+            <Plus size={15} /> Nova essência
           </Button>
         }
       />
 
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <Tabs value={filtro} onChange={setFiltro}
+          tabs={(['todas', ...TYPE_ORDER] as Filtro[]).map((t) => ({
+            id: t,
+            label: t === 'todas' ? 'Todas' : `${TYPE_LABEL[t]}s`,
+            count: essencias.filter(doTipo(t)).filter(busca).length,
+          }))} />
+        <div className="ml-auto"><SearchInput value={search} onChange={setSearch} placeholder="Essência ou habilidade…" /></div>
+      </div>
+
       {sorted.length === 0 ? (
         <p className="text-e-faint text-sm text-center py-16">
-          Nenhuma essência cadastrada. Clique em "Nova essência" para criar.
+          {search ? 'Nada encontrado com essa busca.' : 'Nenhuma essência aqui ainda.'}
         </p>
       ) : (
-        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
+        <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
           {sorted.map((e) => (
             <EssenciaCard
               key={e.id}
@@ -93,6 +118,6 @@ export default function Essencias() {
           onSaved={handleSaved}
         />
       )}
-    </div>
+    </Page>
   );
 }

@@ -5,7 +5,7 @@ import { useShallow } from 'zustand/react/shallow';
 import type {
   SectionId, Player, InitiativeEntry,
   LogEntry, ImageEntry, FastAction, StatusEffect, EnemyInstance, BossInstance,
-  SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly, Note,
+  SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, AllyEffectApprovalRequest, CombatAlly, Note,
 } from './types';
 
 interface RootState {
@@ -63,6 +63,10 @@ interface RootState {
   effectRequests: EffectApprovalRequest[];
   addEffectRequest: (r: EffectApprovalRequest) => void;
   removeEffectRequest: (requestId: string) => void;
+
+  allyRequests: AllyEffectApprovalRequest[];
+  addAllyRequest: (r: AllyEffectApprovalRequest) => void;
+  removeAllyRequest: (requestId: string) => void;
 
   notes: Note[];
   setNotes: (n: Note[]) => void;
@@ -159,6 +163,12 @@ export const useStore = create<RootState>((set) => ({
     set((s) => ({ effectRequests: [...s.effectRequests, r] })),
   removeEffectRequest: (requestId) =>
     set((s) => ({ effectRequests: s.effectRequests.filter((r) => r.requestId !== requestId) })),
+
+  allyRequests: [],
+  addAllyRequest: (r) =>
+    set((s) => ({ allyRequests: [...s.allyRequests.filter((x) => x.requestId !== r.requestId), r] })),
+  removeAllyRequest: (requestId) =>
+    set((s) => ({ allyRequests: s.allyRequests.filter((r) => r.requestId !== requestId) })),
 
   unlockSobrecarga: (playerId, unlocked) =>
     set((s) => ({

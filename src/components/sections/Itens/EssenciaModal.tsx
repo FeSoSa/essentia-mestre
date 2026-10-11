@@ -8,7 +8,7 @@ import type { Essencia } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import { STATUS_ICONS } from '@/lib/statusIcons';
 
-const TYPES = ['Grande', 'Mitica', 'Derivada'];
+const TYPES = ['Elemental', 'Mitica', 'Derivada'];
 
 const ATTRS: { key: string; label: string }[] = [
   { key: 'strength',     label: 'FOR' },
@@ -49,6 +49,8 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
   const [name,     setName]     = useState(essencia?.name ?? '');
   const [type,     setType]     = useState(essencia?.type ?? 'Derivada');
   const [parentId, setParentId] = useState(essencia?.parentId ?? '');
+  // Derivada: nível da mãe que libera a Derivada (null = só tendo a Derivada)
+  const [nivelMae, setNivelMae] = useState<number | null>(essencia?.nivelMaeNecessario ?? null);
   const [desc,    setDesc]    = useState(essencia?.desc ?? '');
   const [icon,    setIcon]    = useState(essencia?.icon ?? '');
   const [color,   setColor]   = useState(essencia?.color ?? '');
@@ -93,6 +95,7 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
         name, type, desc, attributeBonus, skillIds,
         icon: icon || null, color: color || null,
         parentId: type === 'Derivada' ? parentId || null : null,
+        nivelMaeNecessario: type === 'Derivada' && parentId ? nivelMae : null,
       };
       const res = essencia
         ? await api.put<Essencia>(`/master/essencias/${essencia.id}`, payload)
@@ -151,7 +154,7 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
 
           {type === 'Derivada' && (
             <div>
-              <label className={lbl}>Essência Grande (origem)</label>
+              <label className={lbl}>Essência Elemental (origem)</label>
               <select
                 value={parentId}
                 onChange={(e) => setParentId(e.target.value)}
@@ -159,12 +162,31 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
               >
                 <option value="">— Nenhuma —</option>
                 {essencias
-                  .filter((e) => e.type === 'Grande' && e.id !== essencia?.id)
+                  .filter((e) => (e.type === 'Elemental' || e.type === 'Grande') && e.id !== essencia?.id)
                   .map((e) => (
                     <option key={e.id} value={e.id}>{e.name}</option>
                   ))
                 }
               </select>
+              {parentId && (
+                <div className="mt-3">
+                  <label className={lbl}>Liberada pela Essência-mãe a partir do nível</label>
+                  <div className="flex gap-1.5">
+                    {[null, 1, 2, 3, 4].map((n) => (
+                      <button key={String(n)} type="button" onClick={() => setNivelMae(n)}
+                        className={`flex-1 py-1.5 rounded-xl border text-sm font-medium transition-colors cursor-pointer ${
+                          nivelMae === n ? 'bg-e-accent/15 border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
+                        {n == null ? 'Não' : n}
+                      </button>
+                    ))}
+                  </div>
+                  <p className="text-[11px] text-e-faint mt-1">
+                    {nivelMae == null
+                      ? 'Só quem tiver esta Derivada acessa as skills dela.'
+                      : `Quem tiver a Essência-mãe no nível ${nivelMae} ou acima acessa as skills desta Derivada (o requisito e a maestria usam a mãe).`}
+                  </p>
+                </div>
+              )}
             </div>
           )}
 

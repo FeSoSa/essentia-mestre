@@ -1,14 +1,13 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus } from 'lucide-react';
+import { Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { BossTemplate } from '@/store/types';
-import Button from '@/components/ui/Button';
 import BossTemplateModal from './BossTemplateModal';
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 
-export default function BossTemplateList() {
+export default function BossTemplateList({ search = "", novo = 0 }: { search?: string; novo?: number }) {
   const [templates, setTemplates] = useState<BossTemplate[]>([]);
   const [editing,   setEditing]   = useState<BossTemplate | undefined>();
   const [showNew,   setShowNew]   = useState(false);
@@ -16,6 +15,15 @@ export default function BossTemplateList() {
   useEffect(() => {
     api.get<BossTemplate[]>('/bosses').then((r) => setTemplates(r.data)).catch(() => {});
   }, []);
+
+  // O botão "Novo" fica no cabeçalho da seção: cada clique muda o contador e abre o modal
+  const [novoVisto, setNovoVisto] = useState(novo);
+  if (novo !== novoVisto) {
+    setNovoVisto(novo);
+    if (novo) setShowNew(true);
+  }
+
+  const visiveis = templates.filter((t) => !search || t.name.toLowerCase().includes(search.toLowerCase()));
 
   function handleSaved(t: BossTemplate) {
     setTemplates((prev) => {
@@ -32,19 +40,13 @@ export default function BossTemplateList() {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
-          <Plus size={14} /> Novo boss
-        </Button>
-      </div>
-
-      {templates.length === 0 ? (
-        <p className="text-e-faint text-sm text-center py-12">Nenhum boss no catálogo.</p>
+      {visiveis.length === 0 ? (
+        <p className="text-e-faint text-sm text-center py-12">{search ? "Nada encontrado com essa busca." : "Nenhum boss no catálogo."}</p>
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(280px, 1fr))' }}>
-          {templates.map((t) => (
-            <div key={t.id}
-              className="rounded-xl border-2 p-3 flex flex-col gap-2"
+          {visiveis.map((t) => (
+            <div key={t.id} onClick={() => setEditing(t)}
+              className="group rounded-2xl border-2 p-3.5 flex flex-col gap-2.5 cursor-pointer hover:brightness-125 transition"
               style={{ background: '#1a1810', borderColor: '#6a5a20', color: '#f0e8d0' }}
             >
               <div className="flex items-start gap-2">
@@ -68,7 +70,7 @@ export default function BossTemplateList() {
                     {t.phases.length} fases · ⭐ {t.xp} XP
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => setEditing(t)}
                     className="w-6 h-6 rounded flex items-center justify-center transition-colors"
                     style={{ color: '#7a7050' }}

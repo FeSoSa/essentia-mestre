@@ -5,13 +5,15 @@ import { Zap, X, Check } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 
+// Espelha SOBRECARGA_LEVELS em essentia-api/.../SobrecargaService.kt
+const SOBRECARGA_CUSTO_ATIVACAO = 5;
 const SOBRECARGA_LEVELS = [
-  { nivel: 1, bonus: 2,  custo: 60,  cd: 10, danoDado: '2d6' },
-  { nivel: 2, bonus: 4,  custo: 90,  cd: 12, danoDado: '3d6' },
-  { nivel: 3, bonus: 6,  custo: 125, cd: 14, danoDado: '4d6' },
-  { nivel: 4, bonus: 8,  custo: 165, cd: 16, danoDado: '5d6' },
-  { nivel: 5, bonus: 10, custo: 210, cd: 18, danoDado: '6d6' },
-  { nivel: 6, bonus: 12, custo: 260, cd: 20, danoDado: '8d6' },
+  { nivel: 1, bonus: 2,  custoTurno: 3,  cd: 6,  danoDado: '2d6' },
+  { nivel: 2, bonus: 4,  custoTurno: 4,  cd: 8,  danoDado: '3d6' },
+  { nivel: 3, bonus: 6,  custoTurno: 6,  cd: 10, danoDado: '4d6' },
+  { nivel: 4, bonus: 8,  custoTurno: 9,  cd: 16, danoDado: '5d6' },
+  { nivel: 5, bonus: 10, custoTurno: 12, cd: 18, danoDado: '6d6' },
+  { nivel: 6, bonus: 12, custoTurno: 18, cd: 20, danoDado: '8d6' },
 ];
 
 export default function SobrecargaPanel() {
@@ -23,7 +25,9 @@ export default function SobrecargaPanel() {
   const [loading, setLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
-  if (requests.length === 0) return null;
+  const secao = useStore((s) => s.activeSection);
+  // Na Mesa nova os pedidos ficam integrados na tela
+  if (requests.length === 0 || secao === 'mesa') return null;
 
   async function handleApprove(playerId: string) {
     setLoading(playerId);
@@ -74,7 +78,7 @@ export default function SobrecargaPanel() {
                 <div>
                   <p className="font-semibold text-e-text text-sm">{req.playerName}</p>
                   <p className="text-xs text-e-sub mt-0.5">
-                    Nível {req.nivel} · +{lvl.bonus} atributos · {lvl.custo} ES/rod
+                    Nível {req.nivel} · +{lvl.bonus} atributos · {SOBRECARGA_CUSTO_ATIVACAO} ES para ativar + {lvl.custoTurno} ES/turno
                   </p>
                   <p className="text-xs text-e-faint mt-0.5">
                     CD {req.cd} · falha: {lvl.danoDado} · mod SAB {req.sabMod >= 0 ? `+${req.sabMod}` : req.sabMod}

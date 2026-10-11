@@ -1,7 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/Button";
-import SectionHeader from "@/components/ui/SectionHeader";
+import SectionHeader, { Page } from "@/components/ui/SectionHeader";
 import { api } from "@/lib/api";
 import { RARITY_COLORS, RARITY_LABELS, rarityColor, type Rarity } from "@/lib/rarity";
 import type { ItemCatalog, Shop, ShopItem } from "@/store/types";
@@ -34,7 +34,7 @@ function weaponDamageFormula(cat: ItemCatalog): string {
     const eq = cat.equilibrio != null ? `/${cat.equilibrio}` : "";
     parts.push(`d20×${attr}${eq}`);
   }
-  return parts.join(" + ") || "—";
+  return parts.join(" + ") || "-";
 }
 
 function itemSubtitle(cat: ItemCatalog): string {
@@ -222,30 +222,34 @@ export default function Loja() {
   }
 
   return (
-    <div className="p-6">
+    <Page>
       <SectionHeader
         title="Lojas"
-        subtitle="Crie lojas e venda itens para os jogadores"
+        count={shops.length}
+        subtitle="Lojas ativas aparecem para os jogadores. Clique num item para vender a alguém."
         action={
-          <Button onClick={() => setEditModal({ open: true })}>
-            <Plus size={14} className="mr-1" />
-            Nova loja
+          <Button variant="primary" onClick={() => setEditModal({ open: true })}>
+            <Plus size={15} /> Nova loja
           </Button>
         }
       />
 
       {shops.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-20 text-e-faint">
-          <Package size={40} className="mb-3 opacity-30" />
-          <p className="text-sm">Nenhuma loja criada ainda</p>
+        <div className="flex flex-col items-center justify-center gap-3 py-24 text-center">
+          <Package size={40} className="text-e-faint opacity-40" />
+          <div>
+            <p className="text-sm text-e-sub">Nenhuma loja criada ainda.</p>
+            <p className="text-xs text-e-faint mt-1">Monte uma loja com itens do catálogo e ative quando os jogadores chegarem nela.</p>
+          </div>
+          <Button variant="primary" size="sm" onClick={() => setEditModal({ open: true })}><Plus size={14} /> Criar loja</Button>
         </div>
       ) : (
         <div className="flex flex-col gap-6">
           {shops.map((shop) => (
             <div
               key={shop.id}
-              className="rounded-xl border bg-e-surface overflow-hidden"
-              style={{ borderColor: shop.active ? "#a3e63544" : "#3f3f46" }}
+              className="rounded-2xl border bg-e-surface overflow-hidden"
+              style={{ borderColor: shop.active ? "#a3e63544" : "rgba(255,255,255,0.07)" }}
             >
               {/* Shop header */}
               <div className={`flex items-center gap-3 px-4 py-3 ${shop.active ? "border-b border-e-border" : ""}`}>
@@ -334,6 +338,6 @@ export default function Loja() {
           onClose={() => setSellModal(null)}
         />
       )}
-    </div>
+    </Page>
   );
 }

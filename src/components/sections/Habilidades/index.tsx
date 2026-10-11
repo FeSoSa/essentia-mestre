@@ -1,9 +1,11 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { ChevronDown, Plus } from 'lucide-react';
+import { ChevronDown, Plus, Settings2 } from 'lucide-react';
+import RegrasModal from './RegrasModal';
 import { api } from '@/lib/api';
-import SectionHeader from '@/components/ui/SectionHeader';
+import SectionHeader, { Page } from '@/components/ui/SectionHeader';
+import SearchInput, { Tabs } from '@/components/ui/SearchInput';
 import Button from '@/components/ui/Button';
 import SkillCard, { type Skill, type Essencia } from './SkillCard';
 import SkillModal from './SkillModal';
@@ -49,7 +51,7 @@ function FilterDropdown({ value, onChange, placeholder, options }: {
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm transition-colors whitespace-nowrap ${
+        className={`flex items-center gap-1.5 h-9 px-3 border rounded-lg text-sm transition-colors whitespace-nowrap cursor-pointer ${
           active
             ? 'bg-e-card border-e-border2 text-e-text'
             : 'bg-e-bg border-e-border text-e-faint hover:text-e-text hover:border-e-border2'
@@ -91,6 +93,7 @@ export default function Habilidades() {
   const [tab,        setTab]        = useState<Tab>('general');
   const [editing,    setEditing]    = useState<Skill | undefined>();
   const [showNew,    setShowNew]    = useState(false);
+  const [showRegras, setShowRegras] = useState(false);
 
   const [search,           setSearch]           = useState('');
   const [filterClass,      setFilterClass]      = useState('');
@@ -141,9 +144,10 @@ export default function Habilidades() {
     return s.type === t;
   }
 
+  const busca = (s: Skill) => !search || s.name.toLowerCase().includes(search.toLowerCase());
   const tabSkills = skills.filter((s) => filterTab(s, tab));
   const visible = tabSkills
-    .filter((s) => !search || s.name.toLowerCase().includes(search.toLowerCase()))
+    .filter(busca)
     .filter((s) => !filterClass || s.skillClass === filterClass)
     .filter((s) => !filterWeaponType || (s.weaponTypes ?? (s.weaponType ? [s.weaponType] : [])).includes(filterWeaponType))
     .filter((s) => !filterEssencia || s.essenciaId === filterEssencia);
@@ -154,45 +158,31 @@ export default function Habilidades() {
   const classOpts      = classNames.map((c) => ({ value: c, label: c }));
   const essenciaOpts   = essencias.map((e) => ({ value: e.id, label: e.name }));
 
-  const tabCls = (t: Tab) =>
-    `px-4 py-1.5 rounded text-sm font-semibold transition-colors ${
-      tab === t ? 'bg-e-card text-e-text' : 'text-e-sub hover:text-e-text'
-    }`;
-
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <Page>
       <SectionHeader
         title="Habilidades"
-        subtitle="Catálogo de habilidades de classe, arma e essência"
+        count={skills.length}
+        subtitle="Habilidades de classe, arma, essência, mestre e inimigos. Clique num card para editar."
         action={
-          <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
-            <Plus size={14} /> Nova habilidade
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="ghost" onClick={() => setShowRegras(true)} title="Regras de maestria e custos">
+              <Settings2 size={15} /> Regras
+            </Button>
+            <Button variant="primary" onClick={() => setShowNew(true)}>
+              <Plus size={15} /> Nova habilidade
+            </Button>
+          </div>
         }
       />
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {/* Tabs */}
-        <div className="flex gap-1 rounded-lg p-1 bg-e-surface shrink-0">
-          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-            <button key={t} onClick={() => changeTab(t)} className={tabCls(t)}>
-              {TAB_LABELS[t]}
-              <span className="ml-1.5 text-[10px] text-e-faint">
-                {skills.filter((s) => filterTab(s, t)).length}
-              </span>
-            </button>
-          ))}
-        </div>
+        <Tabs value={tab} onChange={changeTab}
+          tabs={(Object.keys(TAB_LABELS) as Tab[]).map((t) => ({ id: t, label: TAB_LABELS[t], count: skills.filter((s) => filterTab(s, t)).filter(busca).length }))} />
 
         {/* Filters */}
         <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-1.5 bg-e-bg border border-e-border rounded-lg text-sm text-e-text placeholder:text-e-faint outline-none focus:border-e-border2 transition-colors w-40"
-          />
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar pelo nome…" />
 
           {tab === 'class' && classOpts.length > 0 && (
             <FilterDropdown
@@ -222,8 +212,8 @@ export default function Habilidades() {
           )}
 
           {hasFilters && (
-            <button onClick={clearFilters} className="text-xs text-e-faint hover:text-e-sub transition-colors">
-              Limpar
+            <button onClick={clearFilters} className="text-xs text-e-faint hover:text-e-sub transition-colors cursor-pointer">
+              Limpar filtros
             </button>
           )}
 
@@ -239,7 +229,7 @@ export default function Habilidades() {
         <p className="text-e-faint text-sm text-center py-16">
           {hasFilters
             ? 'Nenhuma habilidade corresponde aos filtros.'
-            : 'Nenhuma habilidade nesta categoria. Clique em "Nova habilidade" para criar.'}
+            : 'Nenhuma habilidade nesta categoria ainda.'}
         </p>
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
@@ -265,6 +255,7 @@ export default function Habilidades() {
           onSaved={handleSaved}
         />
       )}
+      {showRegras && <RegrasModal onClose={() => setShowRegras(false)} />}
       {editing && (
         <SkillModal
           skill={editing}
@@ -275,6 +266,6 @@ export default function Habilidades() {
           onSaved={handleSaved}
         />
       )}
-    </div>
+    </Page>
   );
 }

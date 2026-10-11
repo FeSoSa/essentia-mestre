@@ -1,15 +1,17 @@
 "use client";
 
 import Button from "@/components/ui/Button";
-import SectionHeader from "@/components/ui/SectionHeader";
+import SectionHeader, { Page } from "@/components/ui/SectionHeader";
+import SearchInput, { Tabs } from "@/components/ui/SearchInput";
 import { api } from "@/lib/api";
 import { RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
 import type { ItemCatalog } from "@/store/types";
-import { ArrowDownUp, ChevronDown, Plus } from "lucide-react";
+import { ArrowDownUp, ChevronDown, Dices, Plus } from "lucide-react";
 import { useEffect, useState } from "react";
 import ItemCard from "./ItemCard";
 import ItemModal from "./ItemModal";
 import SendItemModal from "./SendItemModal";
+import SorteadorModal from "./SorteadorModal";
 
 type Tab = "armas" | "armaduras" | "acessorios" | "itens";
 
@@ -34,6 +36,13 @@ const TAB_LABELS: Record<Tab, string> = {
   itens: "Itens",
 };
 
+const TAB_NOVO: Record<Tab, string> = {
+  armas: "Nova arma",
+  armaduras: "Nova armadura",
+  acessorios: "Novo acessório",
+  itens: "Novo item",
+};
+
 const WEAPON_TYPE_OPTS = [
   { value: "espadas", label: "Espadas" },
   { value: "rapieiras", label: "Rapieiras" },
@@ -48,7 +57,9 @@ const WEAPON_TYPE_OPTS = [
   { value: "cajado", label: "Cajado" },
   { value: "grimorio", label: "Grimório" },
   { value: "orbe", label: "Orbe" },
-  { value: "a-distancia", label: "À distância" },
+  { value: "arcos", label: "Arcos" },
+  { value: "bestas", label: "Bestas" },
+  { value: "pistolas", label: "Pistolas" },
   { value: "luvas-manoplas", label: "Luvas & manoplas" },
   { value: "escudos", label: "Escudos" },
 ];
@@ -100,7 +111,7 @@ function FilterDropdown({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm transition-colors whitespace-nowrap ${
+        className={`flex items-center gap-1.5 h-9 px-3 border rounded-lg text-sm transition-colors whitespace-nowrap cursor-pointer ${
           active
             ? "bg-e-card border-e-border2 text-e-text"
             : "bg-e-bg border-e-border text-e-faint hover:text-e-text hover:border-e-border2"
@@ -149,6 +160,7 @@ export default function Itens() {
   const [editing, setEditing] = useState<ItemCatalog | undefined>();
   const [sending, setSending] = useState<ItemCatalog | undefined>();
   const [showNew, setShowNew] = useState(false);
+  const [showSorteio, setShowSorteio] = useState(false);
 
   const [search, setSearch] = useState("");
   const [filterRarity, setFilterRarity] = useState("");
@@ -226,47 +238,39 @@ export default function Itens() {
   );
   const isFiltered = hasFilters && visible.length !== tabItems.length;
 
-  const tabCls = (t: Tab) =>
-    `px-4 py-1.5 rounded text-sm font-semibold transition-colors ${
-      tab === t ? "bg-e-card text-e-text" : "text-e-sub hover:text-e-text"
-    }`;
+  // Com busca ativa, o número de cada aba mostra onde estão os resultados
+  const busca = (i: ItemCatalog) => !search || i.name.toLowerCase().includes(search.toLowerCase());
 
   return (
-    <div className="p-6 max-w-6xl mx-auto">
+    <Page>
       <SectionHeader
         title="Itens"
-        subtitle="Catálogo de armas, armaduras e itens"
+        count={items.length}
+        subtitle="Catálogo de armas, armaduras, acessórios e itens. O avião de papel envia o item para um jogador."
         action={
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => setShowNew(true)}
-            className="gap-1.5"
-          >
-            <Plus size={14} /> Novo item
-          </Button>
+          <>
+            <Button variant="ghost" onClick={() => setShowSorteio(true)} title="O sistema escolhe um item pensando no jogador">
+              <Dices size={15} /> Sortear achado
+            </Button>
+            <Button variant="primary" onClick={() => setShowNew(true)}>
+              <Plus size={15} /> {TAB_NOVO[tab]}
+            </Button>
+          </>
         }
       />
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
-        {/* Tabs */}
-        <div className="flex gap-1 rounded-lg p-1 bg-e-surface shrink-0">
-          {(Object.keys(TAB_LABELS) as Tab[]).map((t) => (
-            <button key={t} onClick={() => changeTab(t)} className={tabCls(t)}>
-              {TAB_LABELS[t]}
-            </button>
-          ))}
-        </div>
+        <Tabs
+          value={tab}
+          onChange={changeTab}
+          tabs={(Object.keys(TAB_LABELS) as Tab[]).map((t) => ({
+            id: t, label: TAB_LABELS[t], count: items.filter(TAB_FILTER[t]).filter(busca).length,
+          }))}
+        />
 
         {/* Filters */}
         <div className="flex items-center gap-2 ml-auto flex-wrap">
-          <input
-            type="text"
-            placeholder="Buscar..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="px-3 py-1.5 bg-e-bg border border-e-border rounded-lg text-sm text-e-text placeholder:text-e-faint outline-none focus:border-e-border2 transition-colors w-40"
-          />
+          <SearchInput value={search} onChange={setSearch} placeholder="Buscar pelo nome…" />
 
           {(tab === "armas" || tab === "armaduras" || tab === "acessorios" || tab === "itens") && (
             <FilterDropdown
@@ -322,12 +326,12 @@ export default function Itens() {
             }
             title={
               sortRarity === "asc"
-                ? "Raridade: comum → mítico"
+                ? "Raridade: comum para mítico"
                 : sortRarity === "desc"
-                  ? "Raridade: mítico → comum"
+                  ? "Raridade: mítico para comum"
                   : "Ordenar por raridade"
             }
-            className={`flex items-center gap-1.5 px-3 py-1.5 border rounded-lg text-sm transition-colors whitespace-nowrap ${
+            className={`flex items-center gap-1.5 h-9 px-3 border rounded-lg text-sm transition-colors whitespace-nowrap cursor-pointer ${
               sortRarity
                 ? "bg-e-card border-e-border2 text-e-text"
                 : "bg-e-bg border-e-border text-e-faint hover:text-e-text hover:border-e-border2"
@@ -344,9 +348,9 @@ export default function Itens() {
           {hasFilters && (
             <button
               onClick={clearFilters}
-              className="text-xs text-e-faint hover:text-e-sub transition-colors"
+              className="text-xs text-e-faint hover:text-e-sub transition-colors cursor-pointer"
             >
-              Limpar
+              Limpar filtros
             </button>
           )}
 
@@ -362,7 +366,7 @@ export default function Itens() {
         <p className="text-e-faint text-sm text-center py-16">
           {hasFilters
             ? "Nenhum item corresponde aos filtros."
-            : 'Nenhum item nesta categoria. Clique em "Novo item" para criar.'}
+            : "Nada nesta categoria ainda."}
         </p>
       ) : (
         <div
@@ -397,9 +401,10 @@ export default function Itens() {
           onSaved={handleSaved}
         />
       )}
+      {showSorteio && <SorteadorModal catalogo={items} onClose={() => setShowSorteio(false)} />}
       {sending && (
         <SendItemModal item={sending} onClose={() => setSending(undefined)} />
       )}
-    </div>
+    </Page>
   );
 }

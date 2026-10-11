@@ -5,9 +5,13 @@ import { X, Plus, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
 import type { Essencia, Player } from '@/store/types';
+import { CapacidadeEssencia, NivelEssencia } from '@/components/shared/EssenciaNivel';
+import ProficienciasEditor from '@/components/shared/ProficienciasEditor';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
+  Elemental: { bg: '#d4a84e22', text: '#d4a84e' },
   Grande:  { bg: '#d4a84e22', text: '#d4a84e' },
   Mitica:  { bg: '#a855f722', text: '#a855f7' },
   Derivada:{ bg: '#4ade8022', text: '#4ade80' },
@@ -51,11 +55,11 @@ export default function PlayerEssenciasModal({ player, essencias, onClose }: Pro
   return (
     <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
       onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
-      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-md shadow-2xl flex flex-col max-h-[85vh]">
+      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-xl shadow-2xl flex flex-col max-h-[85vh]">
 
         <div className="flex items-center justify-between px-6 py-4 border-b border-e-border shrink-0">
           <div>
-            <h3 className="font-semibold text-e-text">Essências de {player.char.name}</h3>
+            <h3 className="font-semibold text-e-text">Essências e proficiências de {player.char.name}</h3>
             <p className="text-xs text-e-faint mt-0.5">{obtidas.length} essência{obtidas.length !== 1 ? 's' : ''} obtida{obtidas.length !== 1 ? 's' : ''}</p>
           </div>
           <button onClick={onClose} className="text-e-faint hover:text-e-text cursor-pointer p-1 rounded-lg hover:bg-e-card transition-colors">
@@ -64,21 +68,24 @@ export default function PlayerEssenciasModal({ player, essencias, onClose }: Pro
         </div>
 
         <div className="overflow-y-auto p-6 flex flex-col gap-4 flex-1">
+          <div className="flex flex-col gap-2">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Proficiências</p>
+            <ProficienciasEditor player={player} />
+          </div>
+          <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Essências</p>
+          <CapacidadeEssencia player={player} />
           {/* Conceder essência */}
           {available.length > 0 && (
             <div>
               <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-2">Conceder essência</p>
               <div className="flex gap-2">
-                <select
+                <Select
                   value={selectedId}
-                  onChange={(e) => setSelectedId(e.target.value)}
-                  className="flex-1 rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors cursor-pointer"
-                >
-                  <option value="">Selecionar essência…</option>
-                  {available.map((e) => (
-                    <option key={e.id} value={e.id}>{e.name} ({e.type})</option>
-                  ))}
-                </select>
+                  onChange={setSelectedId}
+                  placeholder="Selecionar essência…"
+                  className="flex-1"
+                  options={available.map((e) => ({ value: e.id, label: `${e.name} · ${e.type === 'Grande' ? 'Elemental' : e.type === 'Mitica' ? 'Mítica' : e.type}` }))}
+                />
                 <Button
                   variant="primary" size="sm"
                   disabled={!selectedId || loading === 'grant'}
@@ -126,6 +133,7 @@ export default function PlayerEssenciasModal({ player, essencias, onClose }: Pro
                           ))}
                         </div>
                       )}
+                      <div className="mt-1.5"><NivelEssencia player={player} essenciaId={o.essenciaId} /></div>
                       {o.unlockedSkillIds.length > 0 && (
                         <p className="text-[10px] text-e-faint mt-1">
                           {o.unlockedSkillIds.length} habilidade{o.unlockedSkillIds.length !== 1 ? 's' : ''} desbloqueada{o.unlockedSkillIds.length !== 1 ? 's' : ''}

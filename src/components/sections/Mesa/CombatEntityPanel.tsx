@@ -1,12 +1,15 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckField } from '@/components/ui/Checkbox';
 import { ChevronDown, ChevronUp, Swords, Sparkles, X, Plus } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import type { EnemyInstance, BossInstance, CombatAlly, Player, StatusEffect, AutoEffect } from '@/store/types';
 import EffectBuilder from '@/components/sections/StatusEffects/EffectBuilder';
 import EnemyAttackModal from './EnemyAttackModal';
+import { proporTurno } from './EnemyTurnPanel';
+import { Bot } from 'lucide-react';
 import { getStatusIcon } from '@/lib/statusIcons';
 
 type CombatEntity =
@@ -18,6 +21,7 @@ interface Props {
   entity: CombatEntity;
   players: Player[];
   theme?: 'enemy' | 'boss' | 'ally';
+  defaultExpanded?: boolean;
 }
 
 const THEME = {
@@ -70,8 +74,8 @@ function getEntityAttributes(entity: CombatEntity): { strength: number; agility:
   return { strength: a?.strength ?? 10, agility: a?.agility ?? 10, intelligence: a?.intelligence ?? 10 };
 }
 
-export default function CombatEntityPanel({ entity, players, theme = 'enemy' }: Props) {
-  const [expanded,        setExpanded]      = useState(false);
+export default function CombatEntityPanel({ entity, players, theme = 'enemy', defaultExpanded = false }: Props) {
+  const [expanded,        setExpanded]      = useState(defaultExpanded);
   const [activeTab,       setActiveTab]     = useState<'attacks' | 'effects'>('attacks');
   const [showAddEffect,   setShowAddEffect] = useState(false);
   const [showAttackModal, setShowAttackModal] = useState(false);
@@ -122,6 +126,16 @@ export default function CombatEntityPanel({ entity, players, theme = 'enemy' }: 
             style={{ background: t.accentBg, color: t.accent, border: `1px solid ${t.border}` }}
           >
             <Swords size={11} /> Atacar
+          </button>
+        )}
+        {attacks.length > 0 && entity.kind !== 'ally' && (
+          <button
+            onClick={() => proporTurno(entityId, entity.kind as 'enemy' | 'boss').catch(() => {})}
+            title="Calcular o turno automaticamente"
+            className="flex items-center gap-1 px-2 py-1 rounded text-xs font-semibold transition-colors cursor-pointer"
+            style={{ background: t.accentBg, color: t.accent, border: `1px solid ${t.border}` }}
+          >
+            <Bot size={11} /> Auto
           </button>
         )}
         <button
@@ -336,11 +350,7 @@ function AddEntityEffectModal({ entityId, entityKind, theme: t, onClose, onAdded
               <input type="number" value={duration} onChange={(e) => setDuration(Number(e.target.value))}
                 className={inp} min={1} disabled={permanent} />
             </div>
-            <label className="flex items-center gap-2 cursor-pointer mt-5">
-              <input type="checkbox" checked={permanent} onChange={(e) => setPermanent(e.target.checked)}
-                className="accent-e-accent" />
-              <span className="text-xs text-e-faint">Permanente</span>
-            </label>
+            <CheckField checked={permanent} onChange={setPermanent} label="Permanente" className="mt-5" />
           </div>
 
           <EffectBuilder effects={effects} onChange={setEffects} />

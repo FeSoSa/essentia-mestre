@@ -1,19 +1,21 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus, UserRound, Copy } from 'lucide-react';
+import { Pencil, Trash2, UserRound, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import { proxyUrl } from '@/lib/gdrive';
 import type { AllyTemplate, EnemyTemplate } from '@/store/types';
-import Button from '@/components/ui/Button';
 import AllyTemplateModal from './AllyTemplateModal';
 import { allyToEnemyTemplate } from '@/lib/convertBeast';
 
 interface Props {
   onCopied?: () => void;
+  search?: string;
+  /** Incrementado pelo botão "Novo" da seção. */
+  novo?: number;
 }
 
-export default function AllyTemplateList({ onCopied }: Props) {
+export default function AllyTemplateList({ onCopied, search = "", novo = 0 }: Props) {
   const [templates, setTemplates] = useState<AllyTemplate[]>([]);
   const [editing,   setEditing]   = useState<AllyTemplate | undefined>();
   const [showNew,   setShowNew]   = useState(false);
@@ -21,6 +23,15 @@ export default function AllyTemplateList({ onCopied }: Props) {
   useEffect(() => {
     api.get<AllyTemplate[]>('/allies').then((r) => setTemplates(r.data)).catch(() => {});
   }, []);
+
+  // O botão "Novo" fica no cabeçalho da seção: cada clique muda o contador e abre o modal
+  const [novoVisto, setNovoVisto] = useState(novo);
+  if (novo !== novoVisto) {
+    setNovoVisto(novo);
+    if (novo) setShowNew(true);
+  }
+
+  const visiveis = templates.filter((t) => !search || t.name.toLowerCase().includes(search.toLowerCase()));
 
   function handleSaved(t: AllyTemplate) {
     setTemplates((prev) => {
@@ -43,18 +54,12 @@ export default function AllyTemplateList({ onCopied }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
-          <Plus size={14} /> Novo aliado
-        </Button>
-      </div>
-
-      {templates.length === 0 ? (
-        <p className="text-e-faint text-sm text-center py-12">Nenhum aliado no catálogo.</p>
+      {visiveis.length === 0 ? (
+        <p className="text-e-faint text-sm text-center py-12">{search ? "Nada encontrado com essa busca." : "Nenhum aliado no catálogo."}</p>
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-lg border p-3 flex flex-col gap-2"
+          {visiveis.map((t) => (
+            <div key={t.id} onClick={() => setEditing(t)} className="group rounded-2xl border p-3.5 flex flex-col gap-2.5 cursor-pointer hover:brightness-125 transition"
               style={{ background: '#151e1a', borderColor: '#2a4a3a', color: '#c8e8d8' }}>
               <div className="flex items-start gap-2">
                 <div className="w-8 h-8 rounded overflow-hidden shrink-0 flex items-center justify-center"
@@ -73,7 +78,7 @@ export default function AllyTemplateList({ onCopied }: Props) {
                     {t.type || 'Aliado'} · HP {t.hpMax}
                   </p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => setEditing(t)}
                     className="w-6 h-6 rounded flex items-center justify-center opacity-50 hover:opacity-100 transition-opacity">
                     <Pencil size={12} />

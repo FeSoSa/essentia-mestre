@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { api } from '@/lib/api';
 import { useStore, useLog, useInitiative, usePlayers } from '@/store';
 import type { LogEntry } from '@/store/types';
@@ -21,6 +21,14 @@ const TYPE_STYLE: Record<string, { dot: string; label: string }> = {
   attr:     { dot: 'bg-yellow-400', label: 'Atributo'   },
   info:     { dot: 'bg-e-faint',    label: ''           },
 };
+
+// O back-end escreve os atributos em inglês nos textos do log
+const ATRIBUTO_PT: Record<string, string> = {
+  strength: 'Força', agility: 'Agilidade', intelligence: 'Inteligência', resistance: 'Resistência',
+  flow: 'Fluxo', wisdom: 'Sabedoria', presence: 'Presença', defense: 'Defesa',
+};
+const traduzir = (texto: string) =>
+  texto.replace(/\b(strength|agility|intelligence|resistance|flow|wisdom|presence|defense)\b/g, (m) => ATRIBUTO_PT[m]);
 
 interface CollapsedEntry extends LogEntry {
   count?: number;
@@ -73,7 +81,8 @@ export default function Log() {
   const log = useLog();
   const initiative = useInitiative();
   const players = usePlayers();
-  const { setLog } = useStore();
+  const { setLog, currentTurn } = useStore();
+  const [filtro, setFiltro] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -84,8 +93,9 @@ export default function Log() {
     bottomRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [log.length]);
 
+  // Jogador excluído: não mostra o id, o texto do log já traz o nome
   function playerName(id: string) {
-    return players.find((p) => p.id === id)?.char.name ?? id;
+    return players.find((p) => p.id === id)?.char.name ?? '';
   }
 
   async function handleClearLog() {
@@ -93,24 +103,28 @@ export default function Log() {
     try { await api.delete('/log'); setLog([]); } catch {}
   }
 
-  const collapsed = collapseLog([...log].reverse()).reverse();
+  const todos = collapseLog([...log].reverse()).reverse();
+  const tipos = [...new Set(todos.map((e) => e.type ?? 'info'))].filter((t) => TYPE_STYLE[t]?.label);
+  const collapsed = filtro ? todos.filter((e) => (e.type ?? 'info') === filtro) : todos;
+  const vez = initiative.length > 0 ? currentTurn % initiative.length : -1;
+  const rodada = initiative.length > 0 ? Math.floor(currentTurn / initiative.length) + 1 : 0;
 
   return (
     <div className="flex h-full gap-0 overflow-hidden">
       {/* Iniciativa */}
       <div className="w-64 shrink-0 border-r border-e-border flex flex-col">
         <div className="px-5 py-3.5 border-b border-e-border shrink-0">
-          <p className="text-xs font-semibold uppercase tracking-wider text-e-faint">Iniciativa</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-e-faint flex items-center justify-between">Iniciativa {rodada > 0 && <span className="normal-case tracking-normal text-e-sub">Rodada {rodada}</span>}</p>
         </div>
         <div className="flex-1 overflow-y-auto p-3">
           {initiative.length === 0 ? (
-            <p className="text-sm text-e-faint text-center py-6">Nenhuma iniciativa.</p>
+            <p className="text-sm text-e-faint text-center py-6">Sem combate em andamento.</p>
           ) : (
             <div className="flex flex-col gap-1.5">
               {initiative.map((entry, i) => (
                 <div key={entry.playerId}
                   className={`flex items-center gap-2.5 px-3 py-2 rounded-lg text-sm ${
-                    i === 0 ? 'bg-e-accent/12 text-e-text font-semibold' : 'bg-e-card text-e-sub'
+                    i === vez ? 'bg-e-accent/12 text-e-text font-semibold ring-1 ring-e-accent/40' : i < vez ? 'bg-e-card/50 text-e-faint' : 'bg-e-card text-e-sub'
                   }`}>
                   <span className="text-xs font-mono text-e-faint w-4 text-center">{i + 1}</span>
                   <span className="flex-1 truncate">{entry.name}</span>
@@ -125,27 +139,36 @@ export default function Log() {
       {/* Log */}
       <div className="w-[420px] shrink-0 border-r border-e-border flex flex-col overflow-hidden">
         <div className="px-5 py-3.5 border-b border-e-border shrink-0 flex items-center justify-between">
-          <p className="text-xs font-semibold uppercase tracking-wider text-e-faint">Log da Sessão</p>
+          <p className="text-xs font-semibold uppercase tracking-wider text-e-faint">Log da sessão</p>
           <div className="flex items-center gap-3">
             <span className="text-xs text-e-faint tabular-nums">
-              {collapsed.length} eventos
-              {collapsed.length !== log.length && (
-                <span className="text-e-faint/60 ml-1">({log.length} raw)</span>
-              )}
+              {collapsed.length} evento{collapsed.length !== 1 ? 's' : ''}
             </span>
             {log.length > 0 && (
               <button onClick={handleClearLog}
-                className="text-xs text-e-faint hover:text-red-400 transition-colors"
+                className="text-xs text-e-faint hover:text-red-400 transition-colors cursor-pointer"
                 title="Apagar log da sessão">
-                Limpar
+                Apagar tudo
               </button>
             )}
           </div>
         </div>
+        {tipos.length > 1 && (
+          <div className="px-4 py-2.5 border-b border-e-border shrink-0 flex flex-wrap gap-1.5">
+            {[null, ...tipos].map((t) => (
+              <button key={t ?? 'todos'} type="button" onClick={() => setFiltro(t)}
+                className={`h-6 px-2.5 rounded-full text-[11px] font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  filtro === t ? 'bg-white/10 text-e-text' : 'text-e-faint hover:text-e-text hover:bg-white/5'}`}>
+                {t && <span className={`w-1.5 h-1.5 rounded-full ${TYPE_STYLE[t].dot}`} />}
+                {t ? TYPE_STYLE[t].label : 'Tudo'}
+              </button>
+            ))}
+          </div>
+        )}
         <div className="flex-1 overflow-y-auto min-h-0">
           {collapsed.length === 0 ? (
             <div className="flex items-center justify-center h-full text-e-faint text-sm">
-              Nenhuma ação ainda.
+              {filtro ? 'Nada desse tipo ainda.' : 'Nenhuma ação ainda.'}
             </div>
           ) : (
             <>
@@ -162,7 +185,7 @@ export default function Log() {
                     {/* Text */}
                     <span className="flex-1 text-sm">
                       <span className="text-e-accent font-medium">{playerName(entry.playerId)}</span>
-                      <span className="text-e-sub"> {entry.text.replace(playerName(entry.playerId), '').trim()}</span>
+                      <span className="text-e-sub"> {traduzir(playerName(entry.playerId) ? entry.text.replace(playerName(entry.playerId), '').trim() : entry.text)}</span>
                       {(entry.count ?? 1) > 1 && (
                         <span className="ml-1.5 text-[10px] text-e-faint bg-e-card rounded px-1 py-0.5">
                           ×{entry.count}

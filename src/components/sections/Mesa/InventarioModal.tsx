@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { divisorArma } from '@/store/combateStore';
 import {
   X, Trash2, CheckCircle, XCircle, ChevronDown,
   Package, FlaskConical, Flame, Link, CircleDollarSign,
@@ -9,6 +10,7 @@ import {
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
+import { showApiError } from '@/store/errorToastStore';
 import Button from '@/components/ui/Button';
 import type { Player, Item } from '@/store/types';
 import { EQUIPMENT_CATALOG, type CatalogEntry, type EquipSlot } from '@/lib/equipmentCatalog';
@@ -92,7 +94,7 @@ function CatalogSelect({
   function stats(entry: CatalogEntry): string {
     if ('damageBase' in entry.item) {
       const w = entry.item as { damageBase: number; damageAttribute?: string };
-      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : '';
+      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/${divisorArma(w)}` : '';
       return `${w.damageBase}${attr}`;
     }
     if ('damageReduction' in entry.item)
@@ -181,7 +183,7 @@ function EquipPanel({
   onEquip: (slot: EquipSlot) => void;
   processing: boolean;
 }) {
-  const isWeapon = item.type === 'weapon';
+  const isWeapon = item.type === 'weapon' || item.equipSlot === 'both';
   const naturalSlot: EquipSlot = (() => {
     const s = item.equipSlot;
     if (s === 'mainHand' || s === 'offHand' || s === 'armor' || s === 'amulet' || s === 'ring' || s === 'utility') return s;
@@ -337,12 +339,15 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
           damageBase: (entry.item as { damageBase?: number }).damageBase,
           damageAttribute: (entry.item as { damageAttribute?: string }).damageAttribute,
           equilibrio: (entry.item as { equilibrio?: number }).equilibrio,
+          margemCritico: (entry.item as { margemCritico?: number }).margemCritico,
           attributeBonus: entry.item.attributeBonus,
         } :
         type === 'armor' ? {
           ...base,
           icon: 'Shield',
           damageReduction: (entry.item as { damageReduction?: number }).damageReduction,
+          armorWeight: (entry.item as { armorWeight?: string }).armorWeight,
+          negaCritico: (entry.item as { negaCritico?: boolean }).negaCritico,
           attributeBonus: entry.item.attributeBonus,
         } : {
           ...base,
@@ -369,6 +374,9 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
             damageAttribute: item.damageAttribute ?? '',
             equilibrio: item.equilibrio,
             attributeBonus: item.attributeBonus,
+            rarity: item.rarity,
+            twoHanded: item.twoHanded ?? false,
+            equipSlot: item.equipSlot,
           },
         } :
         item.type === 'armor' ? {
@@ -386,8 +394,9 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
       const res = await api.put<Player>(`/master/players/${player.id}/equipment/${slot}`, body);
       setPlayer(res.data);
       setActiveSlot(null);
-    } catch {}
-    finally { setProcessing(null); }
+    } catch (err) {
+      showApiError(err, 'Não foi possível equipar o item.');
+    } finally { setProcessing(null); }
   }
 
   async function clearSlot(slot: EquipSlot) {
@@ -395,8 +404,9 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
     try {
       const res = await api.delete<Player>(`/master/players/${player.id}/equipment/${slot}`);
       setPlayer(res.data);
-    } catch {}
-    finally { setProcessing(null); }
+    } catch (err) {
+      showApiError(err, 'Não foi possível desequipar o item.');
+    } finally { setProcessing(null); }
   }
 
   // ── Render ────────────────────────────────────────────────────────────────────
@@ -574,7 +584,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                         </div>
                         <div className="grid grid-cols-3 gap-2 text-xs">
                           <span className="text-e-faint">Tipo<br /><span className="text-e-sub">{w.weaponType}</span></span>
-                          <span className="text-e-faint">Dano<br /><span className="text-e-sub">{w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : ''}</span></span>
+                          <span className="text-e-faint">Dano<br /><span className="text-e-sub">{w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/${divisorArma(w, player.proficiencias ?? [])}` : ''}</span></span>
                           <span className="text-e-faint">Attr<br /><span className="text-e-sub">{w.damageAttribute ?? '—'}</span></span>
                         </div>
                         {w.properties && <p className="text-xs text-e-faint">Propriedades: <span className="text-e-sub">{w.properties}</span></p>}
@@ -772,7 +782,7 @@ export default function InventarioModal({ player, onClose }: { player: Player; o
                               {item.desc && <p className="text-[10px] text-e-sub mt-0.5 leading-snug">{item.desc}</p>}
                               {item.type === 'weapon' && item.damageBase != null && (
                                 <p className="text-[10px] text-e-faint mt-0.5">
-                                  {item.weaponType} · {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/4` : ''}
+                                  {item.weaponType} · {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/${divisorArma(item)}` : ''}
                                 </p>
                               )}
                               {item.type === 'armor' && item.damageReduction != null && (

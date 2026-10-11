@@ -26,7 +26,7 @@ export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDel
   const hasPerks = perks.hasPressureBar;
 
   return (
-    <div className="rounded-lg border border-e-border bg-e-surface p-4 flex flex-col gap-3">
+    <div onClick={onEdit} className="group rounded-2xl border border-white/[0.07] bg-e-surface p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-white/20 hover:bg-[#1c1c20]">
 
       {/* Header */}
       <div className="flex items-start justify-between gap-2">
@@ -38,13 +38,13 @@ export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDel
             </div>
           )}
         </div>
-        <div className="flex gap-1 shrink-0">
-          <button onClick={onEdit}
-            className="w-7 h-7 rounded flex items-center justify-center text-e-sub hover:text-e-text hover:bg-e-card transition-colors">
+        <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
+          <button type="button" onClick={onEdit} title="Editar"
+            className="w-7 h-7 rounded-lg cursor-pointer flex items-center justify-center text-e-sub hover:text-e-text hover:bg-e-card transition-colors">
             <Pencil size={13} />
           </button>
-          <button onClick={onDelete}
-            className="w-7 h-7 rounded flex items-center justify-center text-e-sub hover:text-e-danger hover:bg-e-card transition-colors">
+          <button type="button" onClick={onDelete} title="Excluir"
+            className="w-7 h-7 rounded-lg cursor-pointer flex items-center justify-center text-e-sub hover:text-e-danger hover:bg-e-card transition-colors">
             <Trash2 size={13} />
           </button>
         </div>
@@ -53,10 +53,10 @@ export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDel
       {/* Skills iniciais */}
       {kit.starterSkillIds.length > 0 && (
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-e-faint mb-1">Habilidades iniciais</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint mb-1.5">Habilidades iniciais <span className="tabular-nums">{kit.starterSkillIds.length}</span></p>
           <div className="flex flex-wrap gap-1">
             {kit.starterSkillIds.map((id) => (
-              <span key={id} className="text-[10px] px-1.5 py-0.5 rounded bg-e-card text-e-text">
+              <span key={id} className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/[0.05] text-e-text">
                 {skillNames.get(id) ?? id}
               </span>
             ))}
@@ -67,10 +67,10 @@ export default function ClassKitCard({ kit, skillNames, itemNames, onEdit, onDel
       {/* Itens iniciais */}
       {kit.starterItems.length > 0 && (
         <div>
-          <p className="text-[9px] font-bold uppercase tracking-wider text-e-faint mb-1">Itens iniciais</p>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint mb-1.5">Itens iniciais <span className="tabular-nums">{kit.starterItems.length}</span></p>
           <div className="flex flex-wrap gap-1">
             {kit.starterItems.map((item, i) => (
-              <span key={i} className="text-[10px] px-1.5 py-0.5 rounded bg-e-card text-e-text">
+              <span key={i} className="text-[11px] px-1.5 py-0.5 rounded-md bg-white/[0.05] text-e-text">
                 {item.qty > 1 ? `${item.qty}× ` : ''}{itemNames.get(item.id) ?? item.name}
               </span>
             ))}

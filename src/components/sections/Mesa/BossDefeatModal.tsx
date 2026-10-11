@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { CheckField } from '@/components/ui/Checkbox';
 import { Coins } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
@@ -95,12 +96,11 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
             <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Drops de item</p>
             {itemDrops.map(({ drop, idx }) => (
               <div key={idx} className="flex items-center gap-2">
-                <input type="checkbox" id={`bdrop-${idx}`} checked={selectedDrops.has(idx)}
-                  onChange={() => toggleDrop(idx)} className="accent-[#c8a050]" />
-                <label htmlFor={`bdrop-${idx}`} className="flex-1 text-sm flex items-center gap-1.5 cursor-pointer">
-                  <span className="opacity-60"><ItemIcon name={drop.icon || 'Package'} size={13} /></span>
-                  {drop.name}
-                </label>
+                <CheckField checked={selectedDrops.has(idx)} onChange={() => toggleDrop(idx)} color="amber" className="flex-1"
+                  label={<span className="flex items-center gap-1.5">
+                    <span className="opacity-60"><ItemIcon name={drop.icon || 'Package'} size={13} /></span>
+                    {drop.name}
+                  </span>} />
                 {selectedDrops.has(idx) && (
                   <select
                     value={dropAssignments[idx] ?? ''}
@@ -175,11 +175,8 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
         {/* XP */}
         {boss.xp > 0 && (
           <div className="flex items-center gap-2">
-            <input type="checkbox" id="boss-xp" checked={distributeXp}
-              onChange={(e) => setDistributeXp(e.target.checked)} className="accent-[#3aaa60]" />
-            <label htmlFor="boss-xp" className="text-sm cursor-pointer">
-              Distribuir <span style={{ color: '#3aaa60' }}>⭐ {boss.xp} XP</span> para todos os jogadores
-            </label>
+            <CheckField checked={distributeXp} onChange={setDistributeXp} color="green"
+              label={<>Distribuir <span style={{ color: '#3aaa60' }}>⭐ {boss.xp} XP</span> para todos os jogadores</>} />
           </div>
         )}
 

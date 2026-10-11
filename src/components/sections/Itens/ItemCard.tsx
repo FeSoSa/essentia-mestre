@@ -1,7 +1,9 @@
 "use client";
 
 import type { ItemCatalog } from "@/store/types";
+import { divisorArma } from '@/store/combateStore';
 import { proxyUrl } from "@/lib/gdrive";
+import { siglaAtributo } from "@/lib/atributos";
 import { RARITY_COLORS, RARITY_LABELS, rarityColor, type Rarity } from "@/lib/rarity";
 import {
   Activity, Amphora, Anchor, Apple, Axe, Backpack, Bandage, Barrel, Bird, Bomb,
@@ -63,14 +65,6 @@ interface Props {
   onSend: () => void;
 }
 
-const TYPE_BADGE: Record<string, { label: string; color: string }> = {
-  weapon: { label: "Arma", color: "#e05050" },
-  armor: { label: "Armadura", color: "#4a9fe0" },
-  accessory: { label: "Acessório", color: "#d4a84e" },
-  normal: { label: "Normal", color: "#3dba72" },
-  chave: { label: "Chave", color: "#d4a84e" },
-};
-
 const SUBTYPE_BADGE: Record<string, { label: string; color: string }> = {
   consumivel: { label: "Consumível", color: "#3dba72" },
   drop: { label: "Drop", color: "#a855f7" },
@@ -83,140 +77,96 @@ function dmgStr(item: ItemCatalog) {
   const parts = [];
   if (item.damageBase) parts.push(String(item.damageBase));
   if (item.damageAttribute) {
-    parts.push(`d20×${item.damageAttribute}/4`);
+    parts.push(`d20×${siglaAtributo(item.damageAttribute)}/${divisorArma(item)}`);
   }
   return parts.length ? parts.join(' + ') : null;
 }
 
+const SLOT_LABEL: Record<string, string> = {
+  mainHand: "Mão principal", offHand: "Mão secundária", both: "Duas mãos",
+  armor: "Armadura", amulet: "Amuleto", ring: "Anel", utility: "Utilitário",
+};
+
 export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
-  const badge = TYPE_BADGE[item.type] ?? { label: item.type, color: "#71717a" };
   const dmg = dmgStr(item);
   const rColor = rarityColor(item.rarity);
+  const cor = rColor ?? "#a1a1aa";
+  const acao = "w-7 h-7 rounded-lg flex items-center justify-center text-e-faint hover:bg-white/[0.08] transition-colors cursor-pointer";
 
   return (
     <div
-      className="rounded-lg border bg-e-surface p-3 flex flex-col gap-2"
-      style={{ borderColor: rColor ?? '#52525b' }}
+      onClick={onEdit}
+      className="group relative rounded-2xl border bg-e-surface p-3.5 flex flex-col gap-2.5 cursor-pointer transition-colors hover:bg-[#1c1c20]"
+      style={{ borderColor: cor + "40", boxShadow: `inset 3px 0 0 ${cor}` }}
     >
-      <div className="flex items-start gap-2">
-        {item.icon && (
-          <span className="w-8 h-8 flex items-center justify-center rounded bg-e-card shrink-0" style={{ color: rColor ?? '#a1a1aa' }}>
-            <ItemIcon name={item.icon} size={18} />
-          </span>
-        )}
-        <div className="flex-1 min-w-0">
-          <p className="font-semibold text-sm truncate" style={{ color: rColor ?? '#fafafa' }} title={item.name}>{item.name}</p>
-          <div className="flex items-center gap-1.5 flex-wrap">
-            <span
-              className="text-[10px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-              style={{ background: badge.color + "22", color: badge.color }}
-            >
-              {badge.label}
-            </span>
-            {item.rarity && (
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                style={{ background: (RARITY_COLORS[item.rarity as Rarity] ?? '#71717a') + '22', color: RARITY_COLORS[item.rarity as Rarity] ?? '#71717a' }}
-              >
-                {RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}
-              </span>
-            )}
+      <div className="flex items-start gap-2.5">
+        <span className="w-9 h-9 flex items-center justify-center rounded-xl shrink-0" style={{ color: cor, background: cor + "14" }}>
+          <ItemIcon name={item.icon || "Package"} size={18} />
+        </span>
+        <div className="flex-1 min-w-0 group-hover:pr-20 transition-[padding]">
+          <p className="font-semibold text-sm leading-snug line-clamp-2" style={{ color: rColor ?? "#fafafa" }} title={item.name}>{item.name}</p>
+          <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5 flex-wrap">
+            {item.rarity && <span style={{ color: RARITY_COLORS[item.rarity as Rarity] ?? "#71717a" }}>{RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}</span>}
             {item.subtype && SUBTYPE_BADGE[item.subtype] && (
-              <span
-                className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider"
-                style={{ background: SUBTYPE_BADGE[item.subtype].color + '22', color: SUBTYPE_BADGE[item.subtype].color }}
-              >
-                {SUBTYPE_BADGE[item.subtype].label}
-              </span>
+              <span style={{ color: SUBTYPE_BADGE[item.subtype].color }}>· {SUBTYPE_BADGE[item.subtype].label}</span>
             )}
-          </div>
-        </div>
-        <div className="flex gap-1 shrink-0">
-          <button
-            onClick={onSend}
-            title="Enviar para jogador"
-            className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-accent hover:bg-e-card transition-colors"
-          >
-            <Send size={12} />
-          </button>
-          <button
-            onClick={onEdit}
-            title="Editar"
-            className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-text hover:bg-e-card transition-colors"
-          >
-            <Pencil size={12} />
-          </button>
-          <button
-            onClick={onDelete}
-            title="Deletar"
-            className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-danger hover:bg-e-card transition-colors"
-          >
-            <Trash2 size={12} />
-          </button>
+          </p>
         </div>
       </div>
 
-      {/* Stats */}
-      <div className="flex flex-col gap-0.5 text-xs text-e-sub">
+      {/* Ações: aparecem no hover para não poluir a grade */}
+      <div className="absolute top-2.5 right-2.5 flex gap-0.5 rounded-lg bg-[#1c1c20] opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity"
+        onClick={(e) => e.stopPropagation()}>
+        <button type="button" onClick={onSend} title="Enviar para um jogador" className={`${acao} hover:text-e-accent`}><Send size={13} /></button>
+        <button type="button" onClick={onEdit} title="Editar" className={`${acao} hover:text-e-text`}><Pencil size={13} /></button>
+        <button type="button" onClick={onDelete} title="Excluir" className={`${acao} hover:text-e-danger`}><Trash2 size={13} /></button>
+      </div>
+
+      <div className="flex flex-col gap-1 text-xs text-e-sub">
         {dmg && (
           <p>
-            <span className="text-e-faint">Dano</span>{" "}
+            <span className="text-e-faint">Dano </span>
             <span className="font-mono text-e-text">{dmg}</span>
-            {item.damageAttribute && (
-              <span className="text-e-faint ml-1">
-                + {item.damageAttribute.slice(0, 3).toUpperCase()}
-              </span>
-            )}
           </p>
         )}
         {item.damageReduction != null && item.damageReduction > 0 && (
-          <p>
-            <span className="text-e-faint">DR</span>{" "}
-            <span className="font-bold text-e-text">
-              −{item.damageReduction}
-            </span>
-          </p>
+          <p><span className="text-e-faint">Reduz </span><span className="font-bold text-e-text">{item.damageReduction}</span><span className="text-e-faint"> de dano</span></p>
         )}
         {item.attributeBonus && Object.keys(item.attributeBonus).length > 0 && (
-          <div className="flex gap-1 flex-wrap mt-0.5">
+          <div className="flex gap-1 flex-wrap">
             {Object.entries(item.attributeBonus).map(([attr, val]) => (
-              <span
-                key={attr}
-                className="px-1.5 py-0.5 rounded text-[10px] bg-e-card text-e-text"
-              >
-                {attr.slice(0, 3).toUpperCase()} {val > 0 ? "+" : ""}
-                {val}
+              <span key={attr} className="px-1.5 py-0.5 rounded text-[10px] font-semibold bg-white/[0.05] text-e-text">
+                {siglaAtributo(attr)} {val > 0 ? "+" : ""}{val}
               </span>
             ))}
           </div>
         )}
-        {item.equipSlot && (
-          <p className="text-e-faint capitalize">{item.equipSlot}</p>
-        )}
         {item.onUseEffect && (
-          <div className="flex items-center gap-1 mt-0.5">
-            <span
-              className="w-2 h-2 rounded-full shrink-0"
-              style={{ background: item.onUseEffect.color ?? "#a855f7" }}
-            />
-            <span className="text-[10px] text-e-sub truncate" title={item.onUseEffect.name || "Efeito ao usar"}>
+          <div className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full shrink-0" style={{ background: item.onUseEffect.color ?? "#a855f7" }} />
+            <span className="text-[11px] text-e-sub truncate" title={item.onUseEffect.name || "Efeito ao usar"}>
               {item.onUseEffect.name || "Efeito ao usar"}
               {item.onUseEffect.durationTurns === -1
-                ? " · ∞"
+                ? " · permanente"
                 : item.onUseEffect.durationTurns != null
-                  ? ` · ${item.onUseEffect.durationTurns}t`
+                  ? ` · ${item.onUseEffect.durationTurns} turnos`
                   : ""}
             </span>
           </div>
         )}
-        {item.goldValue != null && (
-          <p className="flex items-center gap-1">
-            <Coins size={11} className="text-amber-400 shrink-0" />
-            <span className="font-mono text-amber-400">{item.goldValue} Tyd</span>
-          </p>
-        )}
-        {item.desc && <p className="text-e-faint truncate" title={item.desc}>{item.desc}</p>}
+        {item.desc && <p className="text-e-faint line-clamp-2 leading-snug" title={item.desc}>{item.desc}</p>}
       </div>
+
+      {(item.equipSlot || item.goldValue != null) && (
+        <div className="mt-auto pt-2 border-t border-white/[0.05] flex items-center justify-between text-[11px]">
+          <span className="text-e-faint">{item.equipSlot ? SLOT_LABEL[item.equipSlot] ?? item.equipSlot : ""}</span>
+          {item.goldValue != null && (
+            <span className="flex items-center gap-1 font-semibold text-amber-400 tabular-nums">
+              <Coins size={11} /> {item.goldValue} Tyd
+            </span>
+          )}
+        </div>
+      )}
     </div>
   );
 }

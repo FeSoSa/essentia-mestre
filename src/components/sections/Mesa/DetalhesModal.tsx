@@ -1,11 +1,14 @@
 "use client";
 
 import Button from "@/components/ui/Button";
-import Checkbox from "@/components/ui/Checkbox";
+import { divisorArma } from '@/store/combateStore';
+import Checkbox, { CheckField } from "@/components/ui/Checkbox";
 import EffectBuilder, { describeAutoEffect } from "@/components/sections/StatusEffects/EffectBuilder";
 import { api } from "@/lib/api";
 import type { CatalogEntry, EquipSlot } from "@/lib/equipmentCatalog";
+import { genId } from "@/lib/id";
 import { proxyUrl } from "@/lib/gdrive";
+import { extractErrorMessage, showApiError } from "@/store/errorToastStore";
 import { useStore } from "@/store";
 import type {
   Essencia,
@@ -16,6 +19,7 @@ import type {
   SkillTreeEntry,
 } from "@/store/types";
 import {
+  Backpack, Wand2, BarChart3,
   Axe,
   ChevronDown,
   Circle,
@@ -48,6 +52,9 @@ import { useEffectPresetsStore, type EffectPreset } from "@/store/effectPresetsS
 import type { AutoEffect } from "@/store/types";
 import { useEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
+import { maestriaResumo } from "@/lib/maestria";
+import { Avatar, Barra, fracEs, corVida, COR_ES } from "@/components/sections/MesaNova/ui";
+import AjusteRapido from "@/components/sections/MesaNova/AjusteRapido";
 
 // ── Icon system (mirrors InventarioModal) ────────────────────────────────────
 
@@ -164,7 +171,7 @@ function CatalogSelect({
   function stats(entry: CatalogEntry): string {
     if ("damageBase" in entry.item) {
       const w = entry.item as { damageBase: number; damageAttribute?: string };
-      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : '';
+      const attr = w.damageAttribute ? ` + d20×${w.damageAttribute}/${divisorArma(w)}` : '';
       return `${w.damageBase}${attr}`;
     }
     if ("damageReduction" in entry.item)
@@ -185,7 +192,7 @@ function CatalogSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-black/30 border border-white/10 rounded-xl text-sm text-left hover:border-white/20 transition-colors cursor-pointer"
       >
         {selected ? (
           <>
@@ -210,14 +217,14 @@ function CatalogSelect({
         />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl">
-          <div className="p-2 border-b border-e-border">
+        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-white/10 rounded-xl shadow-2xl">
+          <div className="p-2 border-b border-white/10">
             <input
               autoFocus
               value={search}
               onChange={(e) => setSearch(e.target.value)}
               placeholder="Pesquisar…"
-              className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
+              className="w-full text-xs rounded-lg px-2 py-1.5 bg-black/30 border border-white/10 text-e-text outline-none placeholder:text-e-faint"
             />
           </div>
           <div className="max-h-40 overflow-y-auto">
@@ -228,7 +235,7 @@ function CatalogSelect({
                 key={entry.item.id}
                 type="button"
                 onClick={() => { onSelect(entry.item.id); setOpen(false); setSearch(''); }}
-                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-e-card transition-colors text-left cursor-pointer"
+                className="w-full flex items-center gap-2 px-3 py-2 text-sm hover:bg-white/[0.06] transition-colors text-left cursor-pointer"
               >
                 <ItemIcon name={iconForEntry(entry)} size={13} className="text-e-sub shrink-0" />
                 <span className="flex-1 text-e-text truncate">{entry.item.name}</span>
@@ -270,7 +277,7 @@ function IconSelect({
         ref={btnRef}
         type="button"
         onClick={handleOpen}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-black/30 border border-white/10 rounded-xl text-sm text-left hover:border-white/20 transition-colors cursor-pointer"
       >
         <SelectedIcon size={13} className="text-e-sub shrink-0" />
         <span className="flex-1 text-e-text">{value}</span>
@@ -283,7 +290,7 @@ function IconSelect({
         <>
           <div className="fixed inset-0 z-[9998]" onClick={() => setOpen(false)} />
           <div
-            className="fixed z-[9999] bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-44 overflow-y-auto"
+            className="fixed z-[9999] bg-e-surface border border-white/10 rounded-xl shadow-2xl max-h-44 overflow-y-auto"
             style={{ top: pos.top, left: pos.left, width: pos.width }}
           >
             {Object.entries(ICON_MAP).map(([name, Icon]) => (
@@ -297,7 +304,7 @@ function IconSelect({
                 className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
                   name === value
                     ? "bg-e-accent/10 text-e-accent"
-                    : "hover:bg-e-card text-e-text"
+                    : "hover:bg-white/[0.06] text-e-text"
                 }`}
               >
                 <Icon size={13} className="shrink-0" />
@@ -346,7 +353,7 @@ function SkillSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-black/30 border border-white/10 rounded-xl text-sm text-left hover:border-white/20 transition-colors cursor-pointer"
       >
         {selected ? (
           <>
@@ -368,7 +375,7 @@ function SkillSelect({
         />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
           {available.map((e) => (
             <button
               key={e.skill.id}
@@ -380,7 +387,7 @@ function SkillSelect({
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
                 e.skill.id === selectedId
                   ? "bg-e-accent/10 text-e-accent"
-                  : "hover:bg-e-card text-e-text"
+                  : "hover:bg-white/[0.06] text-e-text"
               }`}
             >
               <SkillIcon type={e.skill.type} size={13} className="shrink-0" />
@@ -388,7 +395,7 @@ function SkillSelect({
             </button>
           ))}
           {locked.length > 0 && available.length > 0 && (
-            <div className="mx-3 my-1 h-px bg-e-border" />
+            <div className="mx-3 my-1 h-px bg-white/10" />
           )}
           {locked.map((e) => (
             <div
@@ -437,7 +444,7 @@ function EssenciaSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-black/30 border border-white/10 rounded-xl text-sm text-left hover:border-white/20 transition-colors cursor-pointer"
       >
         {selected ? (
           <>
@@ -455,7 +462,7 @@ function EssenciaSelect({
         />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl max-h-48 overflow-y-auto">
+        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-white/10 rounded-xl shadow-2xl max-h-48 overflow-y-auto">
           {essencias.map((e) => (
             <button
               key={e.id}
@@ -467,7 +474,7 @@ function EssenciaSelect({
               className={`w-full flex items-center gap-2 px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
                 e.id === selectedId
                   ? "bg-e-accent/10 text-e-accent"
-                  : "hover:bg-e-card text-e-text"
+                  : "hover:bg-white/[0.06] text-e-text"
               }`}
             >
               <span className="flex-1 truncate">{e.name}</span>
@@ -503,7 +510,7 @@ function TypeSelect({
       <button
         type="button"
         onClick={() => setOpen((v) => !v)}
-        className="w-full flex items-center gap-2 px-3 py-2 bg-e-bg border border-e-border rounded-xl text-sm text-left hover:border-e-border2 transition-colors cursor-pointer"
+        className="w-full flex items-center gap-2 px-3 py-2 bg-black/30 border border-white/10 rounded-xl text-sm text-left hover:border-white/20 transition-colors cursor-pointer"
       >
         <span className="flex-1 text-e-text">{current.label}</span>
         <ChevronDown
@@ -512,7 +519,7 @@ function TypeSelect({
         />
       </button>
       {open && (
-        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-e-border rounded-xl shadow-2xl overflow-hidden">
+        <div className="absolute z-20 mt-1 w-full bg-e-surface border border-white/10 rounded-xl shadow-2xl overflow-hidden">
           {ITEM_TYPES.map((t) => (
             <button
               key={t.value}
@@ -524,7 +531,7 @@ function TypeSelect({
               className={`w-full flex items-center px-3 py-2 text-sm transition-colors text-left cursor-pointer ${
                 t.value === value
                   ? "bg-e-accent/10 text-e-accent"
-                  : "hover:bg-e-card text-e-text"
+                  : "hover:bg-white/[0.06] text-e-text"
               }`}
             >
               {t.label}
@@ -599,9 +606,9 @@ function EquipPanel({
   onEquip: (slot: EquipSlot) => void;
   processing: boolean;
 }) {
-  const isWeapon = item.type === "weapon";
+  const isWeapon = item.type === "weapon" || item.equipSlot === "both";
   const naturalSlot =
-    (item.equipSlot as EquipSlot | undefined) ??
+    (item.equipSlot === "both" ? undefined : (item.equipSlot as EquipSlot | undefined)) ??
     (isWeapon ? "mainHand" : item.type === "armor" ? "armor" : "utility");
   const [slot, setSlot] = useState<EquipSlot>(naturalSlot);
 
@@ -617,7 +624,7 @@ function EquipPanel({
               className={`flex-1 text-[10px] py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
                 slot === s
                   ? "bg-e-accent/20 border-e-accent text-e-accent"
-                  : "bg-e-bg border-e-border text-e-faint hover:border-e-border2"
+                  : "bg-black/30 border-white/10 text-e-faint hover:border-white/20"
               }`}
             >
               {s === "mainHand" ? "Principal" : "Offhand"}
@@ -649,7 +656,7 @@ function EquipPanel({
               className={`flex-1 text-[10px] py-1 rounded-lg border font-medium transition-colors cursor-pointer ${
                 slot === s
                   ? "bg-e-accent/20 border-e-accent text-e-accent"
-                  : "bg-e-bg border-e-border text-e-faint hover:border-e-border2"
+                  : "bg-black/30 border-white/10 text-e-faint hover:border-white/20"
               }`}
             >
               {s === "amulet" ? "Amuleto" : s === "ring" ? "Anel" : "Utilit."}
@@ -681,33 +688,6 @@ function EquipPanel({
 }
 
 // ── StatusBar ─────────────────────────────────────────────────────────────────
-
-function StatusBar({ player }: { player: Player }) {
-  return (
-    <div className="flex items-center gap-4 flex-wrap bg-e-bg border border-e-border rounded-xl px-4 py-2.5 text-xs shrink-0">
-      <span className="flex items-center gap-1 text-e-hp">
-        <Heart size={11} />
-        <span className="tabular-nums">
-          {player.hp.current}/{player.hp.max}
-        </span>
-      </span>
-      <span className="flex items-center gap-1 text-e-flow">
-        <Droplets size={11} />
-        <span className="tabular-nums">
-          {player.flow.current}/{player.flow.max}
-        </span>
-      </span>
-      <span className="flex items-center gap-1 text-e-gold">
-        <CircleDollarSign size={11} />
-        <span className="tabular-nums">{player.gold ?? 0}</span>
-      </span>
-      <span className="flex items-center gap-1 text-e-accent">
-        <Sparkles size={11} />
-        <span className="tabular-nums">{player.exp.available} XP</span>
-      </span>
-    </div>
-  );
-}
 
 // ── InventarioPanel ───────────────────────────────────────────────────────────
 
@@ -764,8 +744,7 @@ function InventarioPanel({
       const res = await api.delete<Player>(`/master/players/${player.id}/equipment/${slot}`);
       onUpdate(res.data);
     } catch (err: unknown) {
-      const status = (err as { response?: { status?: number } })?.response?.status;
-      if (status === 409) setClearError('Inventário cheio — libere um slot antes de desequipar');
+      setClearError(extractErrorMessage(err, 'Não foi possível desequipar o item.'));
     } finally {
       setProcessing(null);
     }
@@ -780,7 +759,8 @@ function InventarioPanel({
         { delta: -1 },
       );
       onUpdate(res.data);
-    } catch {
+    } catch (err) {
+      showApiError(err, 'Não foi possível remover o item.');
     } finally {
       setProcessing(null);
     }
@@ -825,7 +805,8 @@ function InventarioPanel({
       );
       onUpdate(res.data);
       setActiveSlot(null);
-    } catch {
+    } catch (err) {
+      showApiError(err, 'Não foi possível equipar o item.');
     } finally {
       setProcessing(null);
     }
@@ -837,6 +818,7 @@ function InventarioPanel({
     const cat = selectedNormal.item as unknown as ItemCatalog;
     try {
       const res = await api.post<Player>(`/master/players/${player.id}/items`, {
+        catalogId: cat.id,
         name: cat.name,
         desc: cat.desc ?? '',
         qty: itemQty,
@@ -859,6 +841,7 @@ function InventarioPanel({
     setGivingEquip(true);
     try {
       const base = {
+        catalogId: (entry.item as unknown as ItemCatalog).id,
         name: entry.item.name,
         desc: "",
         qty: 1,
@@ -874,6 +857,7 @@ function InventarioPanel({
               damageBase: (entry.item as { damageBase?: number }).damageBase,
               damageAttribute: (entry.item as { damageAttribute?: string }).damageAttribute,
               equilibrio: (entry.item as { equilibrio?: number }).equilibrio,
+              margemCritico: (entry.item as { margemCritico?: number }).margemCritico,
               attributeBonus: entry.item.attributeBonus,
             }
           : type === "armor"
@@ -882,6 +866,7 @@ function InventarioPanel({
                 icon: "Shield",
                 damageReduction: (entry.item as { damageReduction?: number }).damageReduction,
                 armorWeight: (entry.item as { armorWeight?: string }).armorWeight,
+                negaCritico: (entry.item as { negaCritico?: boolean }).negaCritico,
                 attributeBonus: entry.item.attributeBonus,
               }
             : {
@@ -909,7 +894,7 @@ function InventarioPanel({
   return (
     <div className="flex-1 overflow-hidden flex">
       {/* ── Left column ── */}
-      <div className="w-[270px] shrink-0 border-r border-e-border overflow-y-auto p-4 flex flex-col gap-5">
+      <div className="w-[270px] shrink-0 border-r border-white/10 overflow-y-auto p-4 flex flex-col gap-5">
         {/* Equipment */}
         <section>
           <p className={lbl}>Equipamento</p>
@@ -922,7 +907,7 @@ function InventarioPanel({
               return (
                 <div
                   key={key}
-                  className="flex items-center gap-2 bg-e-card border border-e-border rounded-lg px-2.5 py-2"
+                  className="flex items-center gap-2 bg-white/[0.05] border border-white/10 rounded-lg px-2.5 py-2"
                 >
                   <ItemIcon
                     name={
@@ -978,13 +963,13 @@ function InventarioPanel({
               className={`flex items-center gap-2 w-full text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
                 givePanel === "item"
                   ? "bg-e-accent/10 border-e-accent text-e-accent"
-                  : "bg-e-card border-e-border text-e-sub hover:text-e-text hover:border-e-border2"
+                  : "bg-white/[0.05] border-white/10 text-e-sub hover:text-e-text hover:border-white/20"
               }`}
             >
               <Package size={13} /> Dar item
             </button>
             {givePanel === "item" && (
-              <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="bg-black/30 border border-white/10 rounded-xl p-3 flex flex-col gap-2.5">
                 <CatalogSelect
                   entries={normalEntries}
                   selectedId={itemId}
@@ -1004,7 +989,7 @@ function InventarioPanel({
                         min={1}
                         value={itemQty}
                         onChange={(e) => setItemQty(Math.max(1, Number(e.target.value)))}
-                        className="w-20 text-center text-xs rounded-lg px-2 py-1.5 bg-e-surface border border-e-border text-e-text outline-none"
+                        className="w-20 text-center text-xs rounded-lg px-2 py-1.5 bg-white/[0.02] border border-white/10 text-e-text outline-none"
                       />
                     </div>
                   </>
@@ -1030,13 +1015,13 @@ function InventarioPanel({
               className={`flex items-center gap-2 w-full text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
                 givePanel === "arma"
                   ? "bg-e-accent/10 border-e-accent text-e-accent"
-                  : "bg-e-card border-e-border text-e-sub hover:text-e-text hover:border-e-border2"
+                  : "bg-white/[0.05] border-white/10 text-e-sub hover:text-e-text hover:border-white/20"
               }`}
             >
               <Sword size={13} /> Dar arma
             </button>
             {givePanel === "arma" && (
-              <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="bg-black/30 border border-white/10 rounded-xl p-3 flex flex-col gap-2.5">
                 <CatalogSelect
                   entries={weaponEntries}
                   selectedId={weaponId}
@@ -1052,7 +1037,7 @@ function InventarioPanel({
                       <div className="text-xs text-e-faint flex flex-col gap-1">
                         <p>
                           <span className="text-e-sub">{w.weaponType}</span> ·{" "}
-                          {w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/4` : ''}
+                          {w.damageBase}{w.damageAttribute ? ` + d20×${w.damageAttribute}/${divisorArma(w, player.proficiencias ?? [])}` : ''}
                         </p>
                         {w.properties && <p>{w.properties}</p>}
                       </div>
@@ -1084,13 +1069,13 @@ function InventarioPanel({
               className={`flex items-center gap-2 w-full text-xs px-3 py-2 rounded-xl border transition-colors cursor-pointer ${
                 givePanel === "armadura"
                   ? "bg-e-accent/10 border-e-accent text-e-accent"
-                  : "bg-e-card border-e-border text-e-sub hover:text-e-text hover:border-e-border2"
+                  : "bg-white/[0.05] border-white/10 text-e-sub hover:text-e-text hover:border-white/20"
               }`}
             >
               <Shield size={13} /> Dar armadura
             </button>
             {givePanel === "armadura" && (
-              <div className="bg-e-bg border border-e-border rounded-xl p-3 flex flex-col gap-2.5">
+              <div className="bg-black/30 border border-white/10 rounded-xl p-3 flex flex-col gap-2.5">
                 <CatalogSelect
                   entries={armorEntries}
                   selectedId={armorId}
@@ -1156,11 +1141,10 @@ function InventarioPanel({
 
       {/* ── Right column ── */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        <StatusBar player={player} />
 
         <section>
           <p className={lbl}>Inventário ({gridItems.length}/{player.inventorySize ?? 18})</p>
-          <div className="grid grid-cols-6 gap-1">
+          <div className="grid gap-2" style={{ gridTemplateColumns: "repeat(auto-fill, minmax(92px, 1fr))" }}>
             {Array.from({ length: player.inventorySize ?? 18 }, (_, i) => {
               const item = gridItems[i] ?? null;
               const isActive = activeSlot === i;
@@ -1181,28 +1165,28 @@ function InventarioPanel({
                         setSlotView("menu");
                       }
                     }}
-                    className={`w-full h-full rounded-lg border flex flex-col items-center justify-center gap-0.5 p-1 transition-colors ${
+                    className={`w-full h-full rounded-xl border flex flex-col items-center justify-center gap-1.5 p-2 transition-colors ${
                       item
                         ? isActive
-                          ? "bg-e-card border-e-accent cursor-pointer"
+                          ? "bg-e-accent/10 border-e-accent cursor-pointer"
                           : isKey
-                            ? "bg-e-card border-orange-500/50 hover:border-orange-500 cursor-pointer"
-                            : "bg-e-card border-e-border hover:border-e-border2 cursor-pointer"
-                        : "bg-e-bg border-e-border cursor-default"
+                            ? "bg-orange-500/[0.06] border-orange-500/40 hover:border-orange-500 cursor-pointer"
+                            : "bg-white/[0.05] border-white/10 hover:border-white/25 hover:bg-white/[0.08] cursor-pointer"
+                        : "bg-transparent border-dashed border-white/[0.07] cursor-default"
                     }`}
                   >
                     {item ? (
                       <>
                         <ItemIcon
                           name={item.icon ?? iconForType(item.type)}
-                          size={14}
-                          className="text-e-sub"
+                          size={22}
+                          className="text-e-text"
                         />
-                        <span className="text-[7px] text-e-sub text-center leading-tight line-clamp-2 w-full">
+                        <span className="text-[10px] text-e-sub text-center leading-tight line-clamp-2 w-full">
                           {item.name}
                         </span>
                         {item.qty > 1 && (
-                          <span className="absolute top-0.5 right-1 text-[7px] font-black text-e-accent leading-none">
+                          <span className="absolute top-1.5 right-2 text-[10px] font-black text-e-accent leading-none">
                             {item.qty}
                           </span>
                         )}
@@ -1226,8 +1210,8 @@ function InventarioPanel({
                         className="fixed inset-0 z-20"
                         onClick={() => setActiveSlot(null)}
                       />
-                      <div className="absolute z-30 top-full mt-1 left-0 w-44 bg-e-surface border border-e-border rounded-xl shadow-2xl p-2 flex flex-col gap-1">
-                        <div className="px-2 py-1.5 border-b border-e-border mb-1">
+                      <div className="absolute z-30 top-full mt-1 left-0 w-44 bg-e-surface border border-white/10 rounded-xl shadow-2xl p-2 flex flex-col gap-1">
+                        <div className="px-2 py-1.5 border-b border-white/10 mb-1">
                           <p className="text-xs font-semibold" style={{ color: rarityColor(item.rarity) ?? '#fafafa' }}>
                             {item.name}
                           </p>
@@ -1241,7 +1225,7 @@ function InventarioPanel({
                           )}
                           {item.damageBase != null && (
                             <p className="text-[10px] text-e-gold mt-0.5">
-                              {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/4` : ''}
+                              {item.damageBase}{item.damageAttribute ? ` + d20×${item.damageAttribute}/${divisorArma(item)}` : ''}
                               {item.weaponType ? ` · ${item.weaponType}` : ''}
                             </p>
                           )}
@@ -1433,14 +1417,14 @@ function HabilidadesPanel({
   return (
     <div className="flex-1 overflow-hidden flex">
       {/* ── Left column: dar habilidade ── */}
-      <div className="w-72 shrink-0 border-r border-e-border flex flex-col">
-        <div className="p-3 border-b border-e-border flex flex-col gap-2 shrink-0">
+      <div className="w-72 shrink-0 border-r border-white/10 flex flex-col">
+        <div className="p-3 border-b border-white/10 flex flex-col gap-2 shrink-0">
           <p className={lbl + " !mb-0"}>Desbloquear habilidade</p>
           <input
             value={skillSearch}
             onChange={(e) => setSkillSearch(e.target.value)}
             placeholder="Buscar habilidade…"
-            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-black/30 border border-white/10 text-e-text outline-none placeholder:text-e-faint focus:border-white/20 transition-colors"
           />
           {skillTypes.length > 1 && (
             <div className="flex gap-1 flex-wrap">
@@ -1449,7 +1433,7 @@ function HabilidadesPanel({
                   className={`text-[10px] px-2 py-0.5 rounded-full border font-medium transition-colors cursor-pointer ${
                     skillTypeFilter === t
                       ? 'bg-e-accent/15 border-e-accent text-e-accent'
-                      : 'border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub'
+                      : 'border-white/10 text-e-faint hover:border-white/20 hover:text-e-sub'
                   }`}>
                   {t === 'all' ? 'Todas' : (TYPE_PT[t] ?? t)}
                 </button>
@@ -1472,8 +1456,8 @@ function HabilidadesPanel({
                   isSelected
                     ? 'bg-e-accent/10 border-e-accent'
                     : isLocked
-                      ? 'bg-e-bg border-e-border opacity-40 cursor-not-allowed'
-                      : 'bg-e-bg border-e-border hover:border-e-border2 cursor-pointer'
+                      ? 'bg-black/30 border-white/10 opacity-40 cursor-not-allowed'
+                      : 'bg-black/30 border-white/10 hover:border-white/20 cursor-pointer'
                 }`}
               >
                 <div className="flex items-center gap-2">
@@ -1494,8 +1478,8 @@ function HabilidadesPanel({
         </div>
 
         {selectedSkill && (
-          <div className="p-3 border-t border-e-border shrink-0 flex flex-col gap-2">
-            <div className="bg-e-bg rounded-lg p-2.5 flex flex-col gap-1">
+          <div className="p-3 border-t border-white/10 shrink-0 flex flex-col gap-2">
+            <div className="bg-black/30 rounded-lg p-2.5 flex flex-col gap-1">
               <p className="text-xs font-semibold text-e-text">{selectedSkill.skill.name}</p>
               {selectedSkill.skill.desc && (
                 <p className="text-[11px] text-e-faint leading-snug line-clamp-3">{selectedSkill.skill.desc}</p>
@@ -1510,7 +1494,6 @@ function HabilidadesPanel({
 
       {/* ── Right column ── */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
-        <StatusBar player={player} />
 
         {loadingSkills ? (
           <p className="text-sm text-e-faint text-center py-8 animate-pulse">
@@ -1535,12 +1518,13 @@ function HabilidadesPanel({
                   <div className="flex flex-col gap-2">
                     {entries.map((entry) => {
                       const ps = entry.playerSkill!;
-                      const m = ps.maestria;
+                      const m = entry.maestria;
                       const isSaving = savingMaestria === ps.id;
+                      if (!m) return null;
                       return (
                         <div
                           key={ps.id}
-                          className="bg-e-card border border-e-border rounded-xl p-3 flex flex-col gap-2"
+                          className="bg-white/[0.05] border border-white/10 rounded-xl p-3 flex flex-col gap-2"
                         >
                           <div className="flex items-start justify-between gap-2">
                             <div className="min-w-0">
@@ -1562,15 +1546,15 @@ function HabilidadesPanel({
                             <div className="flex flex-col items-end gap-1 shrink-0">
                               {/* Maestria pips */}
                               <div className="flex gap-0.5">
-                                {Array.from({ length: 5 }, (_, i) => (
+                                {Array.from({ length: m.nivelMax }, (_, i) => (
                                   <div
                                     key={i}
-                                    className={`w-2 h-2 rounded-full ${i < m.level ? "bg-e-gold" : "bg-e-border"}`}
+                                    className={`w-2 h-2 rounded-full ${i < m.nivel ? "bg-e-gold" : "bg-white/10"}`}
                                   />
                                 ))}
                               </div>
-                              <span className="text-[9px] text-e-gold font-bold">
-                                Nv {m.level}
+                              <span className="text-[9px] text-e-gold font-bold" title={maestriaResumo(m)}>
+                                {m.nome} Nv {m.nivel}
                               </span>
                               {entry.skill.ultimate && (
                                 <button
@@ -1597,23 +1581,23 @@ function HabilidadesPanel({
                           <div className="flex items-center gap-2">
                             <button
                               onClick={() => adjustMaestria(ps, -1)}
-                              disabled={isSaving || m.totalUses <= 0}
-                              className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm font-bold transition-colors"
+                              disabled={isSaving || m.usos <= 0}
+                              className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm font-bold transition-colors"
                             >
                               −
                             </button>
                             <span className="text-xs text-e-sub tabular-nums flex-1 text-center">
-                              {m.totalUses}
-                              {m.nextLevelUses > 0 && (
+                              {m.usos}
+                              {m.proximoNivelUsos != null && (
                                 <span className="text-e-faint">
-                                  /{m.nextLevelUses}
+                                  /{m.proximoNivelUsos}
                                 </span>
                               )}
                             </span>
                             <button
                               onClick={() => adjustMaestria(ps, 1)}
                               disabled={isSaving}
-                              className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm font-bold transition-colors"
+                              className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text disabled:opacity-40 cursor-pointer flex items-center justify-center text-sm font-bold transition-colors"
                             >
                               +
                             </button>
@@ -1682,7 +1666,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
     try {
       const res = await api.post<Player>('/master/status-effect', {
         playerId: player.id,
-        effect: { id: crypto.randomUUID(), name: p.name, icon: p.icon, desc: p.desc ?? '', durationTurns: p.durationTurns, effects: p.effects, hitBonus: p.hitBonus, attackBonus: p.attackBonus },
+        effect: { id: genId(), name: p.name, icon: p.icon, desc: p.desc ?? '', durationTurns: p.durationTurns, effects: p.effects, hitBonus: p.hitBonus, attackBonus: p.attackBonus },
       });
       onUpdate(res.data);
     } catch {}
@@ -1715,7 +1699,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
     try {
       const res = await api.post<Player>('/master/status-effect', {
         playerId: player.id,
-        effect: { id: crypto.randomUUID(), name, icon: icon || undefined, color: color || undefined, desc, durationTurns: permanent ? -1 : duration, effects: autoEffects, hitBonus: hitBonus !== '' ? Number(hitBonus) : undefined, attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined },
+        effect: { id: genId(), name, icon: icon || undefined, color: color || undefined, desc, durationTurns: permanent ? -1 : duration, effects: autoEffects, hitBonus: hitBonus !== '' ? Number(hitBonus) : undefined, attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined },
       });
       onUpdate(res.data);
       clearForm();
@@ -1770,7 +1754,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
   return (
     <div className="flex-1 overflow-hidden flex">
       {/* ── Left column ── */}
-      <div className="w-72 shrink-0 border-r border-e-border overflow-y-auto p-4 flex flex-col gap-4">
+      <div className="w-72 shrink-0 border-r border-white/10 overflow-y-auto p-4 flex flex-col gap-4">
 
         {/* Predefinidos */}
         <div>
@@ -1779,7 +1763,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
             value={presetSearch}
             onChange={(e) => setPresetSearch(e.target.value)}
             placeholder="Buscar…"
-            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors mb-2"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-black/30 border border-white/10 text-e-text outline-none placeholder:text-e-faint focus:border-white/20 transition-colors mb-2"
           />
           <div className="flex flex-col gap-1">
             {presets.filter((p) => !presetSearch.trim() || p.name.toLowerCase().includes(presetSearch.toLowerCase())).map((p) => {
@@ -1790,7 +1774,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
                     onClick={() => applyPreset(p)}
                     disabled={isApplying}
                     title="Aplicar diretamente"
-                    className="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-e-card border border-e-border hover:border-e-border2 text-left transition-colors cursor-pointer disabled:opacity-50"
+                    className="flex-1 flex items-center gap-2 px-2.5 py-2 rounded-lg bg-white/[0.05] border border-white/10 hover:border-white/20 text-left transition-colors cursor-pointer disabled:opacity-50"
                   >
                     <PresetIcon iconName={p.icon} />
                     <span className="flex-1 text-xs font-medium text-e-text truncate">{p.name}</span>
@@ -1805,14 +1789,14 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
                   <button
                     onClick={() => loadPreset(p, true)}
                     title="Editar predefinido"
-                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-text hover:bg-e-card transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-text hover:bg-white/[0.06] transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                   >
                     <Pencil size={11} />
                   </button>
                   <button
                     onClick={() => removePreset(p.id)}
                     title="Remover predefinido"
-                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-danger hover:bg-e-card transition-colors opacity-0 group-hover:opacity-100 shrink-0"
+                    className="w-6 h-6 rounded flex items-center justify-center text-e-faint hover:text-e-danger hover:bg-white/[0.06] transition-colors opacity-0 group-hover:opacity-100 shrink-0"
                   >
                     <Trash2 size={11} />
                   </button>
@@ -1848,7 +1832,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
               {currentEffects.map((ef) => {
                 const IconComp = getStatusIcon(ef.icon);
                 return (
-                  <div key={ef.id || ef.name} className="flex flex-col gap-1 bg-e-card border border-e-border rounded-xl px-3 py-2">
+                  <div key={ef.id || ef.name} className="flex flex-col gap-1 bg-white/[0.05] border border-white/10 rounded-xl px-3 py-2">
                     <div className="flex items-center gap-2">
                       {IconComp
                         ? <IconComp size={13} className="text-e-sub shrink-0" />
@@ -1900,7 +1884,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
             <label className={lbl}>Descrição</label>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)}
               placeholder="O que este efeito faz ao personagem…" rows={2}
-              className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text resize-none outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint" />
+              className="w-full rounded-xl px-3 py-2 bg-black/30 border border-white/10 text-sm text-e-text resize-none outline-none focus:border-white/20 transition-colors placeholder:text-e-faint" />
           </div>
 
           <div>
@@ -1912,7 +1896,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
                   className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center ${
                     icon === n
                       ? 'border-e-accent bg-e-accent/10 text-e-accent'
-                      : 'border-e-border hover:border-e-border2 text-e-faint hover:text-e-sub'
+                      : 'border-white/10 hover:border-white/20 text-e-faint hover:text-e-sub'
                   }`}
                   style={icon === n && color ? { borderColor: color, backgroundColor: color + '22', color } : {}}
                 >
@@ -1932,16 +1916,16 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
                     style={{ backgroundColor: c }} />
                 ))}
                 <button type="button" onClick={() => { setColor(''); setColorInput(''); }}
-                  className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!color ? 'border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
+                  className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!color ? 'border-e-accent text-e-accent' : 'border-white/10 text-e-faint hover:border-white/20'}`}>
                   auto
                 </button>
               </div>
               <div className="flex items-center gap-2">
-                <div className="w-7 h-7 rounded-lg border border-e-border shrink-0" style={{ backgroundColor: colorInput || 'transparent' }} />
+                <div className="w-7 h-7 rounded-lg border border-white/10 shrink-0" style={{ backgroundColor: colorInput || 'transparent' }} />
                 <input type="text" value={colorInput}
                   onChange={(e) => { setColorInput(e.target.value); if (/^#[0-9a-fA-F]{6}$/.test(e.target.value)) setColor(e.target.value); }}
                   placeholder="#rrggbb"
-                  className="flex-1 rounded-xl px-3 py-1.5 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint font-mono" />
+                  className="flex-1 rounded-xl px-3 py-1.5 bg-black/30 border border-white/10 text-sm text-e-text outline-none focus:border-white/20 transition-colors placeholder:text-e-faint font-mono" />
               </div>
             </div>
           </div>
@@ -1987,7 +1971,7 @@ function EfeitosPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Play
               onClick={saveAsPreset}
               disabled={!name.trim()}
               title={editingPresetId ? 'Atualizar predefinido' : 'Salvar como predefinido para uso futuro'}
-              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-e-border text-e-faint hover:text-e-sub hover:border-e-border2 text-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
+              className="flex items-center gap-1.5 px-3 py-2.5 rounded-xl border border-white/10 text-e-faint hover:text-e-sub hover:border-white/20 text-xs transition-colors cursor-pointer disabled:opacity-40 disabled:cursor-not-allowed">
               {editingPresetId ? '✎ Atualizar predefinido' : '☆ Salvar predefinido'}
             </button>
             <button type="submit"
@@ -2083,7 +2067,6 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
 
   return (
     <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-4">
-      <StatusBar player={player} />
 
       {/* Barras coletivas */}
       {collectiveBars.length > 0 && (
@@ -2093,7 +2076,7 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
             <span className="text-[9px] bg-blue-500/20 text-blue-300 rounded-full px-1.5 py-0.5 font-bold normal-case tracking-normal">todos os jogadores</span>
           </p>
           {collectiveBars.map((bar) => (
-            <div key={bar.id} className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+            <div key={bar.id} className="bg-white/[0.05] border border-white/10 rounded-xl p-4 flex flex-col gap-3">
               <div className="flex items-center gap-3">
                 <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bar.color }} />
                 <p className="font-semibold text-sm text-e-text flex-1">{bar.name}</p>
@@ -2102,18 +2085,18 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
                   <Trash2 size={13} />
                 </button>
               </div>
-              <div className="w-full h-2 rounded-full bg-e-border overflow-hidden">
+              <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
                 <div className="h-full rounded-full transition-all" style={{ width: `${bar.max > 0 ? Math.min(100, (bar.current / bar.max) * 100) : 0}%`, backgroundColor: bar.color }} />
               </div>
               <div className="flex items-center gap-3">
                 <div className="flex items-center gap-1.5 flex-1">
                   <button onClick={() => handleAdjustCol(bar.id, 'current', Math.max(0, bar.current - 1))}
-                    className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
+                    className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
                   <input type="number" value={bar.current} min={0} max={bar.max}
                     onChange={(e) => handleAdjustCol(bar.id, 'current', Number(e.target.value))}
                     className="!w-16 !text-center !text-sm" />
                   <button onClick={() => handleAdjustCol(bar.id, 'current', Math.min(bar.max, bar.current + 1))}
-                    className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
+                    className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
                   <span className="text-xs text-e-faint">/ </span>
                   <input type="number" value={bar.max} min={1}
                     onChange={(e) => handleAdjustCol(bar.id, 'max', Math.max(1, Number(e.target.value)))}
@@ -2133,7 +2116,7 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
       )}
 
       {bars.map((bar) => (
-        <div key={bar.id} className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+        <div key={bar.id} className="bg-white/[0.05] border border-white/10 rounded-xl p-4 flex flex-col gap-3">
           <div className="flex items-center gap-3">
             <div className="w-3 h-3 rounded-full shrink-0" style={{ backgroundColor: bar.color }} />
             <p className="font-semibold text-sm text-e-text flex-1">{bar.name}</p>
@@ -2142,18 +2125,18 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
               <Trash2 size={13} />
             </button>
           </div>
-          <div className="w-full h-2 rounded-full bg-e-border overflow-hidden">
+          <div className="w-full h-2 rounded-full bg-white/10 overflow-hidden">
             <div className="h-full rounded-full transition-all" style={{ width: `${bar.max > 0 ? Math.min(100, (bar.current / bar.max) * 100) : 0}%`, backgroundColor: bar.color }} />
           </div>
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-1.5 flex-1">
               <button onClick={() => handleAdjust(bar.id, 'current', Math.max(0, bar.current - 1))}
-                className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
+                className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">−</button>
               <input type="number" value={bar.current} min={0} max={bar.max}
                 onChange={(e) => handleAdjust(bar.id, 'current', Number(e.target.value))}
                 className="!w-16 !text-center !text-sm" />
               <button onClick={() => handleAdjust(bar.id, 'current', Math.min(bar.max, bar.current + 1))}
-                className="w-6 h-6 rounded-lg bg-e-surface border border-e-border text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
+                className="w-6 h-6 rounded-lg bg-white/[0.02] border border-white/10 text-e-sub hover:text-e-text cursor-pointer flex items-center justify-center font-bold transition-colors">+</button>
               <span className="text-xs text-e-faint">/ </span>
               <input type="number" value={bar.max} min={1}
                 onChange={(e) => handleAdjust(bar.id, 'max', Math.max(1, Number(e.target.value)))}
@@ -2165,7 +2148,7 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
       ))}
 
       {adding ? (
-        <div className="bg-e-card border border-e-border rounded-xl p-4 flex flex-col gap-3">
+        <div className="bg-white/[0.05] border border-white/10 rounded-xl p-4 flex flex-col gap-3">
           <p className={lbl}>Nova barra</p>
           <input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="Nome da barra (ex: Mana, Energia…)" autoFocus />
           <div className="flex items-center gap-3">
@@ -2184,12 +2167,8 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
               </div>
             </div>
           </div>
-          <label className="flex items-center gap-2 cursor-pointer select-none">
-            <input type="checkbox" checked={newColetiva} onChange={(e) => setNewColetiva(e.target.checked)}
-              className="w-4 h-4 accent-blue-400" />
-            <span className="text-sm text-e-sub">Barra coletiva</span>
-            <span className="text-[10px] text-e-faint">(visível para todos os jogadores)</span>
-          </label>
+          <CheckField checked={newColetiva} onChange={setNewColetiva} color="sky"
+            label="Barra coletiva" desc="Visível para todos os jogadores" />
           <div className="flex gap-2">
             <Button variant="ghost" size="sm" className="flex-1" onClick={() => setAdding(false)}>Cancelar</Button>
             <Button variant="primary" size="sm" className="flex-1" disabled={!newName.trim() || saving} onClick={handleAdd}>
@@ -2199,7 +2178,7 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
         </div>
       ) : (
         <button onClick={() => setAdding(true)}
-          className="flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
+          className="flex items-center justify-center gap-2 py-3 rounded-xl border border-dashed border-white/10 text-e-faint hover:border-white/20 hover:text-e-sub text-sm transition-colors cursor-pointer">
           <Plus size={13} /> Adicionar barra
         </button>
       )}
@@ -2210,6 +2189,7 @@ function CustomBarsPanel({ player, onUpdate }: { player: Player; onUpdate: (p: P
 // ── EssenciasPanel ────────────────────────────────────────────────────────────
 
 const TYPE_COLORS_PANEL: Record<string, { border: string; badge: string; text: string }> = {
+  Elemental: { border: '#d4a84e55', badge: '#d4a84e22', text: '#d4a84e' },
   Grande:  { border: '#d4a84e55', badge: '#d4a84e22', text: '#d4a84e' },
   Mitica:  { border: '#a855f755', badge: '#a855f722', text: '#a855f7' },
   Derivada:{ border: '#4ade8055', badge: '#4ade8022', text: '#4ade80' },
@@ -2256,14 +2236,14 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
   return (
     <div className="flex-1 overflow-hidden flex">
       {/* ── Left: conceder ── */}
-      <div className="w-72 shrink-0 border-r border-e-border flex flex-col">
-        <div className="p-3 border-b border-e-border shrink-0 flex flex-col gap-2">
+      <div className="w-72 shrink-0 border-r border-white/10 flex flex-col">
+        <div className="p-3 border-b border-white/10 shrink-0 flex flex-col gap-2">
           <p className={lbl + " !mb-0"}>Conceder essência</p>
           <input
             value={essSearch}
             onChange={(e) => setEssSearch(e.target.value)}
             placeholder="Buscar essência…"
-            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint focus:border-e-border2 transition-colors"
+            className="w-full text-xs rounded-lg px-2.5 py-1.5 bg-black/30 border border-white/10 text-e-text outline-none placeholder:text-e-faint focus:border-white/20 transition-colors"
           />
         </div>
 
@@ -2280,7 +2260,7 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
               <button key={e.id} type="button"
                 onClick={() => setSelectedId(id => id === e.id ? null : e.id)}
                 className={`w-full text-left px-3 py-2.5 rounded-lg border transition-colors cursor-pointer ${
-                  isSelected ? 'border-e-accent bg-e-accent/5' : 'border-e-border bg-e-bg hover:border-e-border2'
+                  isSelected ? 'border-e-accent bg-e-accent/5' : 'border-white/10 bg-black/30 hover:border-white/20'
                 }`}
                 style={isSelected ? {} : { borderLeftColor: c.text + '66', borderLeftWidth: 3 }}
               >
@@ -2306,8 +2286,8 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
         {selectedEss && (() => {
           const c = TYPE_COLORS_PANEL[selectedEss.type] ?? { border: '#71717a55', badge: '#71717a22', text: '#71717a' };
           return (
-            <div className="p-3 border-t border-e-border shrink-0 flex flex-col gap-2">
-              <div className="bg-e-bg rounded-lg p-2.5 flex flex-col gap-1" style={{ borderLeft: `3px solid ${c.text}` }}>
+            <div className="p-3 border-t border-white/10 shrink-0 flex flex-col gap-2">
+              <div className="bg-black/30 rounded-lg p-2.5 flex flex-col gap-1" style={{ borderLeft: `3px solid ${c.text}` }}>
                 <p className="text-xs font-semibold text-e-text">{selectedEss.name}</p>
                 {selectedEss.desc && <p className="text-[11px] text-e-faint leading-snug line-clamp-2">{selectedEss.desc}</p>}
                 {selectedEss.skillIds.length > 0 && (
@@ -2324,7 +2304,6 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
 
       {/* ── Right: obtidas ── */}
       <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-3">
-        <StatusBar player={player} />
         {obtained.length === 0 ? (
           <p className="text-sm text-e-faint text-center py-8">Nenhuma essência obtida.</p>
         ) : (
@@ -2336,7 +2315,7 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
               const bonuses = Object.entries(ess.attributeBonus ?? {}).filter(([, v]) => v !== 0);
               const busy = processing === o.essenciaId;
               return (
-                <div key={o.essenciaId} className="rounded-xl border bg-e-card p-3 flex flex-col gap-2" style={{ borderColor: c.border }}>
+                <div key={o.essenciaId} className="rounded-xl border bg-white/[0.05] p-3 flex flex-col gap-2" style={{ borderColor: c.border }}>
                   <div className="flex items-start justify-between gap-2">
                     <div className="min-w-0">
                       <p className="font-semibold text-sm text-e-text truncate">{ess.name}</p>
@@ -2356,7 +2335,7 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
                   {bonuses.length > 0 && (
                     <div className="flex gap-1 flex-wrap">
                       {bonuses.map(([attr, val]) => (
-                        <span key={attr} className="px-1.5 py-0.5 rounded text-[10px] bg-e-bg text-e-text">
+                        <span key={attr} className="px-1.5 py-0.5 rounded text-[10px] bg-black/30 text-e-text">
                           {attr.slice(0,3).toUpperCase()} {val > 0 ? '+' : ''}{val}
                         </span>
                       ))}
@@ -2379,6 +2358,24 @@ function EssenciasPanel({ player, onUpdate }: { player: Player; onUpdate: (p: Pl
 
 // ── DetalhesModal (main) ──────────────────────────────────────────────────────
 
+type AbaFicha = "inventario" | "habilidades" | "essencias" | "barras" | "efeitos";
+
+const ABAS_FICHA: { id: AbaFicha; label: string; desc: string; Icon: LucideIcon }[] = [
+  { id: "inventario",  label: "Inventário",  desc: "Equipamento, itens e o que dar ao jogador", Icon: Backpack },
+  { id: "habilidades", label: "Habilidades", desc: "Árvore, slots, maestria e bloqueios",        Icon: Wand2 },
+  { id: "essencias",   label: "Essências",   desc: "Essências obtidas e derivadas",              Icon: Gem },
+  { id: "barras",      label: "Barras",      desc: "Barras personalizadas e coletivas",          Icon: BarChart3 },
+  { id: "efeitos",     label: "Efeitos",     desc: "Efeitos de status ativos",                   Icon: Sparkles },
+];
+
+function xpParaNivelFicha(n: number): number {
+  if (n <= 1) return 0;
+  if (n <= 20) return 75 * (n * (n + 1) / 2 - 1) - 50 * (n - 1);
+  const m = n - 20;
+  return 14725 + m * (2750 + 150 * m);
+}
+
+/** Ficha completa do jogador: navegação lateral, recursos e recompensas sempre à vista. */
 export default function DetalhesModal({
   player,
   onClose,
@@ -2388,172 +2385,127 @@ export default function DetalhesModal({
 }) {
   const { setPlayer } = useStore();
   const storePlayer = useStore((s) => s.players.find((p) => p.id === player.id));
-  const currentPlayer = storePlayer ?? player;
-  const [tab, setTab] = useState<"inventario" | "habilidades" | "essencias" | "barras" | "efeitos">("inventario");
-  const [showXP, setShowXP] = useState(false);
-  const [xpAmount, setXpAmount] = useState("");
-  const [givingXP, setGivingXP] = useState(false);
-  async function grantXP() {
-    const amount = Number(xpAmount);
-    if (!amount || amount <= 0) return;
-    setGivingXP(true);
-    try {
-      const res = await api.put<Player>("/master/exp", {
-        playerId: player.id,
-        amount,
-      });
-      if (res.data) setPlayer(res.data);
-      setShowXP(false);
-      setXpAmount("");
-    } catch {
-    } finally {
-      setGivingXP(false);
-    }
+  const p = storePlayer ?? player;
+  const [tab, setTab] = useState<AbaFicha>("inventario");
+
+  useEffect(() => {
+    const fechar = (e: KeyboardEvent) => { if (e.key === "Escape") onClose(); };
+    window.addEventListener("keydown", fechar);
+    return () => window.removeEventListener("keydown", fechar);
+  }, [onClose]);
+
+  async function darXp(amount: number) {
+    if (amount <= 0) return;
+    try { const r = await api.put<Player>("/master/exp", { playerId: p.id, amount }); if (r.data) setPlayer(r.data); } catch {}
+  }
+  async function ajustarOuro(delta: number) {
+    try { const r = await api.put<Player>(`/master/players/${p.id}/gold`, { delta }); if (r.data) setPlayer(r.data); } catch {}
   }
 
+  const contagem: Partial<Record<AbaFicha, number>> = {
+    inventario: p.items.filter((i) => i.type !== "currency").length,
+    essencias: p.essenciasObtidas?.length ?? 0,
+    barras: p.customBars?.length ?? 0,
+    efeitos: p.statusEffects?.length ?? 0,
+  };
+  const hpPct = p.hp.max > 0 ? p.hp.current / p.hp.max : 0;
+  const nivelAtual = xpParaNivelFicha(p.char.level);
+  const xpNecessario = xpParaNivelFicha(p.char.level + 1) - nivelAtual;
+  const xpNoNivel = Math.max(0, Math.min(xpNecessario, (p.exp.total ?? 0) - nivelAtual));
+  const aba = ABAS_FICHA.find((a) => a.id === tab)!;
+
   return (
-    <div
-      className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
-      onClick={(e) => {
-        if (e.target === e.currentTarget) onClose();
-      }}
-    >
-      <div className="bg-e-surface border border-e-border rounded-2xl w-full max-w-6xl h-[90vh] flex flex-col shadow-2xl">
-        {/* Header */}
-        <div className="flex items-center gap-3 px-5 py-4 border-b border-e-border shrink-0">
-          <div className="w-9 h-9 rounded-full bg-e-card border border-e-border flex items-center justify-center shrink-0">
-            <span className="text-sm font-bold text-e-gold select-none">
-              {player.char.name[0].toUpperCase()}
-            </span>
-          </div>
-          <div className="flex-1 min-w-0">
-            <div className="flex items-center gap-2">
-              <p className="font-semibold text-e-text truncate">
-                {player.char.name}
-              </p>
-              <span className="text-[10px] font-bold text-e-gold bg-e-gold/10 border border-e-gold/20 px-1.5 py-0.5 rounded-md shrink-0">
-                Nv {player.char.level}
-              </span>
+    <div className="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => { if (e.target === e.currentTarget) onClose(); }}>
+      <div className="w-full max-w-[1440px] h-[92vh] rounded-2xl border border-white/10 bg-[#131316] flex overflow-hidden shadow-2xl">
+
+        {/* Lateral: identidade, recursos e navegação */}
+        <nav className="w-64 shrink-0 border-r border-white/[0.07] bg-[#0f0f12] flex flex-col">
+          <div className="p-5 flex flex-col items-center text-center gap-2.5 border-b border-white/[0.07]">
+            <Avatar src={p.char.portraitUrl} nome={p.char.name} pct={hpPct} pctEs={fracEs(p.flow.current, p.flow.max)} size={88} />
+            <div className="min-w-0 w-full">
+              <p className="text-lg font-bold text-e-text truncate">{p.char.name}</p>
+              <p className="text-xs text-e-sub truncate">{p.char.race} · {p.char.skillClass}{p.char.subClass ? ` · ${p.char.subClass}` : ""}</p>
             </div>
-            <p className="text-xs text-e-sub mt-0.5">
-              {player.char.race} · {player.char.skillClass}
-              {player.char.subClass ? ` · ${player.char.subClass}` : ""}
-            </p>
+            <span className="text-[11px] font-bold text-e-gold bg-e-gold/10 border border-e-gold/25 px-2 py-0.5 rounded-md">Nível {p.char.level}</span>
+            <div className="w-full flex flex-col gap-1">
+              <Barra atual={xpNoNivel} max={xpNecessario} cor="#a3e635" altura={4} />
+              <span className="text-[10px] text-e-faint tabular-nums">{xpNoNivel}/{xpNecessario} XP para o nível {p.char.level + 1}</span>
+              {(p.exp.available ?? 0) > 0 && <span className="text-[11px] text-e-gold">{p.exp.available} pontos para distribuir</span>}
+            </div>
+            <div className="w-full grid grid-cols-2 gap-1.5 mt-1">
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] py-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-e-faint">Vida</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: corVida(hpPct) }}>{p.hp.current}<span className="text-e-faint text-[11px] font-normal">/{p.hp.max}</span></p>
+              </div>
+              <div className="rounded-lg bg-white/[0.03] border border-white/[0.06] py-1.5">
+                <p className="text-[9px] font-bold uppercase tracking-[0.14em] text-e-faint">Essência</p>
+                <p className="text-sm font-bold tabular-nums" style={{ color: COR_ES }}>{p.flow.current}<span className="text-e-faint text-[11px] font-normal">/{p.flow.max}</span></p>
+              </div>
+            </div>
           </div>
 
-          {/* Gold input */}
-          <GoldControl player={currentPlayer} onUpdate={setPlayer} />
-
-          {/* XP button + inline form */}
-          <div className="flex items-center gap-2 shrink-0">
-            {showXP ? (
-              <>
-                <input
-                  type="number"
-                  min={1}
-                  value={xpAmount}
-                  placeholder="XP"
-                  onChange={(e) => setXpAmount(e.target.value)}
-                  onKeyDown={(e) => e.key === "Enter" && grantXP()}
-                  className="!w-20 !py-1.5 !text-sm"
-                  autoFocus
-                />
-                <Button
-                  variant="gold"
-                  size="sm"
-                  disabled={givingXP || !xpAmount}
-                  onClick={grantXP}
-                >
-                  {givingXP ? "…" : "Dar"}
-                </Button>
-                <button
-                  onClick={() => {
-                    setShowXP(false);
-                    setXpAmount("");
-                  }}
-                  className="text-e-faint hover:text-e-text cursor-pointer p-1 rounded-lg hover:bg-e-card transition-colors"
-                >
-                  <X size={14} />
+          <div className="flex-1 overflow-y-auto p-3 flex flex-col gap-1">
+            {ABAS_FICHA.map(({ id, label, Icon }) => {
+              const ativa = tab === id;
+              const n = contagem[id];
+              return (
+                <button key={id} type="button" onClick={() => setTab(id)}
+                  className={`w-full h-10 px-3 rounded-xl flex items-center gap-2.5 text-sm font-medium transition-colors cursor-pointer ${
+                    ativa ? "bg-white/[0.08] text-e-text" : "text-e-sub hover:text-e-text hover:bg-white/[0.04]"}`}>
+                  <Icon size={15} className={ativa ? "text-e-accent" : ""} />
+                  {label}
+                  {n ? <span className={`ml-auto text-[10px] font-bold tabular-nums px-1.5 py-0.5 rounded-full ${ativa ? "bg-e-accent text-black" : "bg-white/10 text-e-sub"}`}>{n}</span> : null}
                 </button>
-              </>
-            ) : (
-              <button
-                onClick={() => setShowXP(true)}
-                className="flex items-center gap-1.5 text-xs text-e-gold border border-e-gold/30 bg-e-gold/5 hover:bg-e-gold/10 px-3 py-1.5 rounded-xl transition-colors cursor-pointer font-medium"
-              >
-                <Sparkles size={12} /> + XP jogador
+              );
+            })}
+          </div>
+          <p className="px-5 py-3 text-[10px] text-e-faint border-t border-white/[0.07]">Esc fecha a ficha</p>
+        </nav>
+
+        {/* Conteúdo */}
+        <div className="flex-1 min-w-0 flex flex-col">
+          <div className="shrink-0 flex items-center gap-4 px-6 py-4 border-b border-white/[0.07]">
+            <div className="min-w-0">
+              <h2 className="text-lg font-bold text-e-text">{aba.label}</h2>
+              <p className="text-xs text-e-faint">{aba.desc}</p>
+            </div>
+            <div className="ml-auto flex items-center gap-3">
+              <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] pl-3 pr-1.5 py-1.5">
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-e-faint">Experiência</span>
+                  <span className="text-sm font-bold text-e-accent tabular-nums">{p.exp.total ?? 0}</span>
+                </div>
+                <AjusteRapido compacto apenasMais rotuloMais="Dar XP" placeholder="XP" onAplicar={darXp} />
+              </div>
+              <div className="flex items-center gap-2.5 rounded-xl bg-white/[0.03] border border-white/[0.06] pl-3 pr-1.5 py-1.5">
+                <div className="flex flex-col leading-tight">
+                  <span className="text-[9px] font-bold uppercase tracking-[0.14em] text-e-faint">Ouro</span>
+                  <span className="text-sm font-bold text-e-gold tabular-nums">{p.gold ?? 0}</span>
+                </div>
+                <AjusteRapido compacto rotuloMenos="Tirar" rotuloMais="Dar" placeholder="ouro" onAplicar={ajustarOuro} />
+              </div>
+              <button onClick={onClose} title="Fechar (Esc)"
+                className="w-9 h-9 rounded-xl text-e-faint hover:text-e-text hover:bg-white/5 flex items-center justify-center cursor-pointer">
+                <X size={17} />
               </button>
+            </div>
+          </div>
+
+          <div className="flex-1 min-h-0 flex flex-col">
+            {tab === "inventario" ? (
+              <InventarioPanel player={p} onUpdate={setPlayer} />
+            ) : tab === "habilidades" ? (
+              <HabilidadesPanel player={p} onUpdate={setPlayer} />
+            ) : tab === "essencias" ? (
+              <EssenciasPanel player={p} onUpdate={setPlayer} />
+            ) : tab === "barras" ? (
+              <CustomBarsPanel player={p} onUpdate={setPlayer} />
+            ) : (
+              <EfeitosPanel player={p} onUpdate={setPlayer} />
             )}
           </div>
-
-          <button
-            onClick={onClose}
-            className="text-e-faint hover:text-e-text cursor-pointer p-1.5 rounded-lg hover:bg-e-card transition-colors shrink-0"
-          >
-            <X size={16} />
-          </button>
         </div>
-
-        {/* Tabs */}
-        <div className="flex gap-0 border-b border-e-border px-5 shrink-0">
-          {(["inventario", "habilidades", "essencias", "barras", "efeitos"] as const).map((t) => (
-            <button
-              key={t}
-              onClick={() => setTab(t)}
-              className={`px-4 py-3 text-sm font-medium border-b-2 transition-colors cursor-pointer ${
-                tab === t
-                  ? "border-e-accent text-e-text"
-                  : "border-transparent text-e-faint hover:text-e-sub"
-              }`}
-            >
-              {t === "inventario" ? "Inventário"
-                : t === "habilidades" ? "Habilidades"
-                : t === "barras" ? (
-                  <span className="flex items-center gap-1.5">
-                    Barras
-                    {(currentPlayer.customBars?.length ?? 0) > 0 && (
-                      <span className="text-[9px] font-bold bg-blue-500/20 text-blue-300 rounded-full px-1.5 py-0.5">
-                        {currentPlayer.customBars!.length}
-                      </span>
-                    )}
-                  </span>
-                )
-                : t === "essencias" ? (
-                  <span className="flex items-center gap-1.5">
-                    Essências
-                    {(currentPlayer.essenciasObtidas?.length ?? 0) > 0 && (
-                      <span className="text-[9px] font-bold bg-purple-500/20 text-purple-300 rounded-full px-1.5 py-0.5">
-                        {currentPlayer.essenciasObtidas?.length}
-                      </span>
-                    )}
-                  </span>
-                ) : (
-                  <span className="flex items-center gap-1.5">
-                    Efeitos
-                    {(currentPlayer.statusEffects?.length ?? 0) > 0 && (
-                      <span className="text-[9px] font-bold bg-e-accent/20 text-e-accent rounded-full px-1.5 py-0.5">
-                        {currentPlayer.statusEffects.length}
-                      </span>
-                    )}
-                  </span>
-                )
-              }
-            </button>
-          ))}
-        </div>
-
-        {/* Panel */}
-        {tab === "inventario" ? (
-          <InventarioPanel player={currentPlayer} onUpdate={setPlayer} />
-        ) : tab === "habilidades" ? (
-          <HabilidadesPanel player={currentPlayer} onUpdate={setPlayer} />
-        ) : tab === "essencias" ? (
-          <EssenciasPanel player={currentPlayer} onUpdate={setPlayer} />
-        ) : tab === "barras" ? (
-          <CustomBarsPanel player={currentPlayer} onUpdate={setPlayer} />
-        ) : (
-          <EfeitosPanel player={currentPlayer} onUpdate={setPlayer} />
-        )}
       </div>
     </div>
   );

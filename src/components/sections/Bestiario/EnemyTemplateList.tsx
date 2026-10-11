@@ -1,20 +1,23 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Pencil, Trash2, Plus, Copy } from 'lucide-react';
+import { Pencil, Trash2, Copy } from 'lucide-react';
 import { api } from '@/lib/api';
 import type { EnemyTemplate, AllyTemplate } from '@/store/types';
-import Button from '@/components/ui/Button';
 import EnemyTemplateModal from './EnemyTemplateModal';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
 import { enemyToAllyTemplate } from '@/lib/convertBeast';
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
+import { COR_DIF, NOME_DIFICULDADE } from '@/lib/encontro';
 
 interface Props {
   onCopied?: () => void;
+  search?: string;
+  /** Incrementado pelo botão "Novo" da seção. */
+  novo?: number;
 }
 
-export default function EnemyTemplateList({ onCopied }: Props) {
+export default function EnemyTemplateList({ onCopied, search = "", novo = 0 }: Props) {
   const [templates, setTemplates] = useState<EnemyTemplate[]>([]);
   const [editing,   setEditing]   = useState<EnemyTemplate | undefined>();
   const [showNew,   setShowNew]   = useState(false);
@@ -22,6 +25,15 @@ export default function EnemyTemplateList({ onCopied }: Props) {
   useEffect(() => {
     api.get<EnemyTemplate[]>('/enemies').then((r) => setTemplates(r.data)).catch(() => {});
   }, []);
+
+  // O botão "Novo" fica no cabeçalho da seção: cada clique muda o contador e abre o modal
+  const [novoVisto, setNovoVisto] = useState(novo);
+  if (novo !== novoVisto) {
+    setNovoVisto(novo);
+    if (novo) setShowNew(true);
+  }
+
+  const visiveis = templates.filter((t) => !search || t.name.toLowerCase().includes(search.toLowerCase()));
 
   function handleSaved(t: EnemyTemplate) {
     setTemplates((prev) => {
@@ -44,18 +56,12 @@ export default function EnemyTemplateList({ onCopied }: Props) {
 
   return (
     <div className="flex flex-col gap-4">
-      <div className="flex justify-end">
-        <Button variant="primary" size="sm" onClick={() => setShowNew(true)} className="gap-1.5">
-          <Plus size={14} /> Novo inimigo
-        </Button>
-      </div>
-
-      {templates.length === 0 ? (
-        <p className="text-e-faint text-sm text-center py-12">Nenhum inimigo no catálogo.</p>
+      {visiveis.length === 0 ? (
+        <p className="text-e-faint text-sm text-center py-12">{search ? "Nada encontrado com essa busca." : "Nenhum inimigo no catálogo."}</p>
       ) : (
         <div className="grid gap-3" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(260px, 1fr))' }}>
-          {templates.map((t) => (
-            <div key={t.id} className="rounded-lg border border-e-border bg-e-surface p-3 flex flex-col gap-2">
+          {visiveis.map((t) => (
+            <div key={t.id} onClick={() => setEditing(t)} className="group rounded-2xl border border-white/[0.07] bg-e-surface p-3.5 flex flex-col gap-2.5 cursor-pointer hover:border-white/20 transition-colors">
               <div className="flex items-start gap-2">
                 {t.imageUrl ? (
                   // eslint-disable-next-line @next/next/no-img-element
@@ -64,10 +70,16 @@ export default function EnemyTemplateList({ onCopied }: Props) {
                   <span className="text-xl w-8 h-8 flex items-center justify-center rounded bg-e-card shrink-0">{t.icon}</span>
                 )}
                 <div className="flex-1 min-w-0">
-                  <p className="font-semibold text-sm truncate">{t.name}</p>
+                  <p className="font-semibold text-sm truncate flex items-center gap-1.5">{t.name}
+                    {t.dificuldade && (
+                      <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded shrink-0" style={{ background: (COR_DIF[t.dificuldade] ?? '#888') + '22', color: COR_DIF[t.dificuldade] }}>
+                        {NOME_DIFICULDADE[t.dificuldade]}
+                      </span>
+                    )}
+                  </p>
                   <p className="text-xs text-e-sub">{t.type} · HP {t.hpMax} · ⭐ {t.xp} XP</p>
                 </div>
-                <div className="flex gap-1 shrink-0">
+                <div className="flex gap-1 shrink-0 opacity-40 group-hover:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                   <button onClick={() => setEditing(t)} className="w-6 h-6 rounded flex items-center justify-center text-e-sub hover:text-e-text hover:bg-e-card">
                     <Pencil size={12} />
                   </button>

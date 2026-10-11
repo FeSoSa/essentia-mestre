@@ -66,7 +66,8 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
 
   function linkSkill(i: number, skill: Skill) {
     const next = skillAtks.map((a, j) => j === i
-      ? { ...a, skillId: skill.id, skillName: skill.name, damage: skill.damage?.formula ?? a.damage, name: skill.name }
+      ? { ...a, skillId: skill.id, skillName: skill.name, damage: skill.damage?.formula ?? a.damage, name: skill.name,
+          custoEs: skill.costs.filter((c) => c.type === 'flow').reduce((t, c) => t + (c.value ?? 0), 0) }
       : a
     );
     onChange({ ...phase, attacks: [basicAtk, ...next] });
@@ -124,6 +125,27 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
             style={inputStyle}
           />
         </div>
+      </div>
+
+      {/* Turno automático: vazio = DEF do atributo e mod de FOR/AGI */}
+      <div className="flex gap-2">
+        {([
+          ['defesa', 'DEF (turno auto)', String(phase.attributes.defense)],
+          ['modAcerto', 'Mod de acerto', 'FOR/AGI'],
+          ['esMax', 'ES máxima', '0'],
+        ] as const).map(([campo, label, ph]) => (
+          <div key={campo} className="shrink-0">
+            <p className="text-[10px] uppercase tracking-wider mb-0.5" style={{ color: '#7a7050' }}>{label}</p>
+            <input
+              type="number"
+              value={phase[campo] ?? ''}
+              placeholder={ph}
+              onChange={(e) => onChange({ ...phase, [campo]: e.target.value === '' ? undefined : Number(e.target.value) })}
+              className={`w-24 text-center ${inputCls}`}
+              style={inputStyle}
+            />
+          </div>
+        ))}
       </div>
 
       {/* Attributes 4x2 */}

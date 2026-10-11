@@ -1,7 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import SectionHeader from '@/components/ui/SectionHeader';
+import { Plus } from 'lucide-react';
+import SectionHeader, { Page } from '@/components/ui/SectionHeader';
+import SearchInput, { Tabs } from '@/components/ui/SearchInput';
+import Button from '@/components/ui/Button';
 import EnemyTemplateList from './EnemyTemplateList';
 import BossTemplateList from './BossTemplateList';
 import AllyTemplateList from './AllyTemplateList';
@@ -14,37 +17,33 @@ const TAB_LABELS: Record<Tab, string> = {
   aliados: 'Aliados',
 };
 
+const NOVO: Record<Tab, string> = { inimigos: 'Novo inimigo', bosses: 'Novo boss', aliados: 'Novo aliado' };
+
 export default function Bestiario() {
   const [tab, setTab] = useState<Tab>('inimigos');
+  const [search, setSearch] = useState('');
+  // Cada clique em "Novo" incrementa o contador; a lista da aba abre o modal de criação
+  const [novo, setNovo] = useState(0);
+
+  function trocar(t: Tab) { setTab(t); setNovo(0); }
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <Page>
       <SectionHeader
         title="Bestiário"
-        subtitle="Gerencie os templates de inimigos, bosses e aliados do catálogo"
+        subtitle="Modelos de inimigos, bosses e aliados. Clique num card para editar."
+        action={<Button variant="primary" onClick={() => setNovo((n) => n + 1)}><Plus size={15} /> {NOVO[tab]}</Button>}
       />
 
-      {/* Tab bar */}
-      <div className="flex gap-1 rounded-lg p-1 mb-6 w-fit" style={{ background: '#27272a' }}>
-        {(['inimigos', 'bosses', 'aliados'] as Tab[]).map((t) => (
-          <button
-            key={t}
-            onClick={() => setTab(t)}
-            className="px-4 py-1.5 rounded text-sm font-semibold transition-colors"
-            style={
-              tab === t
-                ? { background: '#3f3f46', color: '#fafafa' }
-                : { color: '#71717a' }
-            }
-          >
-            {TAB_LABELS[t]}
-          </button>
-        ))}
+      <div className="flex items-center gap-3 mb-6 flex-wrap">
+        <Tabs value={tab} onChange={trocar}
+          tabs={(Object.keys(TAB_LABELS) as Tab[]).map((t) => ({ id: t, label: TAB_LABELS[t] }))} />
+        <div className="ml-auto"><SearchInput value={search} onChange={setSearch} placeholder="Buscar pelo nome…" /></div>
       </div>
 
-      {tab === 'inimigos' && <EnemyTemplateList onCopied={() => setTab('aliados')} />}
-      {tab === 'bosses'   && <BossTemplateList />}
-      {tab === 'aliados'  && <AllyTemplateList onCopied={() => setTab('inimigos')} />}
-    </div>
+      {tab === 'inimigos' && <EnemyTemplateList search={search} novo={novo} onCopied={() => trocar('aliados')} />}
+      {tab === 'bosses'   && <BossTemplateList search={search} novo={novo} />}
+      {tab === 'aliados'  && <AllyTemplateList search={search} novo={novo} onCopied={() => trocar('inimigos')} />}
+    </Page>
   );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Skill } from "@/components/sections/Habilidades/SkillCard";
+import { CheckField } from '@/components/ui/Checkbox';
 import Button from "@/components/ui/Button";
 import { api } from "@/lib/api";
 import { RARITY_LABELS, rarityColor } from "@/lib/rarity";
@@ -35,7 +36,9 @@ const WEAPON_TYPES = [
   { value: "cajado", label: "Cajado" },
   { value: "grimorio", label: "Grimório" },
   { value: "orbe", label: "Orbe" },
-  { value: "a-distancia", label: "À distância" },
+  { value: "arcos", label: "Arcos" },
+  { value: "bestas", label: "Bestas" },
+  { value: "pistolas", label: "Pistolas" },
   { value: "luvas-manoplas", label: "Luvas & manoplas" },
   { value: "escudos", label: "Escudos" },
 ];
@@ -154,9 +157,14 @@ export default function ClassKitModal({
   const [unarmedAttr1, setUnarmedAttr1] = useState(unarmedAttrParts[0] ?? "");
   const [unarmedAttr2, setUnarmedAttr2] = useState(unarmedAttrParts[1] ?? "");
 
+  // Proficiências iniciais da classe; também alimentam o sorteador de itens (allowedWeaponTypes)
   const [allowedWeaponTypes, setAllowedWeaponTypes] = useState<string[]>(
-    kit?.allowedWeaponTypes ?? [],
+    kit?.proficienciasIniciais ?? kit?.allowedWeaponTypes ?? [],
   );
+
+  // Bônus de PV/Fluxo máximo por nível acima do 1
+  const [pvPorNivel, setPvPorNivel] = useState<number>(kit?.pvPorNivel ?? 0);
+  const [fluxoPorNivel, setFluxoPorNivel] = useState<number>(kit?.fluxoPorNivel ?? 0);
 
   const [loading, setLoading] = useState(false);
 
@@ -215,6 +223,9 @@ export default function ClassKitModal({
       starterItems: builtItems,
       starterEquipment: kit?.starterEquipment ?? {},
       allowedWeaponTypes,
+      proficienciasIniciais: allowedWeaponTypes,
+      pvPorNivel,
+      fluxoPorNivel,
       perks,
     };
 
@@ -268,22 +279,9 @@ export default function ClassKitModal({
           {/* Peculiaridades */}
           <div className="flex flex-col gap-3">
             <label className={lbl}>Peculiaridades da classe</label>
-            <label className="flex items-center gap-3 cursor-pointer px-3 py-2.5 rounded-xl bg-e-bg border border-e-border hover:border-e-border2 transition-colors">
-              <input
-                type="checkbox"
-                checked={hasPressureBar}
-                onChange={(e) => setHasPressureBar(e.target.checked)}
-                className="w-4 h-4 accent-orange-400 shrink-0"
-              />
-              <div>
-                <p className="text-sm text-e-text font-medium">
-                  Barra de Pressão
-                </p>
-                <p className="text-[11px] text-e-faint">
-                  Habilita o recurso de pressão (ex: Intenso)
-                </p>
-              </div>
-            </label>
+            <CheckField checked={hasPressureBar} onChange={setHasPressureBar} color="orange"
+              label="Barra de Pressão" desc="Habilita o recurso de pressão (ex: Intenso)"
+              className="px-3 py-2.5 rounded-xl bg-e-bg border border-e-border hover:border-e-border2 transition-colors" />
             <div className="flex flex-col gap-1.5">
               <label className={lbl}>Ataque desarmado</label>
               <div className="flex gap-2">
@@ -326,14 +324,39 @@ export default function ClassKitModal({
                 </div>
               </div>
               <p className="text-[11px] text-e-faint">
-                Equilíbrio fixo em 4 · fórmula: dano_base + d20×atributo / 4
+                Desarmado: dano_base + d20×atributo / equilíbrio sem proficiência (padrão 6)
               </p>
             </div>
           </div>
 
-          {/* Armas permitidas */}
+          {/* PV e Fluxo por nível */}
           <div className="flex flex-col gap-2">
-            <label className={lbl}>Armas permitidas</label>
+            <label className={lbl}>Ganho por nível</label>
+            <div className="flex gap-3">
+              <label className="flex flex-col gap-1 w-36">
+                <span className="text-[10px] text-e-faint">PV por nível</span>
+                <input type="number" min={0} value={pvPorNivel}
+                  onChange={(e) => setPvPorNivel(Math.max(0, Number(e.target.value) || 0))}
+                  className="text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2" />
+              </label>
+              <label className="flex flex-col gap-1 w-36">
+                <span className="text-[10px] text-e-faint">Fluxo por nível</span>
+                <input type="number" min={0} value={fluxoPorNivel}
+                  onChange={(e) => setFluxoPorNivel(Math.max(0, Number(e.target.value) || 0))}
+                  className="text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2" />
+              </label>
+            </div>
+            <p className="text-[11px] text-e-faint">
+              A cada nível acima do 1, soma ao PV e ao Fluxo máximos (além do que vem dos atributos). Ao subir de nível, o atual sobe o mesmo tanto.
+            </p>
+          </div>
+
+          {/* Proficiências iniciais */}
+          <div className="flex flex-col gap-2">
+            <label className={lbl}>Proficiências iniciais</label>
+            <p className="text-[11px] text-e-faint -mt-1">
+              Qualquer classe equipa qualquer arma. Sem proficiência: ataque básico a /6, sem skills da categoria e sem propriedade especial.
+            </p>
             <div className="flex flex-wrap gap-1.5">
               {WEAPON_TYPES.map(({ value, label }) => {
                 const active = allowedWeaponTypes.includes(value);

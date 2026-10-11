@@ -5,7 +5,7 @@ import PhaseEditor, {
   EMPTY_ATTRS,
 } from "@/components/sections/Mesa/PhaseEditor";
 import Button from "@/components/ui/Button";
-import Checkbox from "@/components/ui/Checkbox";
+import Checkbox, { CheckField } from "@/components/ui/Checkbox";
 import EmojiPicker from "@/components/ui/EmojiPicker";
 import Select from "@/components/ui/Select";
 import { api } from "@/lib/api";
@@ -74,6 +74,7 @@ export default function BossTemplateModal({
   const [icon, setIcon] = useState(template?.icon ?? "👑");
   const [imageUrl, setImageUrl] = useState(template?.imageUrl ?? "");
   const [xp, setXp] = useState(template?.xp ?? 500);
+  const [negaCritico, setNegaCritico] = useState(template?.negaCritico ?? false);
   const [notes, setNotes] = useState(template?.notes ?? "");
 
   const initPhase = (n: number, hp: number): BossPhase => ({
@@ -206,6 +207,7 @@ export default function BossTemplateModal({
       drops: allDrops,
       xp,
       notes,
+      negaCritico,
     };
     try {
       const res = editing
@@ -721,6 +723,8 @@ export default function BossTemplateModal({
                   onChange={(e) => setXp(Number(e.target.value))}
                   className={`w-28 text-center ${smallInp}`}
                 />
+                <CheckField checked={negaCritico} onChange={setNegaCritico} className="mt-3"
+                  label="Nega 1 crítico por rodada" desc="O primeiro crítico contra o boss em cada rodada vira acerto normal" />
               </div>
 
               <div className={sec}>

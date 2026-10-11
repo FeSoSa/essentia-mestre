@@ -1,9 +1,10 @@
 'use client';
 
 import { useState } from 'react';
-import { X } from 'lucide-react';
+import { X, GripVertical, Copy } from 'lucide-react';
 import type { Player, InitiativeEntry, EnemyInstance, BossInstance, CombatAlly } from '@/store/types';
 import Button from '@/components/ui/Button';
+import { genId } from '@/lib/id';
 
 interface Props {
   players: Player[];
@@ -62,6 +63,7 @@ export default function InitiativeEditorModal({ players, enemies, bosses, allies
   const [entries, setEntries] = useState<InitiativeEntry[]>(() =>
     rollAll(players, enemies, bosses, allies)
   );
+  const [dragIndex, setDragIndex] = useState<number | null>(null);
 
   function setValue(id: string, value: number) {
     setEntries(prev => prev.map(e => e.playerId === id ? { ...e, value } : e));
@@ -77,8 +79,28 @@ export default function InitiativeEditorModal({ players, enemies, bosses, allies
     });
   }
 
+  function moveTo(from: number, to: number) {
+    setEntries(prev => {
+      const list = [...prev];
+      const [moved] = list.splice(from, 1);
+      list.splice(to, 0, moved);
+      return list;
+    });
+  }
+
+  function cloneEntry(i: number) {
+    setEntries(prev => {
+      const original = prev[i];
+      const copy: InitiativeEntry = { playerId: genId(), name: original.name, value: original.value };
+      const list = [...prev];
+      list.splice(i + 1, 0, copy);
+      return list;
+    });
+  }
+
   const isPlayer = (id: string) => players.some(p => p.id === id);
   const isAlly   = (id: string) => allies.some(a => a.id === id);
+  const isEnemyOrBoss = (id: string) => enemies.some(e => e.instanceId === id) || bosses.some(b => b.instanceId === id);
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
@@ -95,10 +117,19 @@ export default function InitiativeEditorModal({ players, enemies, bosses, allies
         <div className="flex-1 overflow-y-auto px-4 py-3 flex flex-col gap-1.5">
           {entries.map((entry, i) => {
             const player = isPlayer(entry.playerId);
+            const cloneable = isEnemyOrBoss(entry.playerId);
             return (
               <div key={entry.playerId}
-                style={{ display: 'grid', gridTemplateColumns: '24px 1fr 56px 20px', alignItems: 'center', gap: 8 }}
+                draggable
+                onDragStart={() => setDragIndex(i)}
+                onDragOver={(e) => e.preventDefault()}
+                onDrop={() => { if (dragIndex !== null && dragIndex !== i) moveTo(dragIndex, i); setDragIndex(null); }}
+                onDragEnd={() => setDragIndex(null)}
+                style={{ display: 'grid', gridTemplateColumns: '16px 24px 1fr 56px 20px 20px', alignItems: 'center', gap: 8, opacity: dragIndex === i ? 0.4 : 1 }}
                 className="px-3 py-2 rounded-xl bg-e-card border border-e-border">
+                <span style={{ color: '#52525b', cursor: 'grab', display: 'flex' }}>
+                  <GripVertical size={13} />
+                </span>
                 <span style={{ fontSize: 11, color: '#71717a', textAlign: 'center', fontFamily: 'monospace' }}>
                   {i + 1}
                 </span>
@@ -125,6 +156,12 @@ export default function InitiativeEditorModal({ players, enemies, bosses, allies
                     </button>
                   ))}
                 </div>
+                {cloneable ? (
+                  <button onClick={() => cloneEntry(i)} title="Clonar"
+                    style={{ color: '#71717a', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                    <Copy size={13} />
+                  </button>
+                ) : <span />}
               </div>
             );
           })}

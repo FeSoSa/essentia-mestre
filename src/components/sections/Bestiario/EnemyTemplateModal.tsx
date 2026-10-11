@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Coins } from 'lucide-react';
-import Checkbox from '@/components/ui/Checkbox';
+import Checkbox, { CheckField } from '@/components/ui/Checkbox';
 import { api } from '@/lib/api';
 import type { EnemyTemplate, EnemyAttack, EnemyDrop, BossImmunity, GoldDrop, GoldDropTier, ItemCatalog } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
@@ -11,6 +11,7 @@ import Select from '@/components/ui/Select';
 import EmojiPicker from '@/components/ui/EmojiPicker';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
+import { COR_DIF, ORDEM_DIFICULDADE, NOME_DIFICULDADE } from '@/lib/encontro';
 
 interface Props {
   template?: EnemyTemplate;
@@ -60,6 +61,12 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
   const [int_,    setInt]     = useState(template?.attributes.intelligence   ?? 10);
   const [def,     setDef]     = useState(template?.attributes.defense        ?? 5);
   const [xp,      setXp]      = useState(template?.xp     ?? 50);
+  // Turno automático: vazio = usa DEF do atributo e mod de FOR/AGI
+  const [defesa,    setDefesa]    = useState<string>(template?.defesa    != null ? String(template.defesa)    : '');
+  const [modAcerto, setModAcerto] = useState<string>(template?.modAcerto != null ? String(template.modAcerto) : '');
+  const [esMax,     setEsMax]     = useState<number>(template?.esMax ?? 0);
+  const [negaCritico, setNegaCritico] = useState<boolean>(template?.negaCritico ?? false);
+  const [dificuldade, setDificuldade] = useState<string>(template?.dificuldade ?? '');
   const [desc,    setDesc]    = useState(template?.desc    ?? '');
   const [notes,   setNotes]   = useState(template?.notes   ?? '');
   // attacks[0] = ataque básico, attacks[1..5] = habilidades vinculadas
@@ -95,7 +102,8 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
   }
   function linkSkill(i: number, skill: Skill) {
     setSkillAttacks((a) => a.map((x, j) => j === i
-      ? { ...x, skillId: skill.id, skillName: skill.name, damage: skill.damage?.formula ?? x.damage, name: skill.name }
+      ? { ...x, skillId: skill.id, skillName: skill.name, damage: skill.damage?.formula ?? x.damage, name: skill.name,
+          custoEs: skill.costs.filter((c) => c.type === 'flow').reduce((t, c) => t + (c.value ?? 0), 0) }
       : x
     ));
     setSkillSearch((s) => ({ ...s, [i]: '' }));
@@ -173,6 +181,10 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
       attacks: allAttacks,
       drops: allDrops,
       immunities, xp, desc, notes,
+      defesa: defesa !== '' ? Number(defesa) : undefined,
+      modAcerto: modAcerto !== '' ? Number(modAcerto) : undefined,
+      esMax, negaCritico,
+      dificuldade: dificuldade || undefined,
     };
     try {
       const res = editing
@@ -533,6 +545,45 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
             <label className={lbl}>XP</label>
             <input type="number" value={xp} onChange={(e) => setXp(Number(e.target.value))}
               className={`w-28 text-center ${smallInp}`} />
+          </div>
+
+          <div className={sec}>
+            <label className={lbl}>Dificuldade</label>
+            <div className="flex gap-1.5 flex-wrap">
+              {([['', 'Não definida'], ...ORDEM_DIFICULDADE.map((d) => [d, NOME_DIFICULDADE[d]])] as [string, string][]).map(([v, l]) => (
+                <button key={v || 'nenhuma'} type="button" onClick={() => setDificuldade(v)}
+                  className="px-3 py-1.5 rounded-lg border text-xs font-semibold cursor-pointer transition-colors"
+                  style={dificuldade === v
+                    ? { borderColor: COR_DIF[v] ?? '#71717a', background: (COR_DIF[v] ?? '#71717a') + '22', color: COR_DIF[v] ?? '#e4e4e7' }
+                    : { borderColor: '#3f3f46', color: '#71717a' }}>
+                  {l}
+                </button>
+              ))}
+            </div>
+            <p className="text-[10px] text-e-faint mt-1">Quão perigoso ele é sozinho contra o grupo. O gerador de encontros prefere os inimigos com a dificuldade escolhida (na horda, um degrau abaixo).</p>
+          </div>
+
+          <div className={sec}>
+            <label className={lbl}>Turno automático</label>
+            <div className="flex gap-3 flex-wrap items-end">
+              <div>
+                <p className="text-[10px] text-e-faint mb-1">DEF</p>
+                <input type="number" value={defesa} placeholder={String(def)} onChange={(e) => setDefesa(e.target.value)}
+                  className={`w-20 text-center ${smallInp}`} />
+              </div>
+              <div>
+                <p className="text-[10px] text-e-faint mb-1">Mod de acerto</p>
+                <input type="number" value={modAcerto} placeholder="FOR/AGI" onChange={(e) => setModAcerto(e.target.value)}
+                  className={`w-24 text-center ${smallInp}`} />
+              </div>
+              <div>
+                <p className="text-[10px] text-e-faint mb-1">ES máxima</p>
+                <input type="number" min={0} value={esMax} onChange={(e) => setEsMax(Number(e.target.value))}
+                  className={`w-20 text-center ${smallInp}`} />
+              </div>
+              <CheckField checked={negaCritico} onChange={setNegaCritico} className="pb-1.5" label="Nega 1 crítico por rodada" />
+            </div>
+            <p className="text-[10px] text-e-faint mt-1">O custo de ES de cada ataque vem do custo de Fluxo da habilidade vinculada.</p>
           </div>
 
           <div className={sec}>

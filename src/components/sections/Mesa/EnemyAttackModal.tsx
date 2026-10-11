@@ -3,10 +3,14 @@
 import { useState, useEffect } from 'react';
 import { X, Swords, Sparkles } from 'lucide-react';
 import { api } from '@/lib/api';
+import { genId } from '@/lib/id';
 import type { EnemyAttack, Player } from '@/store/types';
+import { useStore, useAllies } from '@/store';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
-import type { EffectPreset } from '@/store/effectPresetsStore';
+import { useEffectPresetsStore, type EffectPreset } from '@/store/effectPresetsStore';
+import { efeitosNoAlvo } from '@/lib/efeitos';
 import { getStatusIcon } from '@/lib/statusIcons';
+import DiceRoller from '@/components/ui/DiceRoller';
 
 interface Props {
   entityId: string;
@@ -71,10 +75,18 @@ function calcDamage(atk: EnemyAttack, d20: number, entityAttributes: { strength:
 export default function EnemyAttackModal({ entityId, entityKind, entityName, attacks, entityAttributes, players, theme: t, onClose }: Props) {
   const [step, setStep] = useState<Step>('attack');
   const [selectedAttack, setSelectedAttack] = useState<EnemyAttack | null>(null);
-  const [targetId, setTargetId] = useState(players[0]?.id ?? '');
+  // Alvos: jogadores ativos (no combate, só os da iniciativa) e os aliados em campo
+  const initiative = useStore((s) => s.initiative);
+  const allies = useAllies();
+  const naIniciativa = new Set(initiative.map((e) => e.playerId));
+  const alvosJogadores = players.filter((p) => p.active !== false && (initiative.length === 0 || naIniciativa.has(p.id)));
+  const alvosAliados = allies.filter((a) => a.hpCurrent > 0 && (initiative.length === 0 || naIniciativa.has(a.id)));
+  const [targetId, setTargetId] = useState(alvosJogadores[0]?.id ?? alvosAliados[0]?.id ?? '');
   const [hitInput, setHitInput] = useState('');
   const [dmgInput, setDmgInput] = useState('');
   const [isCrit, setIsCrit] = useState(false);
+  const [hitMode, setHitMode] = useState<'fisico' | 'virtual'>('fisico');
+  const [dmgMode, setDmgMode] = useState<'fisico' | 'virtual'>('fisico');
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<{ damage: number; targetName: string } | null>(null);
   const [skills, setSkills] = useState<Skill[]>([]);
@@ -84,8 +96,11 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     api.get<Skill[]>('/skills').then((r) => setSkills(r.data)).catch(() => {});
   }, []);
 
-  const targetPlayer = players.find((p) => p.id === targetId);
-  const defVal = targetPlayer ? targetPlayer.attributes.defense : 10;
+  const targetPlayer = alvosJogadores.find((p) => p.id === targetId);
+  const targetAlly = targetPlayer ? undefined : alvosAliados.find((a) => a.id === targetId);
+  const targetName = targetPlayer?.char.name ?? targetAlly?.name ?? 'Alvo';
+  // DEF com equipamento e efeitos (a mesma que o turno automático usa)
+  const defVal = targetPlayer ? (targetPlayer.effectiveAttributes ?? targetPlayer.attributes).defense : targetAlly ? targetAlly.attributes.defense : 10;
 
   const hitValue = parseInt(hitInput, 10);
   const validHit = !isNaN(hitValue) && hitValue >= 1;
@@ -101,7 +116,9 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     : null;
 
   const linkedSkill = selectedAttack?.skillId ? skills.find((s) => s.id === selectedAttack.skillId) : undefined;
-  const hitEffects: EffectPreset[] = linkedSkill?.onHitEffects ?? [];
+  // Aliado não guarda efeitos de status: só jogador recebe os efeitos da habilidade
+  const presets = useEffectPresetsStore((s) => s.presets);
+  const hitEffects: EffectPreset[] = targetPlayer && linkedSkill ? efeitosNoAlvo(linkedSkill.name, linkedSkill.efeitos, presets) : [];
 
   function reset() {
     setStep('attack');
@@ -109,6 +126,8 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     setHitInput('');
     setDmgInput('');
     setIsCrit(false);
+    setHitMode('fisico');
+    setDmgMode('fisico');
     setResult(null);
     setAppliedEffects(new Set());
   }
@@ -119,7 +138,7 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
       await api.post(`/master/status-effect`, {
         playerId: targetId,
         effect: {
-          id: crypto.randomUUID(), name: effect.name, icon: effect.icon, desc: effect.desc ?? '',
+          id: genId(), name: effect.name, icon: effect.icon, desc: effect.desc ?? '',
           durationTurns: effect.durationTurns, effects: effect.effects,
           hitBonus: effect.hitBonus, attackBonus: effect.attackBonus,
         },
@@ -132,11 +151,9 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
     if (!targetId) return;
     setLoading(true);
     try {
-      await api.post('/master/enemy-attack', {
-        targetPlayerId: targetId,
-        damage,
-      });
-      setResult({ damage, targetName: targetPlayer?.char.name ?? 'Alvo' });
+      if (targetAlly) await api.put(`/combat/allies/${targetId}/hp`, { delta: -damage });
+      else await api.post('/master/enemy-attack', { targetPlayerId: targetId, damage });
+      setResult({ damage, targetName });
       setStep(hitEffects.length > 0 ? 'effects' : 'result');
     } catch {}
     finally { setLoading(false); }
@@ -191,16 +208,20 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
               <div>
                 <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-2">Alvo</p>
                 <div className="flex flex-col gap-1">
-                  {players.map((p) => (
-                    <button key={p.id} onClick={() => setTargetId(p.id)}
+                  {[
+                    ...alvosJogadores.map((p) => ({ id: p.id, nome: p.char.name, def: (p.effectiveAttributes ?? p.attributes).defense, aliado: false })),
+                    ...alvosAliados.map((a) => ({ id: a.id, nome: a.name, def: a.attributes.defense, aliado: true })),
+                  ].map((alvo) => (
+                    <button key={alvo.id} onClick={() => setTargetId(alvo.id)}
                       className="flex items-center justify-between px-3 py-2 rounded-lg border text-sm transition-colors cursor-pointer"
-                      style={targetId === p.id
+                      style={targetId === alvo.id
                         ? { borderColor: t.accent, background: t.accentBg, color: '#fff' }
                         : { borderColor: '#333', background: 'transparent', color: '#888' }}>
-                      <span className="font-medium">{p.char.name}</span>
-                      <span className="text-xs" style={{ color: '#666' }}>DEF {p.attributes.defense}</span>
+                      <span className="font-medium flex items-center gap-2">{alvo.nome}{alvo.aliado && <span className="text-[9px] font-bold uppercase tracking-wider px-1.5 py-0.5 rounded" style={{ background: '#3dba7222', color: '#3dba72' }}>aliado</span>}</span>
+                      <span className="text-xs" style={{ color: '#666' }}>DEF {alvo.def}</span>
                     </button>
                   ))}
+                  {alvosJogadores.length + alvosAliados.length === 0 && <p className="text-xs text-e-faint italic">Nenhum alvo no combate.</p>}
                 </div>
               </div>
 
@@ -222,15 +243,37 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
             <>
               <div className="text-center">
                 <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1">
-                  {selectedAttack.name} → {targetPlayer?.char.name}
+                  {selectedAttack.name} → {targetName}
                 </p>
                 <p className="text-xs text-e-faint">DEF do alvo: <span className="font-bold text-e-text">{defVal}</span></p>
               </div>
 
-              <div className="flex flex-col gap-1">
-                <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Resultado do d20</label>
-                <input type="number" value={hitInput} onChange={(e) => setHitInput(e.target.value)}
-                  className={inp} placeholder="—" min={1} max={20} autoFocus />
+              <div className="flex flex-col gap-2">
+                <div className="flex items-center justify-between">
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Resultado do d20</label>
+                  <div className="flex gap-1">
+                    <button type="button" onClick={() => setHitMode('fisico')}
+                      className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors cursor-pointer"
+                      style={hitMode === 'fisico'
+                        ? { borderColor: t.accent, background: t.accentBg, color: t.accent }
+                        : { borderColor: '#333', color: '#888' }}>
+                      Físico
+                    </button>
+                    <button type="button" onClick={() => setHitMode('virtual')}
+                      className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors cursor-pointer"
+                      style={hitMode === 'virtual'
+                        ? { borderColor: t.accent, background: t.accentBg, color: t.accent }
+                        : { borderColor: '#333', color: '#888' }}>
+                      Virtual
+                    </button>
+                  </div>
+                </div>
+                {hitMode === 'fisico' ? (
+                  <input type="number" value={hitInput} onChange={(e) => setHitInput(e.target.value)}
+                    className={inp} placeholder="—" min={1} max={20} autoFocus />
+                ) : (
+                  <DiceRoller onResult={(v) => setHitInput(String(v))} />
+                )}
                 {validHit && (
                   <p className={`text-center text-xl font-black mt-1 ${hitHit ? 'text-green-400' : 'text-red-400'}`}>
                     {hitHit ? 'ACERTOU' : 'ERROU'}
@@ -280,10 +323,32 @@ export default function EnemyAttackModal({ entityId, entityKind, entityName, att
               ) : (
                 /* Ataque básico: d20 de dano separado, calcula a fórmula */
                 <div className="flex flex-col gap-2">
-                  <div className="flex flex-col gap-1">
-                    <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Resultado do d20 de dano</label>
-                    <input type="number" value={dmgInput} onChange={(e) => setDmgInput(e.target.value)}
-                      className={inp} placeholder="—" min={1} max={20} autoFocus />
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center justify-between">
+                      <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Resultado do d20 de dano</label>
+                      <div className="flex gap-1">
+                        <button type="button" onClick={() => setDmgMode('fisico')}
+                          className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors cursor-pointer"
+                          style={dmgMode === 'fisico'
+                            ? { borderColor: t.accent, background: t.accentBg, color: t.accent }
+                            : { borderColor: '#333', color: '#888' }}>
+                          Físico
+                        </button>
+                        <button type="button" onClick={() => setDmgMode('virtual')}
+                          className="px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider rounded-lg border transition-colors cursor-pointer"
+                          style={dmgMode === 'virtual'
+                            ? { borderColor: t.accent, background: t.accentBg, color: t.accent }
+                            : { borderColor: '#333', color: '#888' }}>
+                          Virtual
+                        </button>
+                      </div>
+                    </div>
+                    {dmgMode === 'fisico' ? (
+                      <input type="number" value={dmgInput} onChange={(e) => setDmgInput(e.target.value)}
+                        className={inp} placeholder="—" min={1} max={20} autoFocus />
+                    ) : (
+                      <DiceRoller onResult={(v) => setDmgInput(String(v))} />
+                    )}
                   </div>
                   {computedDamage !== null && (
                     <div className="rounded-lg p-3 text-center" style={{ background: t.accentBg, border: `1px solid ${t.border}` }}>

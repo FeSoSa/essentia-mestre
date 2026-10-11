@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus } from 'lucide-react';
 import { api } from '@/lib/api';
-import SectionHeader from '@/components/ui/SectionHeader';
+import SectionHeader, { Page } from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import ClassKitCard from './ClassKitCard';
 import ClassKitModal from './ClassKitModal';
@@ -44,20 +44,21 @@ export default function Classes() {
   const itemNames  = new Map(items.map((i) => [i.id, i.name]));
 
   return (
-    <div className="p-6 max-w-5xl mx-auto">
+    <Page>
       <SectionHeader
         title="Classes"
-        subtitle="Kits iniciais de cada classe — atributos, slots, habilidades e itens de partida"
+        count={kits.length}
+        subtitle="Kit inicial de cada classe: habilidades e itens com que o personagem começa."
         action={
-          <Button variant="primary" size="sm" onClick={() => { loadCatalogs(); setShowNew(true); }} className="gap-1.5">
-            <Plus size={14} /> Nova classe
+          <Button variant="primary" onClick={() => { loadCatalogs(); setShowNew(true); }}>
+            <Plus size={15} /> Nova classe
           </Button>
         }
       />
 
       {kits.length === 0 ? (
         <p className="text-e-faint text-sm text-center py-16">
-          Nenhuma classe cadastrada. Clique em "Nova classe" para começar.
+          Nenhuma classe cadastrada ainda.
         </p>
       ) : (
         <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(300px, 1fr))' }}>
@@ -91,6 +92,6 @@ export default function Classes() {
           onSaved={handleSaved}
         />
       )}
-    </div>
+    </Page>
   );
 }

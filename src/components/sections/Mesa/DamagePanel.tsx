@@ -12,7 +12,9 @@ export default function DamagePanel() {
   const [loading, setLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
-  if (requests.length === 0) return null;
+  const secao = useStore((s) => s.activeSection);
+  // Na Mesa nova os pedidos ficam integrados na tela
+  if (requests.length === 0 || secao === 'mesa') return null;
 
   async function handleApprove(req: typeof requests[0]) {
     setLoading(req.requestId);
@@ -27,6 +29,9 @@ export default function DamagePanel() {
         onHitEffects: req.onHitEffects ?? [],
         slotId:       req.slotId,
         skillId:      req.skillId,
+        critico:      req.critico ?? false,
+        danoSemCritico: req.danoSemCritico,
+        ataqueBasico: req.ataqueBasico ?? false,
       });
       removeDamageRequest(req.requestId);
     } catch {}
@@ -65,9 +70,16 @@ export default function DamagePanel() {
               <div>
                 <p className="font-semibold text-e-text text-sm">{req.playerName}</p>
                 <p className="text-xs text-e-sub mt-0.5">
-                  {req.targetType === 'boss' ? '★' : '⚔'} {req.targetName}
+                  {req.targetType === 'boss' ? '★' : req.targetType === 'player' || req.targetType === 'ally' ? '🛡' : '⚔'} {req.targetName}
+                  {(req.targetType === 'player' || req.targetType === 'ally') && <span className="ml-1.5 text-[10px] font-bold text-red-400">FOGO AMIGO</span>}
                 </p>
                 <p className="text-2xl font-black text-red-400 mt-1">{req.damage} dano</p>
+                {req.critico && (
+                  <p className="text-xs font-bold text-e-gold mt-0.5">
+                    CRÍTICO{req.danoSemCritico != null ? ` (sem crítico: ${req.danoSemCritico})` : ''}
+                  </p>
+                )}
+                {req.ataqueBasico && <p className="text-[10px] text-e-sub mt-0.5">Ataque básico: recupera ES ao aprovar</p>}
                 {req.onHitEffects && req.onHitEffects.length > 0 && (
                   <div className="flex flex-wrap gap-1 mt-2">
                     {req.onHitEffects.map((eff) => {

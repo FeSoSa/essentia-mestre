@@ -1,4 +1,4 @@
-export type SectionId = 'mesa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja';
+export type SectionId = 'mesa' | 'mapa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja';
 
 export interface Race {
   id: string;
@@ -78,7 +78,7 @@ export interface OnUseEffect {
 }
 
 export interface Item {
-  id: string; name: string; desc: string; qty: number; type: string; icon?: string;
+  id: string; catalogId?: string; name: string; desc: string; qty: number; type: string; icon?: string;
   // Weapon fields (type === 'weapon')
   weaponType?: string; damageBase?: number; damageAttribute?: string;
   equilibrio?: number; properties?: string;
@@ -90,6 +90,9 @@ export interface Item {
   equipSlot?: string; // 'mainHand'|'offHand'|'armor'|'amulet'|'ring'|'utility'
   rarity?: string;
   onUseEffect?: OnUseEffect;
+  margemCritico?: number;
+  negaCritico?: boolean;
+  twoHanded?: boolean;
 }
 
 export interface WeaponEquip {
@@ -97,12 +100,14 @@ export interface WeaponEquip {
   damageBase: number; damageAttribute: string; equilibrio?: number;
   attributeBonus?: Record<string, number>;
   rarity?: string;
+  margemCritico?: number;
 }
 export interface ArmorEquip {
   id: string; name: string; damageReduction: number;
   attributeBonus?: Record<string, number>;
   armorWeight?: string;
   rarity?: string;
+  negaCritico?: boolean;
 }
 export interface AccessoryEquip {
   id: string; name: string; attributeBonus?: Record<string, number>;
@@ -122,16 +127,52 @@ export interface Essencia {
   id: string; name: string; type: string; desc: string;
   attributeBonus: Record<string, number>; skillIds: string[];
   icon?: string; color?: string; parentId?: string;
+  nivelMaeNecessario?: number | null;   // Derivada: liberada pela mãe com ela neste nível (vazio = só tendo a Derivada)
 }
 
 export interface EssenciaObtida {
   essenciaId: string; attributeBonusActive: boolean; unlockedSkillIds: string[];
+  nivel?: number;   // 1 a 4
+}
+
+/** Capacidade de Essência e penalidade por excedente (calculado pela API). */
+export interface EstadoEssencia {
+  capacidade: number; uso: number; excedente: number;
+  penalidadeRes: number; penalidadeFlx: number; testeSabDescanso: boolean;
+}
+
+export type EfeitoAlvo = 'SELF' | 'ALVO' | 'ALIADOS' | 'AREA';
+export type EfeitoTipo = 'MODIFICADOR' | 'CONDICAO' | 'ESCUDO' | 'CURA';
+
+/** Efeito de skill: lista única que substitui buff, passivo, bônus de combate e efeitos no usuário/alvo. */
+export interface Efeito {
+  alvo: EfeitoAlvo;
+  tipo: EfeitoTipo;
+  stat?: string;              // FOR AGI INT RES FLX SAB PRE DEF ACERTO DANO
+  valor?: number;
+  condicao?: string;          // nome de uma condição cadastrada
+  // ESCUDO: valor = PV temporário por cima da vida (sem duração; zera no fim do dia)
+  // CURA: valor de PV; sem duração é instantânea, com duração cura esse valor a cada turno (nunca gera Escudo)
+  duracao?: number | 'PASSIVO';
+}
+
+export interface TierRegra { tier: number; equilibrio: number; custoBase: number; }
+
+export interface Perfil {
+  historia: string;
+  tracos: string[];
+  idade: string;
+  altura: string;
+  origem: string;
+  faccao: string;
+  anotacoes: string;
 }
 
 export interface Player {
   id: string; code: string; char: CharInfo;
   hp: Vital; flow: Vital;
   ether: Vital & { unlocked: boolean };
+  pressao?: Vital;
   exp: { available: number; total: number };
   attributes: PlayerAttributes;
   effectiveAttributes?: PlayerAttributes;
@@ -140,6 +181,11 @@ export interface Player {
   items: Item[];
   pendingRequests?: PendingRequest[];
   essenciasObtidas?: EssenciaObtida[];
+  essencia?: EstadoEssencia | null;
+  escudo?: number;                // PV temporário por cima da vida (teto 25% do PV máx, zera no fim do dia)
+  proficiencias?: string[];
+  maestrias?: MaestriaGrupo[];
+  nivelClasse?: number;           // 1 a 4, requisito das skills de classe pelo tier
   gold: number;
   sobrecargaDesbloqueada?: boolean;
   sobrecargaAtiva?: boolean;
@@ -147,6 +193,7 @@ export interface Player {
   desviosRestantes?: number;
   customBars?: CustomBar[];
   inventorySize?: number;
+  perfil?: Perfil;                // aba Personagem: história e traços (mestre) + anotações (jogador)
   active?: boolean;
 }
 
@@ -159,20 +206,38 @@ export interface DamageApprovalRequest {
   playerId: string;
   playerName: string;
   targetId: string;
-  targetType: 'enemy' | 'boss';
+  targetType: 'enemy' | 'boss' | 'player' | 'ally';
   targetName: string;
   damage: number;
   costs?: Record<string, number>;
   onHitEffects?: import('@/store/effectPresetsStore').EffectPreset[];
   slotId?: string;
   skillId?: string;
+  critico?: boolean;
+  danoSemCritico?: number;
+  ataqueBasico?: boolean;
+}
+
+/** Skill usada em aliados: o jogador escolheu quem recebe; o mestre aprova. */
+export interface AllyEffectApprovalRequest {
+  requestId: string;
+  playerId: string;
+  playerName: string;
+  skillId: string;
+  skillName: string;
+  slotId: string;
+  alvos: { id: string; nome: string; hp: number; hpMax: number; escudo: number; portraitUrl?: string | null }[];
+  cura: number;      // cura na hora em cada aliado
+  escudo: number;    // Escudo em cada aliado
+  efeitos: StatusEffect[];
+  costs: Record<string, number>;
 }
 
 export interface EffectApprovalRequest {
   requestId: string;
   playerId: string;
   playerName: string;
-  targets: Array<{ targetId: string; targetType: 'enemy' | 'boss'; targetName: string }>;
+  targets: Array<{ targetId: string; targetType: 'enemy' | 'boss' | 'player' | 'ally'; targetName: string }>;
   onHitEffects: import('@/store/effectPresetsStore').EffectPreset[];
   skillId?: string;
 }
@@ -200,12 +265,29 @@ export interface ImageEntry {
   id: string; url: string; title: string; timestamp: string; active: boolean;
 }
 
+export interface DocumentEntry {
+  id: string; url: string; title: string; timestamp: string; active: boolean;
+}
+
+export interface MapMarker {
+  id: string; mapId: string; x: number; y: number;
+  label: string; regionId: string; description?: string; visible: boolean;
+}
+
+export interface Region {
+  id: string; name: string; url: string; description?: string;
+}
+
 export interface FastActionOption { id: string; text: string; color: string; }
 
 export interface FastAction {
   active: boolean; title: string; lockOnePerPlayer: boolean;
   lockedPlayers: string[]; options: FastActionOption[];
   answers: Record<string, string>;
+}
+
+export interface FastActionTemplate {
+  id: string; name: string; title: string; options: FastActionOption[];
 }
 
 export interface ClassPerks {
@@ -219,27 +301,74 @@ export interface ClassKit {
   starterEquipment: unknown; starterItems: Item[];
   starterSlots: Slot[]; starterSkillIds: string[];
   allowedWeaponTypes?: string[];
+  proficienciasIniciais?: string[];
+  pvPorNivel?: number;      // PV máximo a mais por nível acima do 1
+  fluxoPorNivel?: number;   // Fluxo máximo a mais por nível acima do 1
   perks: ClassPerks;
 }
 
-export interface Maestria {
-  level: number; totalUses: number; nextLevelUses: number;
-  upgrades: unknown[];
-  computed: {
-    damageFixedBonus: number; esBonus: number;
-    costReduction: number; cooldownReduction: number; canUseTwice: boolean;
-  };
+/** Maestria de um grupo no personagem: categoria de arma ("espadas") ou Essência (essenciaId). */
+export interface MaestriaGrupo {
+  grupo: string;
+  tipoGrupo: 'ARMA' | 'ESSENCIA';
+  nivel: number;          // 1 a 4
+  usos: number;
+  ultimoCombateUso?: string | null;
+  usosNoCombate?: number;
 }
+
+/** Visão calculada pela API de uma maestria de grupo. */
+export interface MaestriaGrupoInfo {
+  grupo: string;
+  tipoGrupo: 'ARMA' | 'ESSENCIA';
+  nome: string;
+  nivel: number;
+  nivelMax: number;
+  usos: number;
+  proximoNivelUsos: number | null;
+  disponivel: boolean;    // usos já bastam para o próximo nível: aguardando o mestre confirmar
+  danoPct: number;
+  custoPct: number;
+  ativa: boolean;         // arma sem proficiência: não conta nem dá bônus
+  sobePorUso: boolean;    // Essência Elemental: não conta uso, o mestre define o nível
+}
+
+/** Um nível da tabela de maestria (valores totais no nível). */
+export interface NivelMaestriaGrupo { nivel: number; usos: number; danoPct: number; custoPct: number; }
+
+export interface MaestriaConfig {
+  niveis: NivelMaestriaGrupo[];
+}
+
+export interface CombateConfig {
+  critMultBase: number;
+  critMultDado: number;
+  equilibrioSemProficiencia: number;
+  equilibrioComProficiencia: number;
+  esPorAcertoBasico: number;
+  desviosPorCombate: number;
+  tiers: TierRegra[];
+}
+
+/** Nível de achado do sorteador: peso de cada raridade (chaves de Rarity). */
+export interface NivelAchado { id: string; nome: string; pesos: Record<string, number>; }
+export interface AchadoConfig { niveis: NivelAchado[]; pesosTipo: Record<string, number>; }
+
+/** Dificuldade do gerador de encontros: perigo = % do PV do grupo perdido em média (simulado). */
+export interface DificuldadeEncontro { id: string; nome: string; perigo: number; }
+export interface EncontroConfig { dificuldades: DificuldadeEncontro[]; hordaMax: number; }
 
 export interface PlayerSkill {
   id: string; playerId: string; skillId: string;
   used: boolean; equipped: boolean; slotId?: string;
-  maestria: Maestria; blocked?: boolean;
+  blocked?: boolean;
 }
 
 export interface SkillTreeEntry {
-  skill: { id: string; name: string; desc: string; type: string; cooldownTurns: number; ultimate?: boolean; };
+  skill: { id: string; name: string; desc: string; type: string; cooldownTurns: number; ultimate?: boolean; tier?: number | null; };
   playerSkill?: PlayerSkill;
+  maestria?: MaestriaGrupoInfo;   // maestria do grupo da skill
+  bloqueio?: string | null;       // requisito por origem/tier que falta
   status: 'UNLOCKED' | 'AVAILABLE' | 'LOCKED';
 }
 
@@ -251,11 +380,12 @@ export interface ItemRequirements {
 export interface ItemCatalog {
   id: string; name: string; desc: string; type: string; icon?: string;
   weaponType?: string; damageBase?: number; damageAttribute?: string;
-  equilibrio?: number; properties?: string; critThreshold?: number;
+  equilibrio?: number; properties?: string; margemCritico?: number; negaCritico?: boolean;
   damageReduction?: number; armorWeight?: string;
   attributeBonus?: Record<string, number>; equipSlot?: string;
   rarity?: string; twoHanded?: boolean;
   requirements?: ItemRequirements;
+  requisitoNarrativo?: string;   // só informativo (armas lendárias/históricas)
   onUseEffect?: OnUseEffect;
   goldValue?: number;
   subtype?: 'consumivel' | 'drop' | 'chave' | 'misc';
@@ -273,6 +403,7 @@ export interface EnemyAttack {
   equilibrio?: number;
   skillId?: string;
   skillName?: string;
+  custoEs?: number;
 }
 
 export type GoldDropTier = 'pobre' | 'comum' | 'rico' | 'tesouro';
@@ -304,12 +435,14 @@ export interface BossAttributes {
 export interface BossPhase {
   phaseNumber: number; name: string; hpMax: number;
   attributes: BossAttributes; attacks: EnemyAttack[]; specialAbility?: BossAbility;
+  defesa?: number; modAcerto?: number; esMax?: number;
 }
 
 export interface BossTemplate {
   id: string; name: string; type: string; icon: string; imageUrl?: string;
   phases: BossPhase[]; immunities: BossImmunity[]; resistances: BossResistance[];
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
+  negaCritico?: boolean;
 }
 
 export interface BossInstance {
@@ -319,6 +452,7 @@ export interface BossInstance {
   immunities: BossImmunity[]; resistances: BossResistance[];
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
   statusEffects?: StatusEffect[];
+  esCurrent?: number | null; negaCritico?: boolean; negaCriticoRodada?: number | null;
 }
 
 export interface AllyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
@@ -351,6 +485,9 @@ export interface EnemyTemplate {
   attacks: EnemyAttack[]; drops: EnemyDrop[];
   immunities?: BossImmunity[];
   xp: number; desc: string; notes: string;
+  defesa?: number; modAcerto?: number; esMax?: number; negaCritico?: boolean;
+  /** Declarada pelo mestre (facil, medio, dificil, mortal): o gerador de encontros respeita. */
+  dificuldade?: string;
 }
 
 export interface EnemyInstance {
@@ -362,4 +499,19 @@ export interface EnemyInstance {
   immunities?: BossImmunity[];
   statusEffects?: StatusEffect[];
   xp: number; desc: string; notes: string;
+  defesa?: number; modAcerto?: number; esMax?: number; esCurrent?: number | null;
+  negaCritico?: boolean; negaCriticoRodada?: number | null;
+}
+
+/** Ação proposta no turno automático de um inimigo. */
+export interface EnemyAction {
+  id: string; combatId?: string; rodada: number;
+  status: 'PROPOSTA' | 'AGUARDANDO_JOGADOR' | 'CONCLUIDA' | 'PULADA' | 'ERROU';
+  entityId: string; entityKind: 'enemy' | 'boss'; entityName: string;
+  alvoId: string; alvoNome: string;
+  ataqueIdx: number; ataqueNome: string; formula: string;
+  d20Acerto: number; modAcerto: number; totalAcerto: number; defAlvo: number; acertou: boolean;
+  d20Dano?: number | null; dano?: number | null; custoEs: number;
+  desviou?: boolean | null; desvioRoll?: number | null; desvioTotal?: number | null;
+  danoAplicado?: number | null; decisaoMestre?: string | null; trocas: number;
 }

@@ -1,7 +1,8 @@
 'use client';
 
 import { useStore } from '@/store';
-import Mesa from '@/components/sections/Mesa';
+import MesaNova from '@/components/sections/MesaNova';
+import Mapa from '@/components/sections/Mapa';
 import Imagens from '@/components/sections/Imagens';
 import Jogadores from '@/components/sections/Jogadores';
 import Inventario from '@/components/sections/Inventario';
@@ -19,7 +20,8 @@ export default function MainContent() {
 
   return (
     <main className="flex-1 h-full flex flex-col overflow-hidden bg-e-bg">
-      <div className={active === 'mesa'        ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><Mesa /></div>
+      <div className={active === 'mesa'        ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><MesaNova /></div>
+      <div className={active === 'mapa'        ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><Mapa /></div>
       <div className={active === 'imagens'     ? 'flex-1 overflow-y-auto' : 'hidden'}><Imagens /></div>
       <div className={active === 'jogadores'   ? 'flex-1 overflow-y-auto' : 'hidden'}><Jogadores /></div>
       <div className={active === 'inventario'  ? 'flex-1 overflow-y-auto' : 'hidden'}><Inventario /></div>

@@ -12,7 +12,9 @@ export default function EffectPanel() {
   const [loading, setLoading] = useState<string | null>(null);
   const [expanded, setExpanded] = useState(true);
 
-  if (requests.length === 0) return null;
+  const secao = useStore((s) => s.activeSection);
+  // Na Mesa nova os pedidos ficam integrados na tela
+  if (requests.length === 0 || secao === 'mesa') return null;
 
   async function handleApprove(req: typeof requests[0]) {
     setLoading(req.requestId);

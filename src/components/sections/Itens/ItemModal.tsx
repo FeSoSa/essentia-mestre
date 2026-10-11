@@ -1,6 +1,7 @@
 "use client";
 
 import Button from "@/components/ui/Button";
+import { CheckField } from '@/components/ui/Checkbox';
 import { api } from "@/lib/api";
 import { normalizeGdriveUrl, proxyUrl } from "@/lib/gdrive";
 import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
@@ -520,7 +521,9 @@ const WEAPON_OPTS = [
   { value: "cajado", label: "Cajado" },
   { value: "grimorio", label: "Grimório" },
   { value: "orbe", label: "Orbe" },
-  { value: "a-distancia", label: "À distância" },
+  { value: "arcos", label: "Arcos" },
+  { value: "bestas", label: "Bestas" },
+  { value: "pistolas", label: "Pistolas" },
   { value: "luvas-manoplas", label: "Luvas & manoplas" },
   { value: "escudos", label: "Escudos" },
 ];
@@ -579,7 +582,8 @@ export default function ItemModal({
 
   const [weaponType, setWeaponType] = useState(item?.weaponType ?? "curta");
   const [damageBase, setDamageBase] = useState(item?.damageBase ?? 0);
-  const [critThreshold, setCritThreshold] = useState(item?.critThreshold ?? 20);
+  const [margemCritico, setMargemCritico] = useState(item?.margemCritico ?? 20);
+  const [negaCritico, setNegaCritico] = useState(item?.negaCritico ?? false);
   const dmgAttrParts = item?.damageAttribute?.split("/") ?? [];
   const [dmgAttr1, setDmgAttr1] = useState(dmgAttrParts[0] ?? "");
   const [dmgAttr2, setDmgAttr2] = useState(dmgAttrParts[1] ?? "");
@@ -650,22 +654,9 @@ export default function ItemModal({
   const [reqLevel, setReqLevel] = useState<number | "">(
     item?.requirements?.level ?? "",
   );
-  const [reqAttrs, setReqAttrs] = useState<[string, number][]>(() =>
-    Object.entries(item?.requirements?.attributes ?? {}),
-  );
+  // Itens não têm requisito de atributo; armas lendárias/históricas podem ter um requisito narrativo (sem validação)
+  const [requisitoNarrativo, setRequisitoNarrativo] = useState(item?.requisitoNarrativo ?? "");
 
-  function addReqAttr() {
-    setReqAttrs((r) => [...r, ["strength", 1]]);
-  }
-  function updateReqAttrKey(i: number, v: string) {
-    setReqAttrs((r) => r.map((x, j) => (j === i ? [v, x[1]] : x)));
-  }
-  function updateReqAttrVal(i: number, v: number) {
-    setReqAttrs((r) => r.map((x, j) => (j === i ? [x[0], v] : x)));
-  }
-  function removeReqAttr(i: number) {
-    setReqAttrs((r) => r.filter((_, j) => j !== i));
-  }
 
   function handleTypeChange(t: string) {
     setType(t);
@@ -702,15 +693,8 @@ export default function ItemModal({
     setLoading(true);
     const attrBonus =
       bonuses.length > 0 ? Object.fromEntries(bonuses) : undefined;
-    const reqAttrObj =
-      reqAttrs.length > 0 ? Object.fromEntries(reqAttrs) : undefined;
     const requirements: ItemRequirements | undefined =
-      hasEquip && (reqLevel !== "" || reqAttrObj)
-        ? {
-            level: reqLevel !== "" ? reqLevel : undefined,
-            attributes: reqAttrObj,
-          }
-        : undefined;
+      hasEquip && reqLevel !== "" ? { level: reqLevel } : undefined;
 
     let onUseEffect: OnUseEffect | undefined;
     if (isConsumableType && effectEnabled) {
@@ -767,6 +751,7 @@ export default function ItemModal({
       attributeBonus: attrBonus,
       rarity: rarity || undefined,
       requirements,
+      requisitoNarrativo: isWeapon && requisitoNarrativo.trim() ? requisitoNarrativo.trim() : undefined,
       onUseEffect,
       goldValue: goldValue !== "" ? Number(goldValue) : undefined,
       subtype: isConsumableType && subtype ? subtype as ItemCatalog["subtype"] : undefined,
@@ -778,11 +763,12 @@ export default function ItemModal({
         [dmgAttr1, dmgAttr2].filter(Boolean).join("/") || undefined;
       body.properties = properties || undefined;
       body.twoHanded = twoHanded || undefined;
-      body.critThreshold = critThreshold;
+      body.margemCritico = margemCritico;
     }
     if (type === "armor") {
       body.damageReduction = attrBonus?.defense ?? 0;
       body.armorWeight = armorWeight || undefined;
+      body.negaCritico = negaCritico || undefined;
     }
     try {
       const res = editing
@@ -935,8 +921,8 @@ export default function ItemModal({
                     type="number"
                     min={1}
                     max={20}
-                    value={critThreshold}
-                    onChange={(e) => setCritThreshold(Number(e.target.value))}
+                    value={margemCritico}
+                    onChange={(e) => setMargemCritico(Number(e.target.value))}
                     className={`text-center ${inp}`}
                   />
                 </div>
@@ -1050,6 +1036,8 @@ export default function ItemModal({
                   </button>
                 ))}
               </div>
+              <CheckField checked={negaCritico} onChange={setNegaCritico} className="mt-3"
+                label="Nega um acerto crítico por rodada" desc="Ex: Manto do Vento" />
             </div>
           )}
 
@@ -1100,12 +1088,6 @@ export default function ItemModal({
             <div className="flex flex-col gap-2">
               <div className="flex items-center justify-between">
                 <label className={lbl}>Pré-requisitos</label>
-                <button
-                  onClick={addReqAttr}
-                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text"
-                >
-                  <Plus size={12} /> Atributo
-                </button>
               </div>
               <div className="flex gap-2 items-center">
                 <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint w-14 shrink-0">
@@ -1123,31 +1105,23 @@ export default function ItemModal({
                   className="w-20 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
                 />
               </div>
-              {reqAttrs.map(([attr, val], i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <div className="flex-1">
-                    <Dropdown
-                      value={attr}
-                      onChange={(v) => updateReqAttrKey(i, v)}
-                      options={ATTR_OPTS.filter((o) => o.value !== "defense")}
-                    />
-                  </div>
-                  <input
-                    type="number"
-                    value={val}
-                    onChange={(e) =>
-                      updateReqAttrVal(i, Number(e.target.value))
-                    }
-                    className="w-16 text-center text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
+              {isWeapon && (
+                <div className="flex flex-col gap-1">
+                  <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint">
+                    Requisito narrativo
+                  </span>
+                  <textarea
+                    value={requisitoNarrativo}
+                    onChange={(e) => setRequisitoNarrativo(e.target.value)}
+                    rows={2}
+                    placeholder="Só informativo, ex: só responde a quem carrega o sangue do clã"
+                    className="resize-none text-sm rounded-xl px-3 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2"
                   />
-                  <button
-                    onClick={() => removeReqAttr(i)}
-                    className="opacity-40 hover:opacity-80 shrink-0"
-                  >
-                    <Trash2 size={13} />
-                  </button>
+                  <span className="text-[10px] text-e-faint">
+                    Sem requisito de atributo: qualquer personagem equipa, a proficiência libera skills e a propriedade especial.
+                  </span>
                 </div>
-              ))}
+              )}
             </div>
           )}
 

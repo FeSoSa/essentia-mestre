@@ -56,15 +56,16 @@ export default function NotesPanel() {
           value={draft}
           onChange={(e) => setDraft(e.target.value)}
           onKeyDown={(e) => { if (e.key === 'Enter' && !e.shiftKey) { e.preventDefault(); addNote(); } }}
-          placeholder="Nova anotação..."
+          placeholder="Nova anotação (Enter salva, Shift+Enter quebra linha)"
           rows={1}
+          style={{ minHeight: 38 }}
           className="flex-1 bg-e-card border border-e-border rounded-lg px-3 py-1.5 text-sm text-e-text placeholder:text-e-faint focus:outline-none focus:border-e-accent resize-none overflow-hidden max-h-48"
         />
         <button
           onClick={addNote}
-          className="px-3 py-1.5 rounded-lg bg-e-accent/15 text-e-accent text-sm font-medium hover:bg-e-accent/25 transition-colors"
+          className="h-[38px] px-3.5 rounded-lg bg-e-accent text-black text-sm font-semibold hover:bg-e-accent/90 transition-colors cursor-pointer shrink-0"
         >
-          +
+          Anotar
         </button>
       </div>
 

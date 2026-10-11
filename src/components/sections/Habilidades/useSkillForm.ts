@@ -2,11 +2,15 @@
 import { useState } from 'react';
 import { api } from '@/lib/api';
 import type { Skill, Essencia } from './SkillCard';
-import { useEffectPresetsStore, type EffectPreset } from '@/store/effectPresetsStore';
+import type { Efeito } from '@/store/types';
+import { useEffectPresetsStore } from '@/store/effectPresetsStore';
+import { useCombateStore, regraTier, tabelaTiers, fmtEquilibrio } from '@/store/combateStore';
 
 type CostEntry = { type: string; value: string; percentual: string };
 type AttrReq   = [string, string];
-type AttrEntry = [string, string];
+
+/** Skills de jogador têm tier; inimigo e mestre ficam fora e mantêm equilíbrio próprio. */
+export const TIPOS_COM_TIER = ['class', 'weapon', 'essencia'];
 
 export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   const editing = !!skill;
@@ -19,6 +23,8 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     (skill as any)?.weaponTypes ?? (skill?.weaponType ? [skill.weaponType] : ['espadas'])
   );
   const [essenciaId,    setEssenciaId]    = useState(skill?.essenciaId ?? '');
+  // Skill de arma: categoria da maestria (vazio = primeira categoria selecionada)
+  const [grupoMaestria, setGrupoMaestria] = useState<string>(skill?.grupoMaestria ?? '');
   const [cooldown,      setCooldown]      = useState(String(skill?.cooldownTurns ?? 0));
   const [critThreshold, setCritThreshold] = useState(String((skill as any)?.critThreshold ?? ''));
   const [ultimate,    setUltimate]    = useState(skill?.ultimate ?? false);
@@ -28,8 +34,16 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     ((skill as any)?.actionType as 'main' | 'bonus' | 'both') ?? 'main'
   );
 
+  // Tier (1 a 5): define o equilíbrio da fórmula e o custo base de Fluxo
+  const combate = useCombateStore((s) => s.cfg);
+  const [tier, setTierState] = useState<number>(skill?.tier ?? 1);
+  // Tier: arma, Essência e classe com classe definida (Geral, mestre e inimigo têm equilíbrio próprio)
+  const temTier = TIPOS_COM_TIER.includes(type) && !(type === 'class' && !skillClass);
+  const regra = regraTier(tier, combate);
+
   const [hasDamage,     setHasDamage]     = useState(!!skill?.damage || skill?.damageSource === 'weapon');
   const [dmgFixed,      setDmgFixed]      = useState(String(skill?.damage?.baseFixed ?? 0));
+  // Só para inimigo/mestre; skills com tier usam o equilíbrio do tier
   const [dmgEquilibrio, setDmgEquilibrio] = useState(String(skill?.damage?.equilibrio ?? ''));
   const dmgAtributoRaw = skill?.damage?.atributo?.split('/') ?? [];
   const [dmgAttr1, setDmgAttr1] = useState(dmgAtributoRaw[0] ?? '');
@@ -66,29 +80,23 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     Object.entries(skill?.requirements?.attributes ?? {}).map(([k, v]) => [k, String(v)])
   );
 
-  const parseAttrMap = (m?: Record<string, number> | null): AttrEntry[] =>
-    m ? Object.entries(m).map(([k, v]) => [k, String(v)]) : [];
+  const [efeitos, setEfeitos] = useState<Efeito[]>(skill?.efeitos ?? []);
 
-  const [passiveAttrs, setPassiveAttrs] = useState<AttrEntry[]>(parseAttrMap((skill as any)?.passiveAttributes));
-  const [buffAttrs,    setBuffAttrs]    = useState<AttrEntry[]>(parseAttrMap((skill as any)?.buffAttributes));
-  const [buffDuration, setBuffDuration] = useState(String((skill as any)?.buffDurationTurns ?? 1));
-  const [hitBonus,     setHitBonus]     = useState<string>(String((skill as any)?.hitBonus    ?? ''));
-  const [attackBonus,  setAttackBonus]  = useState<string>(String((skill as any)?.attackBonus ?? ''));
-  const [damageBonus,  setDamageBonus]  = useState<string>(String((skill as any)?.damageBonus ?? ''));
-
+  // Em quem a skill é usada; sem valor salvo, deduz do que ela faz (dano = inimigos)
+  const [alvo, setAlvoState] = useState<'USUARIO' | 'INIMIGOS' | 'ALIADOS'>(
+    skill?.alvo ?? (skill?.damage || skill?.damageSource === 'weapon' ? 'INIMIGOS' : 'USUARIO')
+  );
   const [hasMultiTarget,   setHasMultiTarget]   = useState(!!(skill as any)?.multiTarget);
+  /** Usada no próprio usuário não tem área nem vários alvos. */
+  function setAlvo(a: 'USUARIO' | 'INIMIGOS' | 'ALIADOS') {
+    setAlvoState(a);
+    if (a === 'USUARIO') setHasMultiTarget(false);
+  }
   const [multiMaxTargets,  setMultiMaxTargets]  = useState(String((skill as any)?.multiTarget?.maxTargets ?? 2));
   const [multiDamageMode,  setMultiDamageMode]  = useState<'igual' | 'distribuido' | 'especifico'>((skill as any)?.multiTarget?.damageMode ?? 'igual');
   const [multiSpecificDmg, setMultiSpecificDmg] = useState(String((skill as any)?.multiTarget?.specificDamage ?? ''));
 
   const presets = useEffectPresetsStore((s) => s.presets);
-  const [onHitEffects,       setOnHitEffects]       = useState<EffectPreset[]>((skill as any)?.onHitEffects ?? []);
-  const [expandedHitEffect,  setExpandedHitEffect]  = useState<Set<number>>(new Set());
-  const [presetDropdownOpen, setPresetDropdownOpen] = useState(false);
-
-  const [selfEffects,            setSelfEffects]            = useState<EffectPreset[]>((skill as any)?.selfEffects ?? []);
-  const [expandedSelfEffect,     setExpandedSelfEffect]     = useState<Set<number>>(new Set());
-  const [presetDropdownOpenSelf, setPresetDropdownOpenSelf] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error,   setError]   = useState<string | null>(null);
@@ -103,59 +111,22 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
 
   // ── Costs ─────────────────────────────────────────────────────────────────
 
-  function addCost() { setCosts((c) => [...c, { type: 'flow', value: '', percentual: '' }]); }
+  function addCost() { setCosts((c) => [...c, { type: 'flow', value: temTier ? String(regra.custoBase) : '', percentual: '' }]); }
   function removeCost(i: number) { setCosts((c) => c.filter((_, j) => j !== i)); }
   function updateCost(i: number, field: keyof CostEntry, v: string) {
     setCosts((c) => c.map((x, j) => j === i ? { ...x, [field]: v } : x));
   }
 
-  // ── On-hit effects ────────────────────────────────────────────────────────
-
-  function addPresetAsHitEffect(preset: EffectPreset) {
-    const entry: EffectPreset = { ...preset, id: `${preset.id}-${Date.now()}` };
-    setOnHitEffects((e) => [...e, entry]);
-    setExpandedHitEffect((s) => new Set([...s, onHitEffects.length]));
-    setPresetDropdownOpen(false);
-  }
-  function addCustomHitEffect() {
-    const entry: EffectPreset = { id: `custom-${Date.now()}`, name: '', durationTurns: 1, effects: [] };
-    setOnHitEffects((e) => [...e, entry]);
-    setExpandedHitEffect((s) => new Set([...s, onHitEffects.length]));
-  }
-  function removeHitEffect(i: number) {
-    setOnHitEffects((e) => e.filter((_, j) => j !== i));
-    setExpandedHitEffect((s) => { const n = new Set(s); n.delete(i); return n; });
-  }
-  function updateHitEffect(i: number, patch: Partial<EffectPreset>) {
-    setOnHitEffects((e) => e.map((x, j) => j === i ? { ...x, ...patch } : x));
-  }
-  function toggleHitExpand(i: number) {
-    setExpandedHitEffect((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
+  /** Muda o tier e sugere o custo base: sobe o custo de Fluxo que estiver abaixo do novo base. */
+  function setTier(n: number) {
+    setTierState(n);
+    const base = regraTier(n, combate).custoBase;
+    setCosts((c) => c.map((x) => (x.type === 'flow' && (x.value === '' || Number(x.value) < base) ? { ...x, value: String(base) } : x)));
   }
 
-  // ── Self effects (efeitos no usuário) ───────────────────────────────────────
-
-  function addPresetAsSelfEffect(preset: EffectPreset) {
-    const entry: EffectPreset = { ...preset, id: `${preset.id}-${Date.now()}` };
-    setSelfEffects((e) => [...e, entry]);
-    setExpandedSelfEffect((s) => new Set([...s, selfEffects.length]));
-    setPresetDropdownOpenSelf(false);
-  }
-  function addCustomSelfEffect() {
-    const entry: EffectPreset = { id: `custom-${Date.now()}`, name: '', durationTurns: 1, effects: [] };
-    setSelfEffects((e) => [...e, entry]);
-    setExpandedSelfEffect((s) => new Set([...s, selfEffects.length]));
-  }
-  function removeSelfEffect(i: number) {
-    setSelfEffects((e) => e.filter((_, j) => j !== i));
-    setExpandedSelfEffect((s) => { const n = new Set(s); n.delete(i); return n; });
-  }
-  function updateSelfEffect(i: number, patch: Partial<EffectPreset>) {
-    setSelfEffects((e) => e.map((x, j) => j === i ? { ...x, ...patch } : x));
-  }
-  function toggleSelfExpand(i: number) {
-    setExpandedSelfEffect((s) => { const n = new Set(s); n.has(i) ? n.delete(i) : n.add(i); return n; });
-  }
+  /** Custo de Fluxo abaixo do base do tier (bloqueia salvar). */
+  const custoFluxo = costs.find((c) => c.type === 'flow' && c.value !== '');
+  const custoAbaixoDoBase = temTier && !!custoFluxo && Number(custoFluxo.value) < regra.custoBase;
 
   // ── Requirement attrs ─────────────────────────────────────────────────────
 
@@ -172,12 +143,17 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     return parts.length > 0 ? parts.join('/') : undefined;
   }
 
+  /** Equilíbrio efetivo: do tier (skills de jogador) ou o digitado (inimigo/mestre). */
+  const equilibrioEfetivo: number | undefined = temTier
+    ? regra.equilibrio
+    : dmgEquilibrio !== '' ? Number(dmgEquilibrio) : undefined;
+
   function buildFormula(): string {
     const parts: string[] = [];
     if (Number(dmgFixed) > 0) parts.push(String(dmgFixed));
     const atrib = buildAtributo();
     if (atrib) {
-      const eq = dmgEquilibrio ? `/${dmgEquilibrio}` : '';
+      const eq = equilibrioEfetivo != null ? `/${fmtEquilibrio(equilibrioEfetivo)}` : '';
       parts.push(`d20×${atrib}${eq}`);
     }
     return parts.join(' + ');
@@ -191,6 +167,10 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
 
   async function save(onSaved: (s: Skill) => void, onClose: () => void) {
     if (!name.trim()) return;
+    if (custoAbaixoDoBase) {
+      setError(`Custo de Fluxo abaixo do custo base do Tier ${tier} (${regra.custoBase}).`);
+      return;
+    }
     setLoading(true);
 
     const attributes = reqAttrs.length > 0
@@ -202,22 +182,17 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       weaponRequired: reqWeapon || undefined,
     } : undefined;
 
-    const toAttrMap = (entries: AttrEntry[]) => {
-      const m: Record<string, number> = {};
-      for (const [k, v] of entries) { if (k && v) m[k] = Number(v); }
-      return Object.keys(m).length > 0 ? m : undefined;
-    };
-
     const body: Omit<Skill, 'id'> & {
       id?: string; passive?: boolean; pressaoDice?: boolean;
-      passiveAttributes?: any; buffAttributes?: any; buffDurationTurns?: number;
-      weaponTypes?: string[]; onHitEffects?: EffectPreset[]; selfEffects?: EffectPreset[]; critThreshold?: number;
+      weaponTypes?: string[]; critThreshold?: number;
       damageSource?: 'formula' | 'weapon'; weaponSlot?: 'mainHand' | 'offHand';
       weaponDamageModifiers?: Skill['weaponDamageModifiers'];
     } = {
       ...(editing ? { id: skill!.id } : {}),
       name: name.trim(), desc, type, ultimate, passive, pressaoDice, actionType,
-      multiTarget: hasMultiTarget ? {
+      tier: temTier ? tier : null,
+      alvo,
+      multiTarget: hasMultiTarget && alvo !== 'USUARIO' ? {
         maxTargets:     Number(multiMaxTargets) || 2,
         damageMode:     multiDamageMode,
         specificDamage: multiDamageMode === 'especifico' && multiSpecificDmg !== '' ? Number(multiSpecificDmg) : undefined,
@@ -226,14 +201,8 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       weaponType:  type === 'weapon'   ? (weaponTypes[0] ?? undefined) : undefined,
       weaponTypes: type === 'weapon'   ? weaponTypes : undefined,
       essenciaId:  type === 'essencia' ? essenciaId || undefined : undefined,
-      passiveAttributes: toAttrMap(passiveAttrs),
-      buffAttributes:    toAttrMap(buffAttrs),
-      buffDurationTurns: (buffAttrs.length > 0 || hitBonus !== '' || attackBonus !== '' || damageBonus !== '') && buffDuration
-        ? Number(buffDuration)
-        : undefined,
-      hitBonus:    hitBonus    !== '' ? Number(hitBonus)    : undefined,
-      attackBonus: attackBonus !== '' ? Number(attackBonus) : undefined,
-      damageBonus: damageBonus !== '' ? Number(damageBonus) : undefined,
+      grupoMaestria: type === 'weapon' ? (weaponTypes.includes(grupoMaestria) ? grupoMaestria : weaponTypes[0] ?? null) : null,
+      efeitos,
       cooldownTurns: Number(cooldown) || 0,
       critThreshold: critThreshold !== '' ? Number(critThreshold) : undefined,
       costs: costs.map((c) => ({
@@ -245,7 +214,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
         formula:    buildFormula(),
         baseFixed:  Number(dmgFixed) || 0,
         atributo:   buildAtributo(),
-        equilibrio: dmgEquilibrio !== '' ? Number(dmgEquilibrio) : undefined,
+        equilibrio: !temTier && dmgEquilibrio !== '' ? Number(dmgEquilibrio) : undefined,
       } : undefined,
       damageSource: hasDamage ? damageSource : undefined,
       weaponSlot: hasDamage && damageSource === 'weapon' ? weaponSlot : undefined,
@@ -253,8 +222,6 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
         ? weaponDamageModifiers
         : undefined,
       requirements,
-      onHitEffects: onHitEffects.length > 0 ? onHitEffects : undefined,
-      selfEffects: selfEffects.length > 0 ? selfEffects : undefined,
     };
 
     try {
@@ -275,7 +242,9 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     // identity
     name, setName, desc, setDesc, type, setType,
     skillClass, setSkillClass, weaponTypes, setWeaponTypes,
-    essenciaId, setEssenciaId, essenciaOpts,
+    essenciaId, setEssenciaId, essenciaOpts, grupoMaestria, setGrupoMaestria,
+    // tier
+    tier, setTier, temTier, regra, tiers: tabelaTiers(combate), custoAbaixoDoBase,
     // behavior
     passive, togglePassive, ultimate, setUltimate,
     pressaoDice, setPressaoDice,
@@ -286,24 +255,15 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     // damage
     hasDamage, setHasDamage, dmgFixed, setDmgFixed,
     dmgEquilibrio, setDmgEquilibrio, dmgAttr1, setDmgAttr1, dmgAttr2, setDmgAttr2,
-    buildFormula,
+    equilibrioEfetivo, buildFormula,
     damageSource, setDamageSource, weaponSlot, setWeaponSlot,
     weaponDamageModifiers, addWeaponDamageModifier, removeWeaponDamageModifier, updateWeaponDamageModifier,
     // multi-target
+    alvo, setAlvo,
     hasMultiTarget, setHasMultiTarget, multiMaxTargets, setMultiMaxTargets,
     multiDamageMode, setMultiDamageMode, multiSpecificDmg, setMultiSpecificDmg,
-    // on-hit effects
-    onHitEffects, presets, presetDropdownOpen, setPresetDropdownOpen,
-    expandedHitEffect, addPresetAsHitEffect, addCustomHitEffect,
-    removeHitEffect, updateHitEffect, toggleHitExpand,
-    // self effects (efeitos no usuário)
-    selfEffects, presetDropdownOpenSelf, setPresetDropdownOpenSelf,
-    expandedSelfEffect, addPresetAsSelfEffect, addCustomSelfEffect,
-    removeSelfEffect, updateSelfEffect, toggleSelfExpand,
-    // passive / buff effects
-    passiveAttrs, setPassiveAttrs, buffAttrs, setBuffAttrs,
-    buffDuration, setBuffDuration,
-    hitBonus, setHitBonus, attackBonus, setAttackBonus, damageBonus, setDamageBonus,
+    // efeitos
+    efeitos, setEfeitos, presets,
     // requirements
     reqLevel, setReqLevel, reqWeapon, setReqWeapon,
     reqWeaponSearch, setReqWeaponSearch, reqAttrs,

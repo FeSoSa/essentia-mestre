@@ -1,5 +1,7 @@
 'use client';
 
+import type { ReactNode } from 'react';
+
 type CheckboxColor = 'default' | 'teal' | 'amber' | 'sky' | 'orange' | 'purple' | 'green';
 
 const COLOR_MAP: Record<CheckboxColor, string> = {
@@ -43,5 +45,47 @@ export default function Checkbox({ checked, onChange, color = 'default', classNa
         </svg>
       )}
     </span>
+  );
+}
+
+/**
+ * Checkbox moderno com texto clicável (substitui <label><input type="checkbox"> nativo).
+ * Um único botão: o clique na caixa ou no texto alterna uma vez só.
+ */
+export function CheckField({ checked, onChange, label, desc, color = 'default', className = '', disabled }: {
+  checked: boolean;
+  onChange: (checked: boolean) => void;
+  label: ReactNode;
+  desc?: ReactNode;
+  color?: CheckboxColor;
+  className?: string;
+  disabled?: boolean;
+}) {
+  return (
+    <button
+      type="button"
+      role="checkbox"
+      aria-checked={checked}
+      disabled={disabled}
+      onClick={() => onChange(!checked)}
+      className={`group flex items-start gap-2.5 text-left cursor-pointer select-none disabled:opacity-40 disabled:cursor-not-allowed ${className}`}
+    >
+      <span
+        className={[
+          'mt-0.5 inline-flex items-center justify-center w-4 h-4 rounded-[4px] border transition-all duration-150 shrink-0',
+          checked ? COLOR_MAP[color] : 'bg-transparent border-e-border group-hover:border-e-border2',
+        ].join(' ')}
+      >
+        {checked && (
+          <svg className="w-2.5 h-2.5 text-black" viewBox="0 0 10 8" fill="none">
+            <path d="M1 4L3.5 6.5L9 1" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+          </svg>
+        )}
+      </span>
+      <span className="flex flex-col gap-0.5 min-w-0">
+        <span className="text-sm text-e-text leading-tight">{label}</span>
+        {desc && <span className="text-[11px] text-e-faint leading-snug">{desc}</span>}
+      </span>
+    </button>
   );
 }

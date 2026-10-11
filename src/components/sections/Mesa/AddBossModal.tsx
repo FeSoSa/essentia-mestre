@@ -1,10 +1,11 @@
 'use client';
 
-import { useState } from 'react';
-import { Plus, Trash2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { CheckField } from '@/components/ui/Checkbox';
+import { Plus, Trash2, Crown } from 'lucide-react';
 import { api } from '@/lib/api';
 import type {
-  BossInstance, BossPhase,
+  BossInstance, BossPhase, BossTemplate,
   BossImmunity, BossResistance, BossReward, BossAttributes,
 } from '@/store/types';
 import Button from '@/components/ui/Button';
@@ -12,8 +13,99 @@ import PhaseEditor, { EMPTY_ATTRS } from './PhaseEditor';
 
 interface Props { onClose: () => void; }
 
-/* ── Main modal ───────────────────────────────────────────────── */
-export default function AddBossModal({ onClose }: Props) {
+type Tab = 'catalogo' | 'novo';
+
+const inputStyle = { background: '#2a2410', color: '#f0e8d0', borderColor: '#6a5a20' };
+const inputCls   = 'text-sm rounded px-2 py-1.5 outline-none';
+
+/* ── Catalog Tab ─────────────────────────────────────────────── */
+function BossCatalogTab({ onClose }: { onClose: () => void }) {
+  const [templates,  setTemplates]  = useState<BossTemplate[]>([]);
+  const [selectedId, setSelectedId] = useState('');
+  const [loading,    setLoading]    = useState(false);
+
+  useEffect(() => {
+    api.get<BossTemplate[]>('/bosses').then((r) => {
+      setTemplates(r.data);
+      if (r.data.length > 0) setSelectedId(r.data[0].id);
+    }).catch(() => {});
+  }, []);
+
+  const selected = templates.find((t) => t.id === selectedId);
+
+  function instanceFromTemplate(t: BossTemplate): BossInstance {
+    return {
+      instanceId: '',
+      templateId: t.id,
+      name: t.name,
+      icon: t.icon,
+      imageUrl: t.imageUrl,
+      phases: t.phases,
+      currentPhase: 0,
+      hpCurrent: t.phases[0]?.hpMax ?? 0,
+      immunities: t.immunities,
+      resistances: t.resistances,
+      drops: t.drops,
+      xp: t.xp,
+      specialReward: t.specialReward,
+      notes: '',
+    };
+  }
+
+  async function addToCombat() {
+    if (!selected) return;
+    setLoading(true);
+    try {
+      await api.post('/combat/bosses', { boss: instanceFromTemplate(selected) });
+      onClose();
+    } catch {
+      setLoading(false);
+    }
+  }
+
+  if (templates.length === 0) {
+    return (
+      <p className="text-sm text-center py-8" style={{ color: '#7a7050' }}>
+        Nenhum boss no catálogo. Cadastre na seção Bestiário.
+      </p>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-1 max-h-52 overflow-y-auto pr-1">
+        {templates.map((t) => (
+          <button key={t.id} onClick={() => setSelectedId(t.id)}
+            className="flex items-center gap-2 rounded-lg px-3 py-2 text-left transition-colors"
+            style={{
+              background: selectedId === t.id ? '#3a3010' : '#2a2410',
+              border: `1px solid ${selectedId === t.id ? '#c8a050' : '#6a5a20'}`,
+              color: '#f0e8d0',
+            }}>
+            <span className="text-lg shrink-0">{t.icon || '👑'}</span>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-semibold truncate">{t.name}</p>
+              <p className="text-xs" style={{ color: '#7a7050' }}>
+                {t.type || 'Boss'} · {t.phases.length} fase(s) · HP {t.phases[0]?.hpMax ?? 0}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+
+      {selected?.notes && (
+        <p className="text-xs italic px-1" style={{ color: '#7a7050' }}>{selected.notes}</p>
+      )}
+
+      <Button variant="primary" size="sm" onClick={addToCombat} disabled={!selected || loading}>
+        {loading ? 'Adicionando…' : 'Adicionar ao combate'}
+      </Button>
+    </div>
+  );
+}
+
+/* ── Create-new Tab ──────────────────────────────────────────── */
+function CreateBossTab({ onClose }: { onClose: () => void }) {
   const [name, setName]   = useState('');
   const [icon, setIcon]   = useState('👑');
   const [xp, setXp]       = useState(500);
@@ -91,24 +183,8 @@ export default function AddBossModal({ onClose }: Props) {
     }
   }
 
-  const inputStyle = { background: '#2a2410', color: '#f0e8d0', borderColor: '#6a5a20' };
-  const inputCls   = 'text-sm rounded px-2 py-1.5 outline-none';
-
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div
-        className="w-[480px] max-h-[90vh] overflow-y-auto rounded-xl border-2"
-        style={{ background: '#1a1810', borderColor: '#6a5a20', color: '#f0e8d0' }}
-      >
-      <div className="flex flex-col gap-4 p-5">
-        {/* Header */}
-        <div className="flex items-center justify-between">
-          <h2 className="font-bold text-base flex items-center gap-2">
-            <span style={{ color: '#c8a050' }}>★</span> Adicionar Boss
-          </h2>
-          <button onClick={onClose} className="opacity-50 hover:opacity-100 text-sm">✕</button>
-        </div>
-
+      <div className="flex flex-col gap-4">
         {/* Name + icon */}
         <div className="flex gap-2">
           <input
@@ -229,15 +305,8 @@ export default function AddBossModal({ onClose }: Props) {
 
         {/* Special reward */}
         <div className="flex flex-col gap-2">
-          <label className="flex items-center gap-2 cursor-pointer text-xs">
-            <input
-              type="checkbox"
-              checked={hasReward}
-              onChange={(e) => setHasReward(e.target.checked)}
-              className="accent-[#c8a050]"
-            />
-            <span style={{ color: '#c8a050' }}>Recompensa especial ao derrotar</span>
-          </label>
+          <CheckField checked={hasReward} onChange={setHasReward} color="amber"
+            label={<span style={{ color: '#c8a050' }}>Recompensa especial ao derrotar</span>} />
           {hasReward && (
             <div className="flex flex-col gap-2 pl-1">
               <select
@@ -288,6 +357,40 @@ export default function AddBossModal({ onClose }: Props) {
           {loading ? 'Adicionando…' : 'Adicionar boss ao combate'}
         </Button>
       </div>
+  );
+}
+
+/* ── Modal ───────────────────────────────────────────────────── */
+export default function AddBossModal({ onClose }: Props) {
+  const [tab, setTab] = useState<Tab>('catalogo');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+      <div
+        className="w-[480px] max-h-[90vh] overflow-y-auto rounded-xl border-2"
+        style={{ background: '#1a1810', borderColor: '#6a5a20', color: '#f0e8d0' }}
+      >
+        <div className="flex flex-col gap-4 p-5">
+          {/* Header */}
+          <div className="flex items-center justify-between">
+            <h2 className="font-bold text-base flex items-center gap-2">
+              <Crown size={16} style={{ color: '#c8a050' }} /> Adicionar Boss
+            </h2>
+            <button onClick={onClose} className="opacity-50 hover:opacity-100 text-sm">✕</button>
+          </div>
+
+          <div className="flex gap-1 rounded-lg p-1" style={{ background: '#0f0d08' }}>
+            {(['catalogo', 'novo'] as Tab[]).map((t) => (
+              <button key={t} onClick={() => setTab(t)}
+                className="flex-1 py-1.5 rounded text-xs font-semibold transition-colors"
+                style={tab === t ? { background: '#3a3010', color: '#c8a050' } : { color: '#7a7050' }}>
+                {t === 'catalogo' ? 'Catálogo' : 'Criar novo'}
+              </button>
+            ))}
+          </div>
+
+          {tab === 'catalogo' ? <BossCatalogTab onClose={onClose} /> : <CreateBossTab onClose={onClose} />}
+        </div>
       </div>
     </div>
   );

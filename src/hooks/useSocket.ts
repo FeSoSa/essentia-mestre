@@ -4,7 +4,9 @@ import { useEffect } from 'react';
 import { getStompClient } from '@/lib/socket';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
-import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, CombatAlly, Note } from '@/store/types';
+import { useCombateStore } from '@/store/combateStore';
+import { useMaestriaStore } from '@/lib/maestria';
+import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, AllyEffectApprovalRequest, CombatAlly, Note, CombateConfig, EnemyAction, MaestriaConfig } from '@/store/types';
 
 export function useSocket() {
   const {
@@ -54,6 +56,7 @@ export function useSocket() {
         const initiative: InitiativeEntry[] = JSON.parse(msg.body);
         setInitiative(initiative);
         if (initiative.length === 0) setCurrentTurn(0);
+        else api.get<{ totalTurns: number }>('/master/turn-state').then((r) => setCurrentTurn(r.data.totalTurns)).catch(() => {});
       });
 
       // Turno — incrementa monotonicamente (nunca reseta, nunca vai para o índice)
@@ -104,6 +107,26 @@ export function useSocket() {
         addEffectRequest(req);
       });
 
+      // Pedidos de skill em aliados (cura, Escudo, buffs)
+      client.subscribe('/topic/ally-effect-request', (msg) => {
+        useStore.getState().addAllyRequest(JSON.parse(msg.body) as AllyEffectApprovalRequest);
+      });
+
+      // Regras de combate editadas (por esta ou outra aba)
+      client.subscribe('/topic/combate-config', (msg) => {
+        useCombateStore.getState().setCfg(JSON.parse(msg.body) as CombateConfig);
+      });
+
+      // Regras de maestria editadas
+      client.subscribe('/topic/maestria-config', (msg) => {
+        useMaestriaStore.getState().setCfg(JSON.parse(msg.body) as MaestriaConfig);
+      });
+
+      // Turno automático dos inimigos
+      client.subscribe('/topic/enemy-action', (msg) => {
+        useCombateStore.getState().upsertAcao(JSON.parse(msg.body) as EnemyAction);
+      });
+
       // Notas fixas
       client.subscribe('/topic/notes', (msg) => {
         const notes: Note[] = JSON.parse(msg.body);
@@ -120,6 +143,8 @@ export function useSocket() {
           setCurrentTurn(r.data.totalTurns);
         }),
         api.get<Note[]>('/master/notes').then(r => setNotes(r.data)),
+        useCombateStore.getState().carregar(),
+        useMaestriaStore.getState().carregar(),
       ]).catch(() => {});
     };
 

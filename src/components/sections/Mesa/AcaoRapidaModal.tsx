@@ -1,11 +1,12 @@
 ﻿'use client';
 
-import { useState } from 'react';
-import { X } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { X, Bookmark, Save, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { genId } from '@/lib/id';
 import { useStore, useFastAction, useActivePlayers } from '@/store';
 import Button from '@/components/ui/Button';
-import type { FastAction, FastActionOption } from '@/store/types';
+import type { FastAction, FastActionOption, FastActionTemplate } from '@/store/types';
 
 function OptionBuilder({
   options, onChange,
@@ -24,7 +25,7 @@ function OptionBuilder({
         </div>
       ))}
       <button type="button"
-        onClick={() => onChange([...options, { id: crypto.randomUUID(), text: '', color: '#a3e635' }])}
+        onClick={() => onChange([...options, { id: genId(), text: '', color: '#a3e635' }])}
         className="py-2 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
         + Adicionar opção
       </button>
@@ -40,9 +41,40 @@ export default function AcaoRapidaModal({ onClose }: { onClose: () => void }) {
   const [lockOne, setLockOne] = useState(false);
   const [options, setOptions] = useState<FastActionOption[]>([]);
   const [sending, setSending] = useState(false);
+  const [templates, setTemplates] = useState<FastActionTemplate[]>([]);
+  const [savingTemplate, setSavingTemplate] = useState(false);
+
+  useEffect(() => {
+    api.get<FastActionTemplate[]>('/fast-action-templates').then((r) => setTemplates(r.data)).catch(() => {});
+  }, []);
+
+  function applyTemplate(t: FastActionTemplate) {
+    setTitle(t.title);
+    setOptions(t.options.map((o) => ({ ...o, id: genId() })));
+  }
+
+  async function saveAsTemplate() {
+    if (!title.trim() || options.length === 0) return;
+    const name = window.prompt('Nome do template:', title);
+    if (!name || !name.trim()) return;
+    setSavingTemplate(true);
+    try {
+      const res = await api.post<FastActionTemplate>('/fast-action-templates', { name: name.trim(), title, options });
+      setTemplates((prev) => [...prev, res.data]);
+    } catch {}
+    finally { setSavingTemplate(false); }
+  }
+
+  async function deleteTemplate(id: string) {
+    try {
+      await api.delete(`/fast-action-templates/${id}`);
+      setTemplates((prev) => prev.filter((t) => t.id !== id));
+    } catch {}
+  }
 
   async function handleSend(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
+    if (!title.trim() || options.length === 0) return;
     setSending(true);
     try {
       const res = await api.put<FastAction>('/fast-action', {
@@ -131,28 +163,57 @@ export default function AcaoRapidaModal({ onClose }: { onClose: () => void }) {
               </div>
             </div>
           ) : (
-            <form onSubmit={handleSend} className="flex flex-col gap-4">
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5 block">Título</label>
-                <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
-                  placeholder="Ex: Qual caminho vocês seguem?" required />
-              </div>
-              <label className="flex items-center gap-3 cursor-pointer select-none">
-                <button type="button" onClick={() => setLockOne(!lockOne)}
-                  className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer border-0 ${lockOne ? 'bg-e-accent' : 'bg-e-card border border-e-border'}`}>
-                  <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${lockOne ? 'left-[18px]' : 'left-0.5'}`} />
-                </button>
-                <span className="text-sm text-e-sub">Uma resposta por jogador</span>
-              </label>
-              <div>
-                <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-2 block">Opções</label>
-                <OptionBuilder options={options} onChange={setOptions} />
-              </div>
-              <Button type="submit" variant="primary" size="lg" className="w-full"
-                disabled={sending || !title.trim() || options.length === 0}>
-                {sending ? 'Enviando…' : 'Enviar para a Mesa'}
-              </Button>
-            </form>
+            <div className="flex flex-col gap-4">
+              {templates.length > 0 && (
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-2 block">Templates salvos</label>
+                  <div className="flex flex-col gap-1.5">
+                    {templates.map((t) => (
+                      <div key={t.id} className="flex items-center gap-2 bg-e-card border border-e-border rounded-xl px-3 py-2">
+                        <Bookmark size={13} className="text-e-faint shrink-0" />
+                        <button type="button" onClick={() => applyTemplate(t)}
+                          className="flex-1 text-left text-sm text-e-sub hover:text-e-text cursor-pointer transition-colors truncate">
+                          {t.name}
+                        </button>
+                        <button type="button" onClick={() => deleteTemplate(t.id)}
+                          className="text-e-faint hover:text-e-danger cursor-pointer transition-colors shrink-0">
+                          <Trash2 size={13} />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              <form onSubmit={handleSend} className="flex flex-col gap-4">
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5 block">Título</label>
+                  <input type="text" value={title} onChange={(e) => setTitle(e.target.value)}
+                    placeholder="Ex: Qual caminho vocês seguem?" required />
+                </div>
+                <label className="flex items-center gap-3 cursor-pointer select-none">
+                  <button type="button" onClick={() => setLockOne(!lockOne)}
+                    className={`relative w-9 h-5 rounded-full transition-colors cursor-pointer border-0 ${lockOne ? 'bg-e-accent' : 'bg-e-card border border-e-border'}`}>
+                    <span className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all ${lockOne ? 'left-[18px]' : 'left-0.5'}`} />
+                  </button>
+                  <span className="text-sm text-e-sub">Uma resposta por jogador</span>
+                </label>
+                <div>
+                  <label className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-2 block">Opções</label>
+                  <OptionBuilder options={options} onChange={setOptions} />
+                </div>
+                <div className="flex gap-2">
+                  <Button type="button" variant="ghost" size="lg" className="gap-1.5"
+                    disabled={savingTemplate || !title.trim() || options.length === 0}
+                    onClick={saveAsTemplate}>
+                    <Save size={14} /> {savingTemplate ? 'Salvando…' : 'Salvar template'}
+                  </Button>
+                  <Button type="submit" variant="primary" size="lg" className="flex-1"
+                    disabled={sending || !title.trim() || options.length === 0}>
+                    {sending ? 'Enviando…' : 'Enviar para a Mesa'}
+                  </Button>
+                </div>
+              </form>
+            </div>
           )}
         </div>
       </div>

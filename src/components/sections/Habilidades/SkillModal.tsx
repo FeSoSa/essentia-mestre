@@ -1,15 +1,15 @@
 'use client';
 
 import { useState } from 'react';
-import { Plus, Trash2, ChevronDown, X, ChevronUp } from 'lucide-react';
+import { Plus, Trash2, ChevronDown, X } from 'lucide-react';
 import type { Skill, Essencia } from './SkillCard';
 import type { ItemCatalog } from '@/store/types';
 import Button from '@/components/ui/Button';
 import Checkbox from '@/components/ui/Checkbox';
-import EffectBuilder from '../StatusEffects/EffectBuilder';
 import { useSkillForm } from './useSkillForm';
-import { STATUS_ICONS, getStatusIcon } from '@/lib/statusIcons';
 import { COST_OPTS } from '@/lib/costOptions';
+import EfeitosEditor from './EfeitosEditor';
+import { fmtEquilibrio } from '@/store/combateStore';
 
 interface Props {
   skill?: Skill;
@@ -100,13 +100,11 @@ function Dropdown<T extends string>({ value, onChange, options, placeholder }: {
   );
 }
 
-type TabId = 'base' | 'turno' | 'combate' | 'efeitos';
+type TabId = 'base' | 'turno' | 'combate' | 'maestria' | 'efeitos';
 
 export default function SkillModal({ skill, essencias, classes, weapons, onClose, onSaved }: Props) {
   const f = useSkillForm(skill, essencias);
   const [tab, setTab] = useState<TabId>('base');
-  const [presetSearch, setPresetSearch] = useState('');
-  const [presetSearchSelf, setPresetSearchSelf] = useState('');
 
   const isEnemy = f.type === 'inimigo';
 
@@ -119,7 +117,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
-      <div className="w-[520px] max-h-[92vh] overflow-y-auto rounded-xl border border-e-border bg-e-surface text-e-text">
+      <div className="w-[600px] max-w-[95vw] max-h-[92vh] overflow-y-auto rounded-xl border border-e-border bg-e-surface text-e-text">
       <div className="flex flex-col px-5 pt-5 pb-0">
 
         {/* ── Header ── */}
@@ -203,6 +201,22 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                     );
                   })}
                 </div>
+                {f.weaponTypes.length > 1 && (
+                  <div className="mt-3">
+                    <label className={lbl}>Grupo de maestria <span className="normal-case font-normal">(com outra arma da lista, a skill pede maestria nela também)</span></label>
+                    <div className="flex gap-1.5 flex-wrap">
+                      {f.weaponTypes.map((t) => {
+                        const ativo = (f.weaponTypes.includes(f.grupoMaestria) ? f.grupoMaestria : f.weaponTypes[0]) === t;
+                        return (
+                          <button key={t} type="button" onClick={() => f.setGrupoMaestria(t)}
+                            className={`px-3 py-1.5 rounded-lg text-sm font-medium border transition-colors ${ativo ? 'bg-e-gold/20 border-e-gold text-e-gold' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
+                            {WEAPON_OPTS.find((w) => w.value === t)?.label ?? t}
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </div>
+                )}
               </div>
             )}
 
@@ -222,7 +236,76 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               <textarea value={f.desc} onChange={(e) => f.setDesc(e.target.value)} rows={3}
                 className={`resize-none ${inp}`} placeholder="Efeito da habilidade…" />
             </div>
+
+            {f.temTier && (
+              <div>
+                <label className={lbl}>Tier <span className="normal-case font-normal">(equilíbrio, custo base e requisito: nível de classe, nível da Essência ou maestria da arma)</span></label>
+                <div className="flex gap-1.5">
+                  {[...f.tiers].sort((a, b) => a.tier - b.tier).map((t) => (
+                    <button key={t.tier} type="button" onClick={() => f.setTier(t.tier)}
+                      className={`flex-1 flex flex-col items-center px-2 py-1.5 rounded-xl border transition-colors ${f.tier === t.tier ? 'bg-e-accent/20 border-e-accent text-e-accent' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
+                      <span className="text-sm font-bold">{t.tier}</span>
+                      <span className="text-[10px] opacity-70">/{fmtEquilibrio(t.equilibrio)} · {t.custoBase} FLX</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
           </div>
+
+          {/* ── Uso: em quem, alcance e quantos alvos ── */}
+          {!f.passive && (
+            <div className={sec}>
+              <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint">Uso</p>
+              <div>
+                <label className={lbl}>Em quem a skill é usada</label>
+                <div className="flex gap-2">
+                  {([
+                    { value: 'USUARIO',  label: 'Em si mesmo', sub: 'buff, cura, escudo próprio' },
+                    { value: 'INIMIGOS', label: 'Inimigos',    sub: 'dano, condições' },
+                    { value: 'ALIADOS',  label: 'Aliados',     sub: 'cura, escudo, buff em outros' },
+                  ] as const).map((o) => (
+                    <button key={o.value} type="button" onClick={() => f.setAlvo(o.value)}
+                      className={`flex-1 flex flex-col items-start px-3 py-2 rounded-xl border transition-colors text-left ${f.alvo === o.value ? 'bg-e-accent/20 border-e-accent text-e-accent' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
+                      <span className="text-sm font-semibold">{o.label}</span>
+                      <span className="text-[10px] opacity-70">{o.sub}</span>
+                    </button>
+                  ))}
+                </div>
+              </div>
+              {f.alvo !== 'USUARIO' && (
+                <div className="flex gap-3 items-end flex-wrap">
+                  <div>
+                    <label className={lbl}>Alcance</label>
+                    <div className="flex gap-2">
+                      {([
+                        { area: false, label: 'Um alvo' },
+                        { area: true,  label: 'Área (vários alvos)' },
+                      ] as const).map((o) => (
+                        <button key={String(o.area)} type="button" onClick={() => f.setHasMultiTarget(o.area)}
+                          className={`px-3 py-2 rounded-xl text-sm font-medium border transition-colors ${f.hasMultiTarget === o.area ? 'bg-e-accent/20 border-e-accent text-e-accent' : 'bg-e-bg border-e-border text-e-faint hover:border-e-border2'}`}>
+                          {o.label}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                  {f.hasMultiTarget && (
+                    <div className="w-32">
+                      <label className={lbl}>Até quantos alvos</label>
+                      <input type="number" min={2} max={20} value={f.multiMaxTargets}
+                        onChange={(e) => f.setMultiMaxTargets(e.target.value)} className={`text-center ${inp}`} />
+                    </div>
+                  )}
+                </div>
+              )}
+              <p className="text-[11px] text-e-faint">
+                {f.alvo === 'USUARIO' ? 'Os efeitos novos já começam no usuário.'
+                  : f.alvo === 'ALIADOS' ? 'Os efeitos novos já começam em aliados; o mestre aplica neles na mesa.'
+                  : f.hasMultiTarget ? `Atinge até ${f.multiMaxTargets || 2} inimigos; os efeitos novos já começam em área.`
+                  : 'Atinge um inimigo; os efeitos novos já começam no alvo.'}
+              </p>
+            </div>
+          )}
 
           {/* ── Comportamento ── */}
           {!isEnemy && (
@@ -293,7 +376,7 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                 <label className={lbl}>Crítico mínimo</label>
                 <input type="number" min={1} max={20} value={f.critThreshold}
                   onChange={(e) => f.setCritThreshold(e.target.value)}
-                  placeholder="20" className={`text-center ${inp}`} />
+                  placeholder="arma" className={`text-center ${inp}`} />
               </div>
             </div>
           </div>
@@ -307,7 +390,12 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               </button>
             </div>
             {f.costs.length === 0 && (
-              <p className="text-xs text-e-faint italic">Sem custo — gratuita.</p>
+              <p className="text-xs text-e-faint italic">Sem custo: gratuita.</p>
+            )}
+            {f.temTier && (
+              <p className={`text-[11px] ${f.custoAbaixoDoBase ? 'text-red-400' : 'text-e-faint'}`}>
+                Custo base do Tier {f.tier}: {f.regra.custoBase} de Fluxo{f.custoAbaixoDoBase ? '. O custo de Fluxo está abaixo do base e não pode ser salvo.' : ' (mínimo).'}
+              </p>
             )}
             {f.costs.map((c, i) => (
               <div key={i} className="flex gap-2 items-center">
@@ -366,12 +454,14 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                         <input type="number" min={0} value={f.dmgFixed}
                           onChange={(e) => f.setDmgFixed(e.target.value)} className={`text-center ${inp}`} />
                       </div>
-                      <div className="w-24">
-                        <label className={lbl}>Equilíbrio</label>
-                        <input type="number" min={1} value={f.dmgEquilibrio}
-                          onChange={(e) => f.setDmgEquilibrio(e.target.value)}
-                          placeholder="—" className={`text-center ${inp}`} />
-                      </div>
+                      {!f.temTier && (
+                        <div className="w-24">
+                          <label className={lbl}>Equilíbrio</label>
+                          <input type="number" min={1} value={f.dmgEquilibrio}
+                            onChange={(e) => f.setDmgEquilibrio(e.target.value)}
+                            placeholder="vazio" className={`text-center ${inp}`} />
+                        </div>
+                      )}
                       <div className="flex gap-2 items-start">
                         <div className="w-[120px]">
                           <label className={lbl}>Atributo 1</label>
@@ -464,21 +554,11 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               )}
             </div>
 
-            {f.hasDamage && (
-              <div className={`rounded-xl border p-3 flex flex-col gap-3 transition-colors ${f.hasMultiTarget ? 'border-red-500/40 bg-red-500/5' : 'border-e-border'}`}>
-                <label className="flex items-center gap-2.5 cursor-pointer">
-                  <Checkbox checked={f.hasMultiTarget} onChange={f.setHasMultiTarget} />
-                  <span className={`text-sm font-semibold ${f.hasMultiTarget ? 'text-red-300' : 'text-e-text'}`}>Multi-target</span>
-                  {!f.hasMultiTarget && <span className="text-xs text-e-faint">Habilidade atinge múltiplos inimigos</span>}
-                </label>
-                {f.hasMultiTarget && (
+            {f.hasDamage && f.hasMultiTarget && f.alvo !== 'USUARIO' && (
+              <div className="rounded-xl border border-red-500/40 bg-red-500/5 p-3 flex flex-col gap-3">
+                <p className="text-xs text-red-300">Área: até {f.multiMaxTargets || 2} alvos (definido em Base, na seção Uso). Como o dano se divide:</p>
+                {(
                   <div className="flex flex-col gap-3">
-                    <div className="w-28">
-                      <label className={lbl}>Máx. de alvos</label>
-                      <input type="number" min={2} max={20} value={f.multiMaxTargets}
-                        onChange={(e) => f.setMultiMaxTargets(e.target.value)}
-                        className={`text-center ${inp}`} />
-                    </div>
                     <div>
                       <label className={lbl}>Modo de dano</label>
                       <div className="flex gap-2">
@@ -508,174 +588,6 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               </div>
             )}
           </div>
-
-          {/* ── Efeitos no Alvo ── */}
-          <div className={sec}>
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint">Efeitos no Alvo</p>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <button type="button" onClick={() => f.setPresetDropdownOpen((v) => !v)}
-                    className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                    <Plus size={12} /> Preset
-                  </button>
-                  {f.presetDropdownOpen && (
-                    <div className="absolute right-0 z-50 mt-1 w-52 bg-e-surface border border-e-border rounded-xl shadow-2xl">
-                      <div className="p-2 border-b border-e-border">
-                        <input
-                          autoFocus
-                          value={presetSearch}
-                          onChange={(e) => setPresetSearch(e.target.value)}
-                          placeholder="Buscar…"
-                          className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
-                        />
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {f.presets.filter((p) => !presetSearch.trim() || p.name.toLowerCase().includes(presetSearch.toLowerCase())).map((p) => {
-                          const PresetIcon = getStatusIcon(p.icon);
-                          return (
-                            <button key={p.id} type="button"
-                              onClick={() => { f.addPresetAsHitEffect(p); setPresetSearch(''); }}
-                              className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text flex items-center">
-                              {PresetIcon && <PresetIcon size={13} className="mr-1.5 shrink-0" />}
-                              <span className="flex-1 truncate">{p.name}</span>
-                              <span className="ml-1.5 text-[10px] text-e-faint shrink-0">{p.durationTurns === -1 ? '∞' : `${p.durationTurns}t`}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <button type="button" onClick={f.addCustomHitEffect}
-                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                  <Plus size={12} /> Personalizado
-                </button>
-              </div>
-            </div>
-
-            {f.onHitEffects.length === 0 && (
-              <p className="text-xs text-e-faint italic">Nenhum efeito aplicado no alvo.</p>
-            )}
-
-            {f.onHitEffects.map((eff, i) => {
-              const expanded = f.expandedHitEffect.has(i);
-              const EffIcon = getStatusIcon(eff.icon);
-              return (
-                <div key={eff.id} className="rounded-xl border border-e-border bg-e-bg overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2.5">
-                    {EffIcon && <EffIcon size={15} className="shrink-0" />}
-                    <span className={`flex-1 text-sm font-medium truncate ${eff.name ? 'text-e-text' : 'text-e-faint italic'}`}>
-                      {eff.name || 'Sem nome'}
-                    </span>
-                    <span className="text-xs text-e-faint shrink-0">
-                      {eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}
-                    </span>
-                    <button type="button" onClick={() => f.toggleHitExpand(i)}
-                      className="opacity-50 hover:opacity-100 transition-opacity shrink-0">
-                      {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    </button>
-                    <button type="button" onClick={() => f.removeHitEffect(i)}
-                      className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                  {expanded && (
-                    <div className="px-3 pb-3 flex flex-col gap-3 border-t border-e-border pt-3">
-                      <div>
-                        <label className={lbl}>Nome</label>
-                        <input value={eff.name} onChange={(e) => f.updateHitEffect(i, { name: e.target.value })}
-                          className={inp} placeholder="Nome do efeito" />
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Descrição</label>
-                        <textarea value={eff.desc ?? ''} onChange={(e) => f.updateHitEffect(i, { desc: e.target.value })}
-                          placeholder="O que este efeito faz ao personagem…" rows={2}
-                          className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text resize-none outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint" />
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Ícone</label>
-                        <div className="grid grid-cols-9 gap-1.5">
-                          {STATUS_ICONS.map(({ name: n, Icon }) => (
-                            <button key={n} type="button" title={n}
-                              onClick={() => f.updateHitEffect(i, { icon: eff.icon === n ? '' : n })}
-                              className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center ${
-                                eff.icon === n
-                                  ? 'border-e-accent bg-e-accent/10 text-e-accent'
-                                  : 'border-e-border hover:border-e-border2 text-e-faint hover:text-e-sub'
-                              }`}
-                              style={eff.icon === n && eff.color ? { borderColor: eff.color, backgroundColor: eff.color + '22', color: eff.color } : {}}
-                            >
-                              <Icon size={14} />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Cor</label>
-                        <div className="flex flex-col gap-2">
-                          <div className="grid grid-cols-6 gap-1.5">
-                            {['#ef4444','#f97316','#facc15','#4ade80','#06b6d4','#3b82f6','#a855f7','#ec4899','#d4a84e','#e2e8f0','#71717a','#7c3aed'].map((c) => (
-                              <button key={c} type="button" onClick={() => f.updateHitEffect(i, { color: c })}
-                                className={`h-7 rounded-lg border-2 transition-all cursor-pointer ${eff.color === c ? 'scale-110 border-white/50' : 'border-transparent hover:scale-105'}`}
-                                style={{ backgroundColor: c }} />
-                            ))}
-                            <button type="button" onClick={() => f.updateHitEffect(i, { color: undefined })}
-                              className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!eff.color ? 'border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
-                              auto
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <Checkbox checked={eff.durationTurns === -1}
-                            onChange={(checked) => f.updateHitEffect(i, { durationTurns: checked ? -1 : 1 })} />
-                          <span className="text-sm text-e-sub">Permanente</span>
-                        </label>
-                        {eff.durationTurns !== -1 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-e-sub shrink-0">Duração:</span>
-                            <input type="number" min={1} value={eff.durationTurns}
-                              onChange={(e) => f.updateHitEffect(i, { durationTurns: Number(e.target.value) })}
-                              className="!w-20 text-center" />
-                            <span className="text-sm text-e-faint">turnos</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className={lbl}>Bônus de acerto</label>
-                          <input type="number" value={eff.hitBonus ?? ''}
-                            onChange={(e) => f.updateHitEffect(i, { hitBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                            placeholder="Ex: -2" className={`text-center ${inp}`} />
-                        </div>
-                        <div>
-                          <label className={lbl}>Bônus de ataque</label>
-                          <input type="number" value={eff.attackBonus ?? ''}
-                            onChange={(e) => f.updateHitEffect(i, { attackBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                            placeholder="Ex: -3" className={`text-center ${inp}`} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Auto-efeitos</label>
-                        <EffectBuilder
-                          effects={eff.effects}
-                          onChange={(effects) => f.updateHitEffect(i, { effects })}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
         </>}
 
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -685,253 +597,11 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
           {/* ── Efeitos ── */}
           <div className={secFirst}>
             <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint">Efeitos</p>
-
-            {/* Atributos passivos */}
-            {!isEnemy && (
-              <div className="flex flex-col gap-2">
-                <div className="flex items-center justify-between">
-                  <label className={lbl}>Atributos passivos <span className="normal-case font-normal">(enquanto equipada)</span></label>
-                  <button type="button" onClick={() => f.setPassiveAttrs((a) => [...a, ['strength', '1']])}
-                    className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                    <Plus size={12} /> Adicionar
-                  </button>
-                </div>
-                {f.passiveAttrs.length === 0 && <p className="text-xs text-e-faint italic">Nenhum.</p>}
-                {f.passiveAttrs.map(([attr, val], i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <div className="flex-1">
-                      <Dropdown value={attr} onChange={(v) => f.setPassiveAttrs((a) => a.map((x, j) => j === i ? [v, x[1]] as [string, string] : x))} options={ATTR_OPTS} />
-                    </div>
-                    <input type="number" value={val}
-                      onChange={(e) => f.setPassiveAttrs((a) => a.map((x, j) => j === i ? [x[0], e.target.value] as [string, string] : x))}
-                      className={`w-16 text-center ${smallInp}`} />
-                    <button onClick={() => f.setPassiveAttrs((a) => a.filter((_, j) => j !== i))} className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Buff de atributo */}
-            <div className="flex flex-col gap-2 pt-4 border-t border-e-border">
-              <div className="flex items-center justify-between">
-                <label className={lbl}>Buff de atributo <span className="normal-case font-normal">(ao usar, por N turnos)</span></label>
-                <button type="button" onClick={() => f.setBuffAttrs((a) => [...a, ['strength', '1']])}
-                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                  <Plus size={12} /> Adicionar
-                </button>
-              </div>
-              {f.buffAttrs.length === 0 && <p className="text-xs text-e-faint italic">Nenhum.</p>}
-              {f.buffAttrs.map(([attr, val], i) => (
-                <div key={i} className="flex gap-2 items-center">
-                  <div className="flex-1">
-                    <Dropdown value={attr} onChange={(v) => f.setBuffAttrs((a) => a.map((x, j) => j === i ? [v, x[1]] as [string, string] : x))} options={ATTR_OPTS} />
-                  </div>
-                  <input type="number" value={val}
-                    onChange={(e) => f.setBuffAttrs((a) => a.map((x, j) => j === i ? [x[0], e.target.value] as [string, string] : x))}
-                    className={`w-16 text-center ${smallInp}`} />
-                  <button onClick={() => f.setBuffAttrs((a) => a.filter((_, j) => j !== i))} className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-              ))}
-            </div>
-
-            {/* Bônus de combate */}
-            <div className="flex flex-col gap-3 pt-4 border-t border-e-border">
-              <label className={lbl}>Bônus de combate <span className="normal-case font-normal">(buff ao usar, mesma duração)</span></label>
-              <div className="grid grid-cols-3 gap-3">
-                {([
-                  { label: 'Acerto +',  val: f.hitBonus,    set: f.setHitBonus    },
-                  { label: 'Ataque +',  val: f.attackBonus, set: f.setAttackBonus },
-                  { label: 'Dano +',    val: f.damageBonus, set: f.setDamageBonus },
-                ] as { label: string; val: string; set: (v: string) => void }[]).map(({ label, val, set }) => (
-                  <div key={label} className="flex flex-col gap-1.5">
-                    <span className="text-[10px] text-e-faint font-medium">{label}</span>
-                    <input type="number" value={val} onChange={(e) => set(e.target.value)}
-                      placeholder="—" className={`text-center ${smallInp} w-full`} />
-                  </div>
-                ))}
-              </div>
-              {(f.hitBonus !== '' || f.attackBonus !== '' || f.damageBonus !== '' || f.buffAttrs.length > 0) && (
-                <div className="flex items-center gap-3">
-                  <span className={lbl + ' mb-0'}>Duração</span>
-                  <input type="number" min={-1} value={f.buffDuration}
-                    onChange={(e) => f.setBuffDuration(e.target.value)}
-                    placeholder="-1 = ∞" className={`w-28 text-center ${smallInp}`} />
-                  <span className="text-xs text-e-faint">turnos (-1 = ∞)</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* ── Efeitos no Usuário ── */}
-          <div className={sec}>
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-widest text-e-faint">Efeitos no Usuário</p>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <button type="button" onClick={() => f.setPresetDropdownOpenSelf((v) => !v)}
-                    className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                    <Plus size={12} /> Preset
-                  </button>
-                  {f.presetDropdownOpenSelf && (
-                    <div className="absolute right-0 z-50 mt-1 w-52 bg-e-surface border border-e-border rounded-xl shadow-2xl">
-                      <div className="p-2 border-b border-e-border">
-                        <input
-                          autoFocus
-                          value={presetSearchSelf}
-                          onChange={(e) => setPresetSearchSelf(e.target.value)}
-                          placeholder="Buscar…"
-                          className="w-full text-xs rounded-lg px-2 py-1.5 bg-e-bg border border-e-border text-e-text outline-none placeholder:text-e-faint"
-                        />
-                      </div>
-                      <div className="max-h-48 overflow-y-auto">
-                        {f.presets.filter((p) => !presetSearchSelf.trim() || p.name.toLowerCase().includes(presetSearchSelf.toLowerCase())).map((p) => {
-                          const PresetIcon = getStatusIcon(p.icon);
-                          return (
-                            <button key={p.id} type="button"
-                              onClick={() => { f.addPresetAsSelfEffect(p); setPresetSearchSelf(''); }}
-                              className="w-full px-3 py-2 text-sm text-left hover:bg-e-card transition-colors text-e-text flex items-center">
-                              {PresetIcon && <PresetIcon size={13} className="mr-1.5 shrink-0" />}
-                              <span className="flex-1 truncate">{p.name}</span>
-                              <span className="ml-1.5 text-[10px] text-e-faint shrink-0">{p.durationTurns === -1 ? '∞' : `${p.durationTurns}t`}</span>
-                            </button>
-                          );
-                        })}
-                      </div>
-                    </div>
-                  )}
-                </div>
-                <button type="button" onClick={f.addCustomSelfEffect}
-                  className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                  <Plus size={12} /> Personalizado
-                </button>
-              </div>
-            </div>
-
-            {f.selfEffects.length === 0 && (
-              <p className="text-xs text-e-faint italic">Nenhum efeito aplicado no usuário.</p>
-            )}
-
-            {f.selfEffects.map((eff, i) => {
-              const expanded = f.expandedSelfEffect.has(i);
-              const EffIcon = getStatusIcon(eff.icon);
-              return (
-                <div key={eff.id} className="rounded-xl border border-e-border bg-e-bg overflow-hidden">
-                  <div className="flex items-center gap-2 px-3 py-2.5">
-                    {EffIcon && <EffIcon size={15} className="shrink-0" />}
-                    <span className={`flex-1 text-sm font-medium truncate ${eff.name ? 'text-e-text' : 'text-e-faint italic'}`}>
-                      {eff.name || 'Sem nome'}
-                    </span>
-                    <span className="text-xs text-e-faint shrink-0">
-                      {eff.durationTurns === -1 ? '∞' : `${eff.durationTurns}t`}
-                    </span>
-                    <button type="button" onClick={() => f.toggleSelfExpand(i)}
-                      className="opacity-50 hover:opacity-100 transition-opacity shrink-0">
-                      {expanded ? <ChevronUp size={13} /> : <ChevronDown size={13} />}
-                    </button>
-                    <button type="button" onClick={() => f.removeSelfEffect(i)}
-                      className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                  {expanded && (
-                    <div className="px-3 pb-3 flex flex-col gap-3 border-t border-e-border pt-3">
-                      <div>
-                        <label className={lbl}>Nome</label>
-                        <input value={eff.name} onChange={(e) => f.updateSelfEffect(i, { name: e.target.value })}
-                          className={inp} placeholder="Nome do efeito" />
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Descrição</label>
-                        <textarea value={eff.desc ?? ''} onChange={(e) => f.updateSelfEffect(i, { desc: e.target.value })}
-                          placeholder="O que este efeito faz em quem usa…" rows={2}
-                          className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text resize-none outline-none focus:border-e-border2 transition-colors placeholder:text-e-faint" />
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Ícone</label>
-                        <div className="grid grid-cols-9 gap-1.5">
-                          {STATUS_ICONS.map(({ name: n, Icon }) => (
-                            <button key={n} type="button" title={n}
-                              onClick={() => f.updateSelfEffect(i, { icon: eff.icon === n ? '' : n })}
-                              className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center ${
-                                eff.icon === n
-                                  ? 'border-e-accent bg-e-accent/10 text-e-accent'
-                                  : 'border-e-border hover:border-e-border2 text-e-faint hover:text-e-sub'
-                              }`}
-                              style={eff.icon === n && eff.color ? { borderColor: eff.color, backgroundColor: eff.color + '22', color: eff.color } : {}}
-                            >
-                              <Icon size={14} />
-                            </button>
-                          ))}
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Cor</label>
-                        <div className="flex flex-col gap-2">
-                          <div className="grid grid-cols-6 gap-1.5">
-                            {['#ef4444','#f97316','#facc15','#4ade80','#06b6d4','#3b82f6','#a855f7','#ec4899','#d4a84e','#e2e8f0','#71717a','#7c3aed'].map((c) => (
-                              <button key={c} type="button" onClick={() => f.updateSelfEffect(i, { color: c })}
-                                className={`h-7 rounded-lg border-2 transition-all cursor-pointer ${eff.color === c ? 'scale-110 border-white/50' : 'border-transparent hover:scale-105'}`}
-                                style={{ backgroundColor: c }} />
-                            ))}
-                            <button type="button" onClick={() => f.updateSelfEffect(i, { color: undefined })}
-                              className={`h-7 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${!eff.color ? 'border-e-accent text-e-accent' : 'border-e-border text-e-faint hover:border-e-border2'}`}>
-                              auto
-                            </button>
-                          </div>
-                        </div>
-                      </div>
-
-                      <div className="flex items-center gap-4">
-                        <label className="flex items-center gap-2 cursor-pointer select-none">
-                          <Checkbox checked={eff.durationTurns === -1}
-                            onChange={(checked) => f.updateSelfEffect(i, { durationTurns: checked ? -1 : 1 })} />
-                          <span className="text-sm text-e-sub">Permanente</span>
-                        </label>
-                        {eff.durationTurns !== -1 && (
-                          <div className="flex items-center gap-2">
-                            <span className="text-sm text-e-sub shrink-0">Duração:</span>
-                            <input type="number" min={1} value={eff.durationTurns}
-                              onChange={(e) => f.updateSelfEffect(i, { durationTurns: Number(e.target.value) })}
-                              className="!w-20 text-center" />
-                            <span className="text-sm text-e-faint">turnos</span>
-                          </div>
-                        )}
-                      </div>
-
-                      <div className="grid grid-cols-2 gap-3">
-                        <div>
-                          <label className={lbl}>Bônus de acerto</label>
-                          <input type="number" value={eff.hitBonus ?? ''}
-                            onChange={(e) => f.updateSelfEffect(i, { hitBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                            placeholder="Ex: -2" className={`text-center ${inp}`} />
-                        </div>
-                        <div>
-                          <label className={lbl}>Bônus de ataque</label>
-                          <input type="number" value={eff.attackBonus ?? ''}
-                            onChange={(e) => f.updateSelfEffect(i, { attackBonus: e.target.value !== '' ? Number(e.target.value) : undefined })}
-                            placeholder="Ex: -3" className={`text-center ${inp}`} />
-                        </div>
-                      </div>
-
-                      <div>
-                        <label className={lbl}>Auto-efeitos</label>
-                        <EffectBuilder
-                          effects={eff.effects}
-                          onChange={(effects) => f.updateSelfEffect(i, { effects })}
-                        />
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
+            <p className="text-[11px] text-e-faint">
+              Escolha em quem cada efeito cai e o que ele faz. As opções seguem o uso da skill (aba Base): em inimigos não há cura nem Escudo, e "passivo" só existe em si mesmo.
+            </p>
+            <EfeitosEditor value={f.efeitos} onChange={f.setEfeitos} presets={f.presets}
+              uso={f.passive ? 'USUARIO' : f.alvo} area={f.hasMultiTarget && f.alvo !== 'USUARIO'} />
           </div>
 
           {/* ── Pré-requisitos ── */}
