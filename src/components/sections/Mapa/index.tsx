@@ -70,7 +70,7 @@ export default function Mapa() {
   ];
 
   return (
-    <div className={`p-8 mx-auto w-full flex-1 min-h-0 flex flex-col overflow-y-auto ${camada === 'campanha' ? 'max-w-[1800px]' : 'max-w-[1600px]'}`}>
+    <div className="p-8 mx-auto w-full max-w-[1600px] flex-1 min-h-0 flex flex-col overflow-y-auto">
       <SectionHeader
         title="Mapa"
         subtitle={camada === 'locais'
@@ -83,15 +83,6 @@ export default function Mapa() {
                 <ArrowLeft size={14} /> Voltar
               </button>
             )}
-            <div role="group" aria-label="Camada em edição" className="flex gap-0.5 p-0.5 rounded-xl border border-e-border bg-e-surface">
-              {camadas.map(({ id, label, Icon }) => (
-                <button key={id} type="button" onClick={() => setCamada(id)} aria-pressed={camada === id}
-                  className={`h-7 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
-                    camada === id ? (id === 'locais' ? 'bg-e-gold/15 text-e-gold' : 'bg-e-flow/15 text-e-flow') : 'text-e-sub hover:text-e-text'}`}>
-                  <Icon size={13} /> {label}
-                </button>
-              ))}
-            </div>
             {camada === 'locais' && isRootMap && (
               <Button variant="ghost" size="sm" onClick={() => setEditingRootMap(true)}>
                 <Pencil size={13} /> Editar mapa
@@ -102,6 +93,16 @@ export default function Mapa() {
                 <MapPin size={13} /> Regiões
               </Button>
             )}
+            {/* Por último, para não mudar de lugar quando os botões da camada Locais somem */}
+            <div role="group" aria-label="Camada em edição" className="flex gap-0.5 p-0.5 rounded-xl border border-e-border bg-e-surface">
+              {camadas.map(({ id, label, Icon }) => (
+                <button key={id} type="button" onClick={() => setCamada(id)} aria-pressed={camada === id}
+                  className={`h-7 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                    camada === id ? (id === 'locais' ? 'bg-e-gold/15 text-e-gold' : 'bg-e-flow/15 text-e-flow') : 'text-e-sub hover:text-e-text'}`}>
+                  <Icon size={13} /> {label}
+                </button>
+              ))}
+            </div>
           </div>
         }
       />

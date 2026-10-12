@@ -135,6 +135,7 @@ export default function EditorPonto({ ponto, estado, avisos, capitulos, pontos, 
             <Select value={draft.capitulo || '_'} onChange={(v) => mudar({ capitulo: v === '_' ? '' : v })}
               options={[{ value: '_', label: 'Sem capítulo' }, ...capitulos.map((c) => ({ value: c.id, label: c.titulo }))]} />
           </div>
+          <p className="col-span-2 -mt-1 text-[11px] text-e-sub leading-relaxed">{tipo.descricao}</p>
         </div>
 
         {/* Onde fica: ações diretas, não dependem de salvar */}

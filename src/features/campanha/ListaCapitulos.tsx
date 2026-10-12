@@ -75,7 +75,7 @@ export default function ListaCapitulos({ snap, selecionadoId, currentMapId, nome
           <button type="button" onClick={() => setTipo(null)} aria-pressed={!tipo}
             className={`h-7 px-2.5 rounded-full border text-[11px] cursor-pointer ${!tipo ? 'border-e-border2 bg-e-card text-e-text font-semibold' : 'border-e-border text-e-sub'}`}>Todos</button>
           {TIPOS.map((t) => (
-            <button key={t.id} type="button" aria-label={`Só ${t.nome}`} title={t.nome} aria-pressed={tipo === t.id} onClick={() => setTipo(tipo === t.id ? null : t.id)}
+            <button key={t.id} type="button" aria-label={`Só ${t.nome}`} title={`${t.nome}: ${t.descricao}`} aria-pressed={tipo === t.id} onClick={() => setTipo(tipo === t.id ? null : t.id)}
               className="w-7 h-7 rounded-full border flex items-center justify-center cursor-pointer"
               style={{ color: t.cor, borderColor: tipo === t.id ? t.cor : 'var(--color-e-border)', background: tipo === t.id ? t.cor + '22' : 'transparent' }}>
               <t.Icon size={13} />

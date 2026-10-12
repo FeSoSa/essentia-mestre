@@ -100,6 +100,13 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
           </nav>
           <span className="text-xs text-e-faint">· {aqui.length} {aqui.length === 1 ? 'ponto' : 'pontos'} aqui</span>
           <div className="flex-1" />
+          <div className="w-56">
+            <Select value="" placeholder="Ir para região…" onChange={(id) => setMapStack(caminhoAte(id))}
+              options={[{ value: ROOT_MAP_ID, label: 'Essentia (mapa raiz)' }, ...regions.map((r) => {
+                const n = dentro.get(r.id)?.total ?? pontos.filter((p) => p.mapa?.id === r.id).length;
+                return { value: r.id, label: n ? `${r.name} · ${n} ${n === 1 ? 'ponto' : 'pontos'}` : r.name };
+              })]} />
+          </div>
           <label className="flex items-center gap-1.5 text-xs text-e-sub cursor-pointer">
             <input type="checkbox" checked={mostrarLocais} onChange={(e) => setMostrarLocais(e.target.checked)} className="accent-[#a3e635]" /> Mostrar locais
           </label>
@@ -127,8 +134,15 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 const d = dentro.get(m.regionId);
                 return (
                   <div key={m.id} className="absolute" style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%` }}>
-                    <span className="absolute -left-[5px] -top-[5px] w-2.5 h-2.5 rounded-full bg-e-gold opacity-60" />
-                    <span className="absolute left-1/2 -translate-x-1/2 top-2 text-[10px] text-zinc-200/70 whitespace-nowrap">{m.label}</span>
+                    {/* O local é um botão: entra na região para escrever pontos lá dentro */}
+                    <button type="button" aria-label={`Entrar em ${m.label}`} title={`Entrar em ${m.label}`}
+                      onClick={(e) => { e.stopPropagation(); setMapStack([...mapStack, m.regionId]); }}
+                      className="group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-2 flex flex-col items-center gap-1 cursor-pointer">
+                      <span className="w-4 h-4 rounded-full border-2 border-white/60 bg-e-gold/60 group-hover:bg-e-gold group-hover:border-white transition-colors" />
+                      <span className="flex items-center gap-1 text-[10px] text-zinc-100/85 bg-black/55 group-hover:bg-black/85 group-hover:text-white rounded px-1.5 py-0.5 whitespace-nowrap transition-colors">
+                        {m.label} <LogIn size={10} />
+                      </span>
+                    </button>
                     {d && (
                       <button type="button" onClick={(e) => { e.stopPropagation(); setMapStack([...mapStack, m.regionId]); }}
                         title={`Entrar em ${m.label}`}
@@ -247,6 +261,7 @@ function NovoPontoModal({ capitulos, nomeMapa, onCriar, onCancelar }: {
                 </button>
               ))}
             </div>
+            <p className="text-xs text-e-sub mt-2 leading-relaxed min-h-[2.5rem]">{tipoDe(tipo).descricao}</p>
           </div>
           <div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-e-faint mb-1.5">Capítulo</p>
