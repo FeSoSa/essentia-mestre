@@ -97,9 +97,10 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
   }, [grupos]);
   const grupoAberto = aberto ?? (selecionadoId ? grupoDe.get(selecionadoId)?.id : undefined) ?? null;
   type ItemMapa = { id: string; x: number; y: number; ponto?: Ponto; grupo?: Grupo<(typeof aqui)[number]> };
+  // Grupos primeiro: os pontos são desenhados depois, por cima das linhas do leque
   const itensMapa: ItemMapa[] = [
-    ...aqui,
     ...grupos.filter((g) => g.membros.length > 1).map((g) => ({ id: g.id, x: g.x, y: g.y, grupo: g })),
+    ...aqui,
   ];
 
   function abrirGrupo(id: string) { clearTimeout(fecharRef.current); setAberto(id); }
@@ -213,22 +214,26 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 return (
                   <div className="absolute" style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%` }}
                     onClick={(e) => e.stopPropagation()} onMouseEnter={() => abrirGrupo(g.id)} onMouseLeave={agendarFechar}>
-                    {abertoAqui && (<>
-                      <span className="absolute rounded-full bg-black/45 backdrop-blur-[1px] pointer-events-none -translate-x-1/2 -translate-y-1/2"
-                        style={{ width: posicaoLeque(0, g.membros.length).r * 2 + 44, height: posicaoLeque(0, g.membros.length).r * 2 + 44 }} />
+                    {abertoAqui ? (<>
+                      {/* Área invisível que segura o leque aberto enquanto o mouse está por perto */}
+                      <span className="absolute rounded-full -translate-x-1/2 -translate-y-1/2"
+                        style={{ width: posicaoLeque(0, g.membros.length).r * 2 + 36, height: posicaoLeque(0, g.membros.length).r * 2 + 36 }} />
                       {g.membros.map((m, i) => {
                         const { dx, dy } = posicaoLeque(i, g.membros.length);
-                        return <span key={m.id} className="absolute left-0 top-0 h-px bg-white/40 origin-left pointer-events-none"
+                        return <span key={m.id} className="absolute left-0 top-0 h-px bg-white/50 origin-left pointer-events-none"
                           style={{ width: Math.hypot(dx, dy), transform: `rotate(${Math.atan2(dy, dx)}rad)` }} />;
                       })}
+                      <button type="button" aria-label="Fechar grupo" onClick={() => setAberto(null)}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/80 cursor-pointer" />
+                    </>) : (<>
+                      {temAtivo && <span className="absolute w-9 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
+                      <button type="button" aria-label={`${g.membros.length} pontos juntos: ${g.membros.map((m) => m.ponto.titulo).join(', ')}`}
+                        title={g.membros.map((m) => m.ponto.titulo).join('\n')}
+                        onClick={() => setAberto(g.id)}
+                        className="absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full p-[2px] shadow-lg cursor-pointer" style={{ background: anel }}>
+                        <span className="w-full h-full rounded-full bg-[#111113] text-[10px] font-bold text-white flex items-center justify-center">{g.membros.length}</span>
+                      </button>
                     </>)}
-                    {temAtivo && !abertoAqui && <span className="absolute w-10 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
-                    <button type="button" aria-label={`${g.membros.length} pontos juntos: ${g.membros.map((m) => m.ponto.titulo).join(', ')}`}
-                      title={g.membros.map((m) => m.ponto.titulo).join('\n')}
-                      onClick={() => setAberto(abertoAqui ? null : g.id)}
-                      className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full p-[2px] shadow-lg cursor-pointer" style={{ background: anel }}>
-                      <span className="w-full h-full rounded-full bg-[#111113] text-[11px] font-bold text-white flex items-center justify-center">{g.membros.length}</span>
-                    </button>
                   </div>
                 );
               }
@@ -242,25 +247,30 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
               const t = tipoDe(p.tipo);
               const st = (snap.estado[p.id] ?? ESTADO_PADRAO).status;
               const sel = p.id === selecionadoId;
-              const aberta = sel || st === 'ativo' || !!g || arrastando;
+              // Três tamanhos: grande (selecionado, ativo, arrastando), médio no leque e bolinha no resto
+              const grande = sel || st === 'ativo' || arrastando;
+              const noLeque = !!g && !arrastando;
+              const visual = grande
+                ? 'w-7 h-7 bg-[var(--f)] border-[var(--c)]'
+                : noLeque
+                  ? 'w-5 h-5 bg-[var(--f)] border-[var(--c)] group-hover:w-7 group-hover:h-7'
+                  : 'w-3 h-3 bg-[var(--c)] border-white/90 group-hover:w-7 group-hover:h-7 group-hover:bg-[var(--f)] group-hover:border-[var(--c)]';
               return (
-                <div className={`group absolute ${st === 'concluido' ? 'opacity-55' : ''} ${sel || arrastando ? 'z-20' : 'hover:z-30'}`}
+                <div className={`group absolute ${st === 'concluido' ? 'opacity-55' : ''} ${sel || arrastando ? 'z-20' : 'z-10 hover:z-30'}`}
                   style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%`, transform: `translate(${off.dx}px, ${off.dy}px)`, '--c': t.cor, '--f': t.fundo } as React.CSSProperties}
                   onClick={(e) => { e.stopPropagation(); setSelecionadoId(p.id); }}
                   onMouseEnter={g ? manterAberto : undefined} onMouseLeave={g ? agendarFechar : undefined}>
-                  {st === 'ativo' && <span className="absolute w-11 h-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
-                  {sel && <span className="absolute w-[38px] h-[38px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white pointer-events-none" />}
+                  {st === 'ativo' && <span className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none ${noLeque ? 'w-8 h-8' : 'w-11 h-11'}`} />}
+                  {sel && <span className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white pointer-events-none ${noLeque ? 'w-[34px] h-[34px]' : 'w-[38px] h-[38px]'}`} />}
                   {/* Área de toque maior que a bolinha, para pegar fácil */}
                   <span {...alca} title={p.titulo}
-                    className={`absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center ${arrastando ? 'cursor-grabbing' : 'cursor-grab'}`}>
-                    <span className={`rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-150 ${aberta
-                      ? 'w-7 h-7 bg-[var(--f)] border-[var(--c)]'
-                      : 'w-3 h-3 bg-[var(--c)] border-white/90 group-hover:w-7 group-hover:h-7 group-hover:bg-[var(--f)] group-hover:border-[var(--c)]'}`}
+                    className={`absolute -translate-x-1/2 -translate-y-1/2 flex items-center justify-center ${noLeque ? 'w-6 h-6' : 'w-7 h-7'} ${arrastando ? 'cursor-grabbing' : 'cursor-grab'}`}>
+                    <span className={`rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-150 ${visual}`}
                       style={{ borderStyle: p.tipo === 'segredo' ? 'dashed' : 'solid' }}>
-                      <t.Icon size={13} color={t.cor} className={aberta ? '' : 'hidden group-hover:block'} />
+                      <t.Icon size={grande ? 13 : 11} color={t.cor} className={grande || noLeque ? '' : 'hidden group-hover:block'} />
                     </span>
                   </span>
-                  <span className={`absolute left-0 -translate-x-1/2 top-4 text-[11px] font-semibold text-white bg-black/80 rounded-md px-2 py-0.5 whitespace-nowrap pointer-events-none ${aberta ? '' : 'hidden group-hover:block'}`}>
+                  <span className={`absolute left-0 -translate-x-1/2 top-4 text-[11px] font-semibold text-white bg-black/80 rounded-md px-2 py-0.5 whitespace-nowrap pointer-events-none ${grande && !noLeque ? '' : sel ? '' : 'hidden group-hover:block'}`}>
                     {String(p.ordem).padStart(2, '0')} {p.titulo}{st === 'ativo' && <b className="text-e-accent"> · ativo</b>}
                   </span>
                 </div>
