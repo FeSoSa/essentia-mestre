@@ -6,6 +6,8 @@ import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import { useCombateStore } from '@/store/combateStore';
 import { useMaestriaStore } from '@/lib/maestria';
+import { useCampanhaStore } from '@/features/campanha/campanhaStore';
+import type { CampanhaSnapshot } from '@/features/campanha/types';
 import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, AllyEffectApprovalRequest, CombatAlly, Note, CombateConfig, EnemyAction, MaestriaConfig } from '@/store/types';
 
 export function useSocket() {
@@ -133,6 +135,11 @@ export function useSocket() {
         setNotes(notes);
       });
 
+      // Campanha: arquivos da pasta mudaram (painel, Claude ou outro editor)
+      client.subscribe('/topic/campanha', (msg) => {
+        useCampanhaStore.getState().aplicar(JSON.parse(msg.body) as CampanhaSnapshot);
+      });
+
       // Recupera estado de combate atual (perdido no refresh)
       Promise.all([
         api.get<EnemyInstance[]>('/combat/enemies').then(r => setEnemies(r.data)),
@@ -145,6 +152,7 @@ export function useSocket() {
         api.get<Note[]>('/master/notes').then(r => setNotes(r.data)),
         useCombateStore.getState().carregar(),
         useMaestriaStore.getState().carregar(),
+        useCampanhaStore.getState().fetch(),
       ]).catch(() => {});
     };
 
