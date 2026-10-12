@@ -32,6 +32,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
   const [novoEm, setNovoEm] = useState<{ x: number; y: number } | null>(null);
   const [mostrarLocais, setMostrarLocais] = useState(true);
   const [visao, setVisao] = useState<'mapa' | 'grafo'>('mapa');
+  const [focoGrafo, setFocoGrafo] = useState<{ id: string; n: number } | null>(null);
   const [todosMarcadores, setTodosMarcadores] = useState<MapMarker[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -75,6 +76,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
 
   function selecionar(p: Ponto) {
     setSelecionadoId(p.id);
+    setFocoGrafo({ id: p.id, n: Date.now() });
     if (p.mapa?.id && p.mapa.id !== currentMapId) setMapStack(caminhoAte(p.mapa.id));
   }
 
@@ -128,6 +130,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
             snap={snap}
             selecionadoId={selecionadoId}
             onSelecionar={setSelecionadoId}
+            foco={focoGrafo}
             nomeMapa={nomeMapa}
             onAbrirMapa={(mapId) => { setVisao('mapa'); setMapStack(caminhoAte(mapId)); }}
           />

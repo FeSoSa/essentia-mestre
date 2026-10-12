@@ -100,9 +100,11 @@ interface Props {
   nomeMapa: (id?: string | null) => string;
   /** Clique num nó de local: abre aquele mapa na visão Mapa. */
   onAbrirMapa: (mapId: string) => void;
+  /** Pedido para centralizar num ponto (vem de um clique na lista). `n` muda a cada pedido. */
+  foco?: { id: string; n: number } | null;
 }
 
-export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeMapa, onAbrirMapa }: Props) {
+export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeMapa, onAbrirMapa, foco: pedidoFoco = null }: Props) {
   const { salvarPonto, criarPonto, moverPonto, posicionarGrafo, soltarGrafo, fetch } = useCampanhaStore();
   const [mostrarLocais, setMostrarLocais] = useState(true);
   const [modoLigar, setModoLigar] = useState(false);
@@ -113,6 +115,9 @@ export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeM
   const [hover, setHover] = useState<string | null>(null);
   const [arestaSel, setArestaSel] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
+  const [tamanho, setTamanho] = useState({ w: 0, h: 0 });
+  const [focoVisto, setFocoVisto] = useState<typeof pedidoFoco>(null);
+  const [focoPendente, setFocoPendente] = useState<string | null>(null);
 
   const caixaRef = useRef<HTMLDivElement>(null);
   const simRef = useRef<Sim>({});
@@ -169,7 +174,19 @@ export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeM
   // Mudou o conjunto de nós ou arestas: a física volta a trabalhar
   const chave = nos.map((n) => n.id).join('|') + '#' + arestas.map((a) => a.de + '>' + a.para).join('|');
   useEffect(() => { reaquecer(0.5); }, [chave, reaquecer]);
-  useEffect(() => () => cancelAnimationFrame(rafRef.current), []);
+  // Zerar a referência é o que deixa a física recomeçar quando o React monta o componente de novo
+  useEffect(() => () => { cancelAnimationFrame(rafRef.current); rafRef.current = 0; }, []);
+
+  useEffect(() => {
+    const el = caixaRef.current;
+    if (!el) return;
+    const ro = new ResizeObserver(() => setTamanho({ w: el.clientWidth, h: el.clientHeight }));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, []);
+
+  // Depois de um pedido de foco, o enquadramento automático inicial não passa por cima
+  useEffect(() => { if (focoVisto) ajustadoRef.current = true; }, [focoVisto]);
 
   // Zoom pela roda do mouse, em volta do cursor (listener nativo para poder impedir a rolagem)
   useEffect(() => {
@@ -297,6 +314,20 @@ export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeM
       const novo = await criarPonto({ titulo: 'Novo ponto', tipo: 'narrativo', capitulo });
       if (novo) { await posicionarGrafo({ [novo.id]: p }); onSelecionar(novo.id); }
     } catch (err) { setErro(mensagemErro(err, 'Não deu para criar')); }
+  }
+
+  /* ── Foco vindo da lista: centraliza no ponto ─────────────────── */
+
+  if (pedidoFoco && pedidoFoco !== focoVisto) {
+    setFocoVisto(pedidoFoco);
+    setFocoPendente(pedidoFoco.id);
+    if (capitulo && !snap.pontos.some((p) => p.id === pedidoFoco.id && p.capitulo === capitulo)) setCapitulo('');
+  }
+  if (focoPendente && sim[focoPendente] && tamanho.w > 0) {
+    const c = sim[focoPendente];
+    const k = Math.max(vista.k, 0.9);
+    setVista({ k, tx: tamanho.w / 2 - c.x * k, ty: tamanho.h / 2 - c.y * k });
+    setFocoPendente(null);
   }
 
   /* ── Desenho ──────────────────────────────────────────────────── */
@@ -429,7 +460,7 @@ export default function GrafoCampanha({ snap, selecionadoId, onSelecionar, nomeM
         </div>
         <div className="flex-1" />
         <Button size="sm" variant="subtle" className="pointer-events-auto"
-          onClick={() => caixaRef.current && setVista(enquadrar(sim, caixaRef.current.clientWidth, caixaRef.current.clientHeight))}>
+          onClick={() => setVista(enquadrar(sim, tamanho.w, tamanho.h))}>
           <Crosshair size={13} /> Enquadrar
         </Button>
         <Button size="sm" variant="subtle" className="pointer-events-auto" disabled={presosNaTela === 0}
