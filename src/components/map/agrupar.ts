@@ -25,7 +25,8 @@ export function agrupar<T extends { id: string; x: number; y: number }>(itens: T
 /** Posição em leque (px, a partir do centro do grupo) do membro `i` de `n`. */
 export function posicaoLeque(i: number, n: number) {
   // Dois ficam lado a lado; mais que isso, num círculo pequeno que cresce devagar
-  const r = n <= 2 ? 18 : Math.max(24, n * 7);
+  // Os pontos ficam em volta da bolinha central, sem encostar nela
+  const r = n <= 2 ? 26 : Math.max(30, n * 7);
   const ang = (n <= 2 ? Math.PI : -Math.PI / 2) + (i * 2 * Math.PI) / n;
   return { dx: Math.cos(ang) * r, dy: Math.sin(ang) * r, r };
 }

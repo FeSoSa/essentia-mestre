@@ -75,7 +75,7 @@ export default function Mapa() {
         title="Mapa"
         subtitle={camada === 'locais'
           ? 'Clique na imagem para adicionar um marcador. Arraste um marcador para reposicioná-lo.'
-          : 'Clique no mapa para criar um ponto da campanha. Arraste para mover.'}
+          : 'Clique no vazio para criar um ponto (com algo selecionado, o clique só desfoca). Arraste para mover.'}
         action={
           <div className="flex items-center gap-3">
             {mapStack.length > 1 && (

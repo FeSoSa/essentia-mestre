@@ -166,8 +166,11 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
             alt={currentImage.title}
             items={itensMapa}
             onTamanho={aoTamanho}
-            // Com um grupo aberto, clicar no vazio só fecha o grupo
-            onCreateAt={(pos) => { if (aberto) setAberto(null); else setNovoEm(pos); }}
+            // Clicar no vazio primeiro desfoca (fecha grupo e solta a seleção); sem nada em foco, cria um ponto
+            onCreateAt={(pos) => {
+              if (aberto || selecionadoId) { setAberto(null); setSelecionadoId(null); return; }
+              setNovoEm(pos);
+            }}
             onMove={(item, pos) => { if (item.ponto) moverPonto(item.id, { id: currentMapId, nome: nomeMapa(currentMapId) }, pos.x, pos.y).catch((e) => setErro(mensagemErro(e, 'Não deu para mover'))); }}
             fundo={<>
               {/* Caminho do grupo: ligações entre pontos deste mapa */}
@@ -214,26 +217,30 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 return (
                   <div className="absolute" style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%` }}
                     onClick={(e) => e.stopPropagation()} onMouseEnter={() => abrirGrupo(g.id)} onMouseLeave={agendarFechar}>
-                    {abertoAqui ? (<>
-                      {/* Área invisível que segura o leque aberto enquanto o mouse está por perto */}
+                    {abertoAqui && (<>
+                      {/* Área invisível que segura o grupo aberto enquanto o mouse está por perto */}
                       <span className="absolute rounded-full -translate-x-1/2 -translate-y-1/2"
                         style={{ width: posicaoLeque(0, g.membros.length).r * 2 + 36, height: posicaoLeque(0, g.membros.length).r * 2 + 36 }} />
                       {g.membros.map((m, i) => {
                         const { dx, dy } = posicaoLeque(i, g.membros.length);
-                        return <span key={m.id} className="absolute left-0 top-0 h-px bg-white/50 origin-left pointer-events-none"
+                        return <span key={m.id} className="absolute left-0 top-0 h-px bg-white/45 origin-left pointer-events-none"
                           style={{ width: Math.hypot(dx, dy), transform: `rotate(${Math.atan2(dy, dx)}rad)` }} />;
                       })}
-                      <button type="button" aria-label="Fechar grupo" onClick={() => setAberto(null)}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-2 h-2 rounded-full bg-white/80 cursor-pointer" />
-                    </>) : (<>
-                      {temAtivo && <span className="absolute w-9 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
-                      <button type="button" aria-label={`${g.membros.length} pontos juntos: ${g.membros.map((m) => m.ponto.titulo).join(', ')}`}
-                        title={g.membros.map((m) => m.ponto.titulo).join('\n')}
-                        onClick={() => setAberto(g.id)}
-                        className="absolute -translate-x-1/2 -translate-y-1/2 w-5 h-5 rounded-full p-[2px] shadow-lg cursor-pointer" style={{ background: anel }}>
-                        <span className="w-full h-full rounded-full bg-[#111113] text-[10px] font-bold text-white flex items-center justify-center">{g.membros.length}</span>
-                      </button>
                     </>)}
+                    {temAtivo && !abertoAqui && <span className="absolute w-9 h-9 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
+                    {/* A bolinha do grupo fica sempre no centro; os pontos aparecem em volta quando ela abre */}
+                    <button type="button" aria-expanded={abertoAqui}
+                      aria-label={`${g.membros.length} pontos juntos: ${g.membros.map((m) => m.ponto.titulo).join(', ')}`}
+                      title={abertoAqui ? 'Fechar' : g.membros.map((m) => m.ponto.titulo).join('\n')}
+                      onClick={() => {
+                        if (!abertoAqui) { setAberto(g.id); return; }
+                        setAberto(null);
+                        if (selecionadoId && g.membros.some((m) => m.id === selecionadoId)) setSelecionadoId(null);
+                      }}
+                      className={`absolute -translate-x-1/2 -translate-y-1/2 rounded-full p-[2px] shadow-lg cursor-pointer transition-all ${abertoAqui ? 'w-6 h-6 ring-2 ring-white/70' : 'w-5 h-5'}`}
+                      style={{ background: anel }}>
+                      <span className="w-full h-full rounded-full bg-[#111113] text-[10px] font-bold text-white flex items-center justify-center">{g.membros.length}</span>
+                    </button>
                   </div>
                 );
               }
