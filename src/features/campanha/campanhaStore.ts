@@ -1,6 +1,6 @@
 import { create } from 'zustand';
 import { api } from '@/lib/api';
-import type { Achado, CampanhaRef, CampanhaSnapshot, MesaEntrada, Ponto } from './types';
+import type { Achado, CampanhaRef, CampanhaSnapshot, MesaEntrada, PosicaoGrafo, Ponto } from './types';
 
 interface CampanhaState {
   snap: CampanhaSnapshot | null;
@@ -23,6 +23,10 @@ interface CampanhaState {
   reabrir: (id: string) => Promise<void>;
   registrarMesa: (id: string, entradas: MesaEntrada[]) => Promise<void>;
   registrarAchado: (id: string, achado: Achado) => Promise<void>;
+
+  /** Prende nós no grafo (null solta de volta para a física). */
+  posicionarGrafo: (posicoes: Record<string, PosicaoGrafo | null>) => Promise<void>;
+  soltarGrafo: () => Promise<void>;
 }
 
 export const useCampanhaStore = create<CampanhaState>()((set, get) => {
@@ -58,5 +62,8 @@ export const useCampanhaStore = create<CampanhaState>()((set, get) => {
     reabrir: async (id) => { await enviar(api.post<CampanhaSnapshot>(`/campanha/pontos/${id}/reabrir`)); },
     registrarMesa: async (id, entradas) => { await enviar(api.post<CampanhaSnapshot>(`/campanha/pontos/${id}/mesa`, { entradas })); },
     registrarAchado: async (id, achado) => { await enviar(api.post<CampanhaSnapshot>(`/campanha/pontos/${id}/achado`, achado)); },
+
+    posicionarGrafo: async (posicoes) => { await enviar(api.put<CampanhaSnapshot>('/campanha/grafo/posicoes', { posicoes })); },
+    soltarGrafo: async () => { await enviar(api.delete<CampanhaSnapshot>('/campanha/grafo/posicoes')); },
   };
 });

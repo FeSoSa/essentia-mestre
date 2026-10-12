@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { LogIn, X } from 'lucide-react';
+import { LogIn, Map as MapIcon, Network, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { CheckField } from '@/components/ui/Checkbox';
@@ -14,6 +14,7 @@ import { TIPOS, tipoDe } from './registroTipos';
 import { ESTADO_PADRAO, type Ponto } from './types';
 import ListaCapitulos from './ListaCapitulos';
 import EditorPonto from './EditorPonto';
+import GrafoCampanha from './GrafoCampanha';
 
 interface Props {
   mapStack: string[];
@@ -30,6 +31,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
   const [selecionadoId, setSelecionadoId] = useState<string | null>(null);
   const [novoEm, setNovoEm] = useState<{ x: number; y: number } | null>(null);
   const [mostrarLocais, setMostrarLocais] = useState(true);
+  const [visao, setVisao] = useState<'mapa' | 'grafo'>('mapa');
   const [todosMarcadores, setTodosMarcadores] = useState<MapMarker[]>([]);
   const [erro, setErro] = useState<string | null>(null);
 
@@ -88,7 +90,16 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
       <ListaCapitulos snap={snap} selecionadoId={selecionadoId} currentMapId={currentMapId} nomeMapa={nomeMapa} onSelecionar={selecionar} />
 
       <div className="min-w-0 flex flex-col gap-2">
-        <div className="flex items-center gap-2 flex-wrap text-sm">
+        <div className="flex items-center gap-2 flex-wrap text-sm min-h-9">
+          <div role="group" aria-label="Como ver" className="flex gap-0.5 p-0.5 rounded-xl border border-e-border bg-e-surface">
+            {([['mapa', 'Mapa', MapIcon], ['grafo', 'Grafo', Network]] as const).map(([v, rot, Icon]) => (
+              <button key={v} type="button" aria-pressed={visao === v} onClick={() => setVisao(v)}
+                className={`h-7 px-3 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${visao === v ? 'bg-e-card text-e-text' : 'text-e-sub hover:text-e-text'}`}>
+                <Icon size={13} /> {rot}
+              </button>
+            ))}
+          </div>
+          {visao === 'mapa' && (<>
           <nav aria-label="Caminho de mapas" className="flex items-center gap-1.5">
             {mapStack.map((id, i) => (
               <span key={id + i} className="flex items-center gap-1.5">
@@ -109,9 +120,18 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
               })]} />
           </div>
           <CheckField checked={mostrarLocais} onChange={setMostrarLocais} label="Mostrar locais" color="amber" />
+          </>)}
         </div>
 
-        {!currentImage?.url ? (
+        {visao === 'grafo' ? (
+          <GrafoCampanha
+            snap={snap}
+            selecionadoId={selecionadoId}
+            onSelecionar={setSelecionadoId}
+            nomeMapa={nomeMapa}
+            onAbrirMapa={(mapId) => { setVisao('mapa'); setMapStack(caminhoAte(mapId)); }}
+          />
+        ) : !currentImage?.url ? (
           <div className="flex-1 flex items-center justify-center rounded-xl border border-e-border text-sm text-e-faint">Este mapa não tem imagem.</div>
         ) : (
           <MapaCanvas

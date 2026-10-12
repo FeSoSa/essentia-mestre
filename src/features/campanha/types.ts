@@ -38,11 +38,15 @@ export interface PontoEstado {
   achados: Achado[];
 }
 
+export interface PosicaoGrafo { x: number; y: number }
+
 export interface CampanhaSnapshot {
   pasta: string;
   capitulos: Capitulo[];
   pontos: Ponto[];
   estado: Record<string, PontoEstado>;
+  /** Onde cada nó foi preso na visão em grafo (id do ponto ou "mapa:<id>"). */
+  grafo: { posicoes: Record<string, PosicaoGrafo> };
   avisos: Record<string, string[]>;
   erros: string[];
 }
