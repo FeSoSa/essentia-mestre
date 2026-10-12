@@ -83,7 +83,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
   }
 
   return (
-    <div className="flex-1 min-h-[640px] grid gap-4" style={{ gridTemplateColumns: '270px minmax(0,1fr) 380px' }}>
+    <div className="flex-1 min-h-[640px] grid gap-4" style={{ gridTemplateColumns: 'minmax(260px, 300px) minmax(0, 1fr) minmax(360px, 420px)' }}>
       <ListaCapitulos snap={snap} selecionadoId={selecionadoId} currentMapId={currentMapId} nomeMapa={nomeMapa} onSelecionar={selecionar} />
 
       <div className="min-w-0 flex flex-col gap-2">
