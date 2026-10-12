@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { LogIn, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import { CheckField } from '@/components/ui/Checkbox';
 import MapaCanvas from '@/components/map/MapaCanvas';
 import { api, mensagemErro } from '@/lib/api';
 import { ROOT_MAP_ID } from '@/lib/map';
@@ -107,9 +108,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 return { value: r.id, label: n ? `${r.name} · ${n} ${n === 1 ? 'ponto' : 'pontos'}` : r.name };
               })]} />
           </div>
-          <label className="flex items-center gap-1.5 text-xs text-e-sub cursor-pointer">
-            <input type="checkbox" checked={mostrarLocais} onChange={(e) => setMostrarLocais(e.target.checked)} className="accent-[#a3e635]" /> Mostrar locais
-          </label>
+          <CheckField checked={mostrarLocais} onChange={setMostrarLocais} label="Mostrar locais" color="amber" />
         </div>
 
         {!currentImage?.url ? (

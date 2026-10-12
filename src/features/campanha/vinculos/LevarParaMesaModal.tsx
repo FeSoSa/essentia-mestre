@@ -3,6 +3,8 @@
 import { useMemo, useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import { CheckField } from '@/components/ui/Checkbox';
+import Stepper from '@/components/ui/Stepper';
 import { api, mensagemErro } from '@/lib/api';
 import { useBosses, useEnemies } from '@/store';
 import { COR_DIF, instanciaDe, xpPorForca } from '@/lib/encontro';
@@ -120,16 +122,13 @@ export default function LevarParaMesaModal({ pontoId, titulo, inimigos, chefes, 
               </div>
             );
             return (
-              <label key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border cursor-pointer ${chefe ? 'bg-e-boss-bg border-e-boss-border' : 'bg-e-enemy-bg border-e-enemy-border'}`}>
-                <input type="checkbox" checked={l.marcado} onChange={(e) => mudar(i, { marcado: e.target.checked })} className="w-4 h-4 accent-[#a3e635]" />
-                <span className="flex-1 min-w-0">
-                  <span className={`block text-sm font-semibold ${chefe ? 'text-e-boss-text' : 'text-e-enemy-text'}`}>{nome}</span>
-                  <span className="text-[11px] text-e-sub">{chefe ? 'Chefe' : 'Inimigo'} com os dados atuais do Bestiário</span>
-                </span>
-                <input type="number" min={1} value={l.qtd} aria-label={`Quantidade de ${nome}`}
-                  onChange={(e) => mudar(i, { qtd: Math.max(1, Number(e.target.value) || 1) })}
-                  className="w-16 text-center text-sm rounded-lg px-2 py-1 bg-e-bg border border-e-border text-e-text" />
-              </label>
+              <div key={i} className={`flex items-center gap-3 px-3 py-2.5 rounded-xl border transition-opacity ${chefe ? 'bg-e-boss-bg border-e-boss-border' : 'bg-e-enemy-bg border-e-enemy-border'} ${l.marcado ? '' : 'opacity-60'}`}>
+                <CheckField checked={l.marcado} onChange={(marcado) => mudar(i, { marcado })} color={chefe ? 'amber' : 'default'} className="flex-1 min-w-0"
+                  label={<span className={`font-semibold ${chefe ? 'text-e-boss-text' : 'text-e-enemy-text'}`}>{nome}</span>}
+                  desc={`${chefe ? 'Chefe' : 'Inimigo'} com os dados atuais do Bestiário`} />
+                <Stepper label={`Quantidade de ${nome}`} value={l.qtd} onChange={(qtd) => mudar(i, { qtd })}
+                  cor={chefe ? { borda: '#6a5a20', texto: '#f0e8d0' } : { borda: '#4a2a2a', texto: '#e8d8d8' }} />
+              </div>
             );
           })}
 
@@ -137,11 +136,12 @@ export default function LevarParaMesaModal({ pontoId, titulo, inimigos, chefes, 
             <div className="mt-1 p-3 rounded-xl bg-e-card border border-e-border">
               <p className="text-sm font-semibold text-e-text">A Mesa já tem {jaTem} {jaTem === 1 ? 'inimigo' : 'inimigos'}</p>
               <p className="text-xs text-e-sub mt-0.5 truncate">{[...naMesa.map((e) => e.name), ...chefesNaMesa.map((b) => b.name)].join(', ')}</p>
-              <div role="radiogroup" aria-label="O que fazer com eles" className="flex gap-2 mt-2.5 flex-wrap">
+              <div role="radiogroup" aria-label="O que fazer com eles" className="grid grid-cols-2 gap-1 mt-2.5 p-1 rounded-xl bg-e-bg border border-e-border">
                 {([['somar', 'Somar aos que estão'], ['tirar', 'Tirar os atuais antes']] as const).map(([m, rot]) => (
-                  <label key={m} className={`flex items-center gap-2 h-8 px-3 rounded-lg border text-xs cursor-pointer ${modo === m ? 'border-e-accent bg-e-accent/10 text-e-text font-semibold' : 'border-e-border text-e-sub'}`}>
-                    <input type="radio" name="modo-mesa" checked={modo === m} onChange={() => setModo(m)} className="accent-[#a3e635]" /> {rot}
-                  </label>
+                  <button key={m} type="button" role="radio" aria-checked={modo === m} onClick={() => setModo(m)}
+                    className={`h-8 px-3 rounded-lg text-xs cursor-pointer transition-colors ${modo === m ? 'bg-e-card text-e-text font-semibold shadow-[inset_0_0_0_1px_var(--color-e-border2)]' : 'text-e-sub hover:text-e-text'}`}>
+                    {rot}
+                  </button>
                 ))}
               </div>
               {modo === 'tirar' && <p className="text-[11px] text-e-sub mt-2">Os atuais saem sem dar XP nem drop.</p>}

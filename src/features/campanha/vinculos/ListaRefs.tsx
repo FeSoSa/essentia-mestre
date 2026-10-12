@@ -1,7 +1,8 @@
 'use client';
 
-import { AlertTriangle, Minus, Plus, X } from 'lucide-react';
+import { AlertTriangle, X } from 'lucide-react';
 import Select from '@/components/ui/Select';
+import Stepper from '@/components/ui/Stepper';
 import type { CampanhaRef } from '../types';
 
 interface Props {
@@ -42,20 +43,15 @@ export default function ListaRefs({ titulo, refs, opcoes, onChange, cor, extra, 
               <p className="text-sm font-semibold truncate" style={{ color: cor.texto }}>{nome}</p>
               {!o && <p className="text-[11px]" style={{ color: cor.fraco }}>Não existe no catálogo. Troque ou crie o modelo.</p>}
             </div>
-            <div className="flex items-center rounded-md border" style={{ borderColor: cor.borda }}>
-              <button type="button" aria-label="Menos um" onClick={() => mudar(i, (r.qtd ?? 1) > 1 ? { ...r, qtd: (r.qtd ?? 1) - 1 } : r)}
-                className="w-7 h-7 flex items-center justify-center cursor-pointer" style={{ color: cor.texto }}><Minus size={12} /></button>
-              <span className="w-6 text-center text-sm font-bold tabular-nums" style={{ color: cor.texto }}>{r.qtd ?? 1}</span>
-              <button type="button" aria-label="Mais um" onClick={() => mudar(i, { ...r, qtd: (r.qtd ?? 1) + 1 })}
-                className="w-7 h-7 flex items-center justify-center cursor-pointer" style={{ color: cor.texto }}><Plus size={12} /></button>
-            </div>
+            <Stepper label={`Quantidade de ${nome}`} value={r.qtd ?? 1} onChange={(qtd) => mudar(i, { ...r, qtd })}
+              cor={{ borda: cor.borda, texto: cor.texto }} />
             {extra?.(r, !!o)}
             <button type="button" aria-label={`Tirar ${nome}`} onClick={() => mudar(i, null)}
               className="p-1 rounded text-e-faint hover:text-e-danger cursor-pointer"><X size={14} /></button>
           </div>
         );
       })}
-      <Select value="" onChange={adicionar} placeholder={adicionarRotulo}
+      <Select variant="action" value="" onChange={adicionar} placeholder={adicionarRotulo}
         options={opcoes.map((o) => ({ value: o.id, label: o.nome }))} />
     </div>
   );

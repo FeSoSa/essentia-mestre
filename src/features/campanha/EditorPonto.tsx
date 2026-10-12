@@ -6,6 +6,7 @@ import remarkGfm from 'remark-gfm';
 import { AlertTriangle, MapPin, RefreshCw, Trash2, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
+import Switch from '@/components/ui/Switch';
 import { mensagemErro } from '@/lib/api';
 import { useCampanhaStore } from './campanhaStore';
 import { juntar, mesmoConteudo } from './merge';
@@ -203,18 +204,14 @@ export default function EditorPonto({ ponto, estado, avisos, capitulos, pontos, 
             ))}
           </div>
           <div className="mt-1.5">
-            <Select value="" onChange={(v) => v && !draft.ligadoA.includes(v) && mudar({ ligadoA: [...draft.ligadoA, v] })} placeholder="+ Ligar a outro ponto"
+            <Select variant="action" value="" onChange={(v) => v && !draft.ligadoA.includes(v) && mudar({ ligadoA: [...draft.ligadoA, v] })} placeholder="Ligar a outro ponto"
               options={pontos.filter((p) => p.id !== draft.id && !draft.ligadoA.includes(p.id)).map((p) => ({ value: p.id, label: p.titulo }))} />
           </div>
         </div>
 
-        <label className="flex items-center justify-between gap-3 p-3 rounded-xl bg-e-card border border-e-border cursor-pointer">
-          <span>
-            <span className="block text-sm font-semibold text-e-text">Revelado aos jogadores</span>
-            <span className="text-[11px] text-e-sub">Por enquanto só marca; o app do jogador ainda não mostra pontos</span>
-          </span>
-          <input type="checkbox" checked={draft.revelado} onChange={(e) => mudar({ revelado: e.target.checked })} className="w-4 h-4 accent-[#a3e635]" />
-        </label>
+        <Switch checked={draft.revelado} onChange={(revelado) => mudar({ revelado })}
+          className="p-3 rounded-xl bg-e-card border border-e-border hover:border-e-border2 transition-colors"
+          label="Revelado aos jogadores" desc="Por enquanto só marca; o app do jogador ainda não mostra pontos" />
 
         <div className="flex flex-wrap gap-1.5">
           {estado.status !== 'ativo' && <Button size="sm" variant="subtle" onClick={() => acao(() => store.ativar(draft.id))}>Ativar</Button>}

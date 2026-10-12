@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Check, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
+import Stepper from '@/components/ui/Stepper';
 import { api, mensagemErro } from '@/lib/api';
 import { useActivePlayers } from '@/store';
 import type { ItemCatalog } from '@/store/types';
@@ -100,11 +101,10 @@ function AchadoPorModal({ pontoId, item, qtdSugerida, onClose }: { pontoId: stri
           ))}
           {players.length === 0 && <p className="col-span-2 text-sm text-e-faint">Nenhum jogador ativo.</p>}
         </div>
-        <label className="flex items-center gap-2 text-xs text-e-sub">
+        <div className="flex items-center gap-2 text-xs text-e-sub">
           Quantidade
-          <input type="number" min={1} value={qtd} onChange={(e) => setQtd(Math.max(1, Number(e.target.value) || 1))}
-            className="w-20 text-center text-sm rounded-lg px-2 py-1 bg-e-bg border border-e-border text-e-text" />
-        </label>
+          <Stepper label="Quantidade" value={qtd} onChange={setQtd} />
+        </div>
         {erro && <p className="text-xs text-e-danger">{erro}</p>}
         <div className="flex justify-end gap-2">
           <Button variant="ghost" onClick={onClose} disabled={enviando}>Cancelar</Button>
