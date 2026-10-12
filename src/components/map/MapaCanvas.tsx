@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, type ReactNode } from 'react';
+import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { proxyUrl } from '@/lib/gdrive';
 
 export interface PosicaoMapa { x: number; y: number }
@@ -26,6 +26,8 @@ interface Props<T extends { id: string; x: number; y: number }> {
   onMove?: (item: T, pos: PosicaoMapa) => void;
   /** Camada de fundo não interativa (ex.: a outra camada, apagada). */
   fundo?: ReactNode;
+  /** Avisa o tamanho do mapa na tela (para agrupar itens próximos em pixels). */
+  onTamanho?: (w: number, h: number) => void;
 }
 
 /**
@@ -36,8 +38,16 @@ interface Props<T extends { id: string; x: number; y: number }> {
  * os marcadores reais contra o app.
  */
 export default function MapaCanvas<T extends { id: string; x: number; y: number }>({
-  imageUrl, alt, items, renderItem, onCreateAt, onMove, fundo,
+  imageUrl, alt, items, renderItem, onCreateAt, onMove, fundo, onTamanho,
 }: Props<T>) {
+  const caixaRef = useRef<HTMLDivElement>(null);
+  useEffect(() => {
+    const el = caixaRef.current;
+    if (!el || !onTamanho) return;
+    const ro = new ResizeObserver(() => onTamanho(el.clientWidth, el.clientHeight));
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [onTamanho]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<PosicaoMapa | null>(null);
 
@@ -83,6 +93,7 @@ export default function MapaCanvas<T extends { id: string; x: number; y: number 
 
   return (
     <div
+      ref={caixaRef}
       data-mapa-canvas
       onClick={handleImageClick}
       className={`relative w-full rounded-xl overflow-hidden border border-e-border select-none ${onCreateAt ? 'cursor-crosshair' : ''}`}

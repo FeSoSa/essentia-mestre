@@ -1,11 +1,12 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { LogIn, Map as MapIcon, Network, X } from 'lucide-react';
 import Button from '@/components/ui/Button';
 import Select from '@/components/ui/Select';
 import { CheckField } from '@/components/ui/Checkbox';
 import MapaCanvas from '@/components/map/MapaCanvas';
+import { agrupar, posicaoLeque, type Grupo } from '@/components/map/agrupar';
 import { api, mensagemErro } from '@/lib/api';
 import { ROOT_MAP_ID } from '@/lib/map';
 import type { MapMarker, Region } from '@/store/types';
@@ -34,6 +35,10 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
   const [visao, setVisao] = useState<'mapa' | 'grafo'>('mapa');
   const [focoGrafo, setFocoGrafo] = useState<{ id: string; n: number } | null>(null);
   const [todosMarcadores, setTodosMarcadores] = useState<MapMarker[]>([]);
+  const [tamanho, setTamanho] = useState({ w: 0, h: 0 });
+  const [aberto, setAberto] = useState<string | null>(null);
+  const fecharRef = useRef<ReturnType<typeof setTimeout>>(undefined);
+  const aoTamanho = useCallback((w: number, h: number) => setTamanho({ w, h }), []);
   const [erro, setErro] = useState<string | null>(null);
 
   const currentMapId = mapStack[mapStack.length - 1];
@@ -82,6 +87,24 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
 
   const selecionado = pontos.find((p) => p.id === selecionadoId);
   const porId = new Map(aqui.map((a) => [a.id, a]));
+
+  // Pontos quase no mesmo lugar viram um grupo; o grupo abre em leque no hover ou no clique
+  const grupos = useMemo(() => agrupar(aqui, tamanho.w, tamanho.h), [aqui, tamanho]);
+  const grupoDe = useMemo(() => {
+    const m = new Map<string, Grupo<(typeof aqui)[number]>>();
+    for (const g of grupos) if (g.membros.length > 1) for (const it of g.membros) m.set(it.id, g);
+    return m;
+  }, [grupos]);
+  const grupoAberto = aberto ?? (selecionadoId ? grupoDe.get(selecionadoId)?.id : undefined) ?? null;
+  type ItemMapa = { id: string; x: number; y: number; ponto?: Ponto; grupo?: Grupo<(typeof aqui)[number]> };
+  const itensMapa: ItemMapa[] = [
+    ...aqui,
+    ...grupos.filter((g) => g.membros.length > 1).map((g) => ({ id: g.id, x: g.x, y: g.y, grupo: g })),
+  ];
+
+  function abrirGrupo(id: string) { clearTimeout(fecharRef.current); setAberto(id); }
+  function agendarFechar() { clearTimeout(fecharRef.current); fecharRef.current = setTimeout(() => setAberto(null), 280); }
+  function manterAberto() { clearTimeout(fecharRef.current); }
 
   if (!snap) {
     return <div className="flex-1 flex items-center justify-center text-sm text-e-faint">{erro ?? 'Carregando a campanha…'}</div>;
@@ -140,9 +163,11 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
           <MapaCanvas
             imageUrl={currentImage.url}
             alt={currentImage.title}
-            items={aqui}
-            onCreateAt={setNovoEm}
-            onMove={(item, pos) => moverPonto(item.id, { id: currentMapId, nome: nomeMapa(currentMapId) }, pos.x, pos.y).catch((e) => setErro(mensagemErro(e, 'Não deu para mover')))}
+            items={itensMapa}
+            onTamanho={aoTamanho}
+            // Com um grupo aberto, clicar no vazio só fecha o grupo
+            onCreateAt={(pos) => { if (aberto) setAberto(null); else setNovoEm(pos); }}
+            onMove={(item, pos) => { if (item.ponto) moverPonto(item.id, { id: currentMapId, nome: nomeMapa(currentMapId) }, pos.x, pos.y).catch((e) => setErro(mensagemErro(e, 'Não deu para mover'))); }}
             fundo={<>
               {/* Caminho do grupo: ligações entre pontos deste mapa */}
               <svg viewBox="0 0 100 100" preserveAspectRatio="none" className="absolute inset-0 w-full h-full overflow-visible" aria-hidden="true">
@@ -159,9 +184,9 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                     {/* O local é um botão: entra na região para escrever pontos lá dentro */}
                     <button type="button" aria-label={`Entrar em ${m.label}`} title={`Entrar em ${m.label}`}
                       onClick={(e) => { e.stopPropagation(); setMapStack([...mapStack, m.regionId]); }}
-                      className="group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-2 flex flex-col items-center gap-1 cursor-pointer">
-                      <span className="w-4 h-4 rounded-full border-2 border-white/60 bg-e-gold/60 group-hover:bg-e-gold group-hover:border-white transition-colors" />
-                      <span className="flex items-center gap-1 text-[10px] text-zinc-100/85 bg-black/55 group-hover:bg-black/85 group-hover:text-white rounded px-1.5 py-0.5 whitespace-nowrap transition-colors">
+                      className="group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center cursor-pointer hover:z-30">
+                      <span className="w-2.5 h-2.5 rounded-full border-2 border-white/70 bg-e-gold/70 group-hover:w-3.5 group-hover:h-3.5 group-hover:bg-e-gold group-hover:border-white transition-all" />
+                      <span className="absolute top-6 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center gap-1 text-[10px] text-white bg-black/85 rounded px-1.5 py-0.5 whitespace-nowrap">
                         {m.label} <LogIn size={10} />
                       </span>
                     </button>
@@ -177,21 +202,65 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 );
               })}
             </>}
-            renderItem={({ ponto: p }, pos, alca, arrastando) => {
+            renderItem={(item, pos, alca, arrastando) => {
+              /* Grupo de pontos próximos: bolinha com o número; abre em leque */
+              if (item.grupo) {
+                const g = item.grupo;
+                const abertoAqui = grupoAberto === g.id;
+                const cores = g.membros.map((m) => tipoDe(m.ponto.tipo).cor);
+                const anel = `conic-gradient(${cores.map((c, i) => `${c} ${(i / cores.length) * 360}deg ${((i + 1) / cores.length) * 360}deg`).join(', ')})`;
+                const temAtivo = g.membros.some((m) => snap.estado[m.id]?.status === 'ativo');
+                return (
+                  <div className="absolute" style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%` }}
+                    onClick={(e) => e.stopPropagation()} onMouseEnter={() => abrirGrupo(g.id)} onMouseLeave={agendarFechar}>
+                    {abertoAqui && (<>
+                      <span className="absolute rounded-full bg-black/45 backdrop-blur-[1px] pointer-events-none -translate-x-1/2 -translate-y-1/2"
+                        style={{ width: posicaoLeque(0, g.membros.length).r * 2 + 44, height: posicaoLeque(0, g.membros.length).r * 2 + 44 }} />
+                      {g.membros.map((m, i) => {
+                        const { dx, dy } = posicaoLeque(i, g.membros.length);
+                        return <span key={m.id} className="absolute left-0 top-0 h-px bg-white/40 origin-left pointer-events-none"
+                          style={{ width: Math.hypot(dx, dy), transform: `rotate(${Math.atan2(dy, dx)}rad)` }} />;
+                      })}
+                    </>)}
+                    {temAtivo && !abertoAqui && <span className="absolute w-10 h-10 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
+                    <button type="button" aria-label={`${g.membros.length} pontos juntos: ${g.membros.map((m) => m.ponto.titulo).join(', ')}`}
+                      title={g.membros.map((m) => m.ponto.titulo).join('\n')}
+                      onClick={() => setAberto(abertoAqui ? null : g.id)}
+                      className="absolute -translate-x-1/2 -translate-y-1/2 w-6 h-6 rounded-full p-[2px] shadow-lg cursor-pointer" style={{ background: anel }}>
+                      <span className="w-full h-full rounded-full bg-[#111113] text-[11px] font-bold text-white flex items-center justify-center">{g.membros.length}</span>
+                    </button>
+                  </div>
+                );
+              }
+
+              /* Ponto: bolinha pequena que abre no hover; aberto sempre quando selecionado ou ativo */
+              const p = item.ponto!;
+              const g = grupoDe.get(p.id);
+              if (g && g.id !== grupoAberto && !arrastando) return null;
+              const idx = g ? g.membros.findIndex((m) => m.id === p.id) : -1;
+              const off = g && !arrastando ? posicaoLeque(idx, g.membros.length) : { dx: 0, dy: 0 };
               const t = tipoDe(p.tipo);
               const st = (snap.estado[p.id] ?? ESTADO_PADRAO).status;
               const sel = p.id === selecionadoId;
+              const aberta = sel || st === 'ativo' || !!g || arrastando;
               return (
-                <div className={`absolute ${st === 'concluido' ? 'opacity-55' : ''}`} style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%` }}
-                  onClick={(e) => { e.stopPropagation(); setSelecionadoId(p.id); }}>
-                  {st === 'ativo' && <span className="absolute -left-[22px] -top-[22px] w-11 h-11 rounded-full bg-e-accent/25" />}
-                  {sel && <span className="absolute -left-[21px] -top-[21px] w-[42px] h-[42px] rounded-full border-2 border-white" />}
+                <div className={`group absolute ${st === 'concluido' ? 'opacity-55' : ''} ${sel || arrastando ? 'z-20' : 'hover:z-30'}`}
+                  style={{ left: `${pos.x * 100}%`, top: `${pos.y * 100}%`, transform: `translate(${off.dx}px, ${off.dy}px)`, '--c': t.cor, '--f': t.fundo } as React.CSSProperties}
+                  onClick={(e) => { e.stopPropagation(); setSelecionadoId(p.id); }}
+                  onMouseEnter={g ? manterAberto : undefined} onMouseLeave={g ? agendarFechar : undefined}>
+                  {st === 'ativo' && <span className="absolute w-11 h-11 -translate-x-1/2 -translate-y-1/2 rounded-full bg-e-accent/25 pointer-events-none" />}
+                  {sel && <span className="absolute w-[38px] h-[38px] -translate-x-1/2 -translate-y-1/2 rounded-full border-2 border-white pointer-events-none" />}
+                  {/* Área de toque maior que a bolinha, para pegar fácil */}
                   <span {...alca} title={p.titulo}
-                    className={`absolute -left-[15px] -top-[15px] w-[30px] h-[30px] rounded-full border-2 flex items-center justify-center shadow-lg ${arrastando ? 'cursor-grabbing' : 'cursor-grab'}`}
-                    style={{ background: t.fundo, borderColor: t.cor, color: t.cor, borderStyle: p.tipo === 'segredo' ? 'dashed' : 'solid' }}>
-                    <t.Icon size={14} />
+                    className={`absolute w-7 h-7 -translate-x-1/2 -translate-y-1/2 flex items-center justify-center ${arrastando ? 'cursor-grabbing' : 'cursor-grab'}`}>
+                    <span className={`rounded-full border-2 flex items-center justify-center shadow-lg transition-all duration-150 ${aberta
+                      ? 'w-7 h-7 bg-[var(--f)] border-[var(--c)]'
+                      : 'w-3 h-3 bg-[var(--c)] border-white/90 group-hover:w-7 group-hover:h-7 group-hover:bg-[var(--f)] group-hover:border-[var(--c)]'}`}
+                      style={{ borderStyle: p.tipo === 'segredo' ? 'dashed' : 'solid' }}>
+                      <t.Icon size={13} color={t.cor} className={aberta ? '' : 'hidden group-hover:block'} />
+                    </span>
                   </span>
-                  <span className="absolute left-1/2 -translate-x-1/2 top-[18px] text-[11px] font-semibold text-white bg-black/75 rounded-md px-2 py-0.5 whitespace-nowrap pointer-events-none">
+                  <span className={`absolute left-0 -translate-x-1/2 top-4 text-[11px] font-semibold text-white bg-black/80 rounded-md px-2 py-0.5 whitespace-nowrap pointer-events-none ${aberta ? '' : 'hidden group-hover:block'}`}>
                     {String(p.ordem).padStart(2, '0')} {p.titulo}{st === 'ativo' && <b className="text-e-accent"> · ativo</b>}
                   </span>
                 </div>
