@@ -16,7 +16,8 @@ function Num({ label, value, onChange, step = 1, min = 0, hint }: {
 }) {
   return (
     <label className="flex flex-col gap-1.5">
-      <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint">{label}</span>
+      {/* Altura fixa de duas linhas: rótulos curtos e longos deixam os campos na mesma altura */}
+      <span className="min-h-[2.5rem] flex items-end text-[10px] font-bold uppercase tracking-widest text-e-faint leading-snug">{label}</span>
       <input type="number" value={value} step={step} min={min} onChange={(e) => onChange(Number(e.target.value))}
         className="w-full text-sm rounded-xl px-3 py-2 bg-e-bg border border-e-border text-e-text outline-none focus:border-e-border2 tabular-nums" />
       {hint && <span className="text-[10px] text-e-faint">{hint}</span>}

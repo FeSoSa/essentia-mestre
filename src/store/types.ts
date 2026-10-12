@@ -128,6 +128,7 @@ export interface Essencia {
   attributeBonus: Record<string, number>; skillIds: string[];
   icon?: string; color?: string; parentId?: string;
   nivelMaeNecessario?: number | null;   // Derivada: liberada pela mãe com ela neste nível (vazio = só tendo a Derivada)
+  bonusPorNivel?: Record<string, number>[]; // quanto cada nível (1 a 4) soma ao bônus; vazio = regra padrão de %
 }
 
 export interface EssenciaObtida {

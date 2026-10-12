@@ -1,9 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { X, Plus, Trash2 } from 'lucide-react';
+import { X, Trash2, Wand2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import Button from '@/components/ui/Button';
+import Select from '@/components/ui/Select';
+import { tabelaBonusPadrao } from '@/lib/atributos';
 import type { Essencia } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import { STATUS_ICONS } from '@/lib/statusIcons';
@@ -55,26 +57,34 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
   const [icon,    setIcon]    = useState(essencia?.icon ?? '');
   const [color,   setColor]   = useState(essencia?.color ?? '');
   const [colorInput, setColorInput] = useState(essencia?.color ?? '');
-  const [bonuses, setBonuses] = useState<{ key: string; val: number }[]>(
-    Object.entries(essencia?.attributeBonus ?? {}).map(([key, val]) => ({ key, val }))
-  );
+  // Bônus por nível: quanto cada nível (1 a 4) soma. Sem tabela salva, parte da regra padrão sobre o bônus total.
+  const [tabela, setTabela] = useState<Record<string, number>[]>(() => {
+    const salva = essencia?.bonusPorNivel ?? [];
+    const base = salva.length ? salva : tabelaBonusPadrao(essencia?.attributeBonus ?? {});
+    return [0, 1, 2, 3].map((i) => ({ ...(base[i] ?? {}) }));
+  });
+  const [attrs, setAttrs] = useState<string[]>(() =>
+    ATTRS.map((a) => a.key).filter((k) => (essencia?.bonusPorNivel ?? []).some((m) => k in m) || k in (essencia?.attributeBonus ?? {})));
   const [saving, setSaving] = useState(false);
 
   const linkedSkills = essencia
     ? skills.filter((s) => s.essenciaId === essencia.id)
     : [];
 
-  function addBonus() {
-    setBonuses((p) => [...p, { key: 'strength', val: 1 }]);
+  const acumulado = (attr: string, nivel: number) => tabela.slice(0, nivel).reduce((t, m) => t + (m[attr] ?? 0), 0);
+
+  function setCelula(attr: string, nivel: number, val: number) {
+    setTabela((t) => t.map((m, i) => (i === nivel - 1 ? { ...m, [attr]: val } : m)));
   }
-  function removeBonus(i: number) {
-    setBonuses((p) => p.filter((_, idx) => idx !== i));
+  function removeAttr(attr: string) {
+    setAttrs((a) => a.filter((k) => k !== attr));
+    setTabela((t) => t.map((m) => Object.fromEntries(Object.entries(m).filter(([k]) => k !== attr))));
   }
-  function setBonusKey(i: number, key: string) {
-    setBonuses((p) => p.map((b, idx) => idx === i ? { ...b, key } : b));
-  }
-  function setBonusVal(i: number, val: number) {
-    setBonuses((p) => p.map((b, idx) => idx === i ? { ...b, val } : b));
+  /** Mantém o total de cada atributo e redistribui pela regra padrão (25/50/75/100%). */
+  function distribuirPadrao() {
+    const totais = Object.fromEntries(attrs.map((k) => [k, acumulado(k, 4)]));
+    const padrao = tabelaBonusPadrao(totais);
+    setTabela([0, 1, 2, 3].map((i) => ({ ...padrao[i] })));
   }
 
   function pickColor(hex: string) {
@@ -86,13 +96,14 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
     e.preventDefault();
     setSaving(true);
     try {
-      const attributeBonus: Record<string, number> = {};
-      for (const b of bonuses) {
-        if (b.key) attributeBonus[b.key] = b.val;
-      }
+      // A API recalcula o total (attributeBonus) somando a tabela
+      const bonusPorNivel = attrs.length
+        ? tabela.map((m) => Object.fromEntries(attrs.map((k) => [k, m[k] ?? 0]).filter(([, v]) => v !== 0)))
+        : [];
+      const attributeBonus = Object.fromEntries(attrs.map((k) => [k, acumulado(k, 4)]).filter(([, v]) => v !== 0));
       const skillIds = linkedSkills.map((s) => s.id);
       const payload = {
-        name, type, desc, attributeBonus, skillIds,
+        name, type, desc, attributeBonus, bonusPorNivel, skillIds,
         icon: icon || null, color: color || null,
         parentId: type === 'Derivada' ? parentId || null : null,
         nivelMaeNecessario: type === 'Derivada' && parentId ? nivelMae : null,
@@ -155,19 +166,16 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
           {type === 'Derivada' && (
             <div>
               <label className={lbl}>Essência Elemental (origem)</label>
-              <select
+              <Select
                 value={parentId}
-                onChange={(e) => setParentId(e.target.value)}
-                className="w-full rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors cursor-pointer"
-              >
-                <option value="">— Nenhuma —</option>
-                {essencias
-                  .filter((e) => (e.type === 'Elemental' || e.type === 'Grande') && e.id !== essencia?.id)
-                  .map((e) => (
-                    <option key={e.id} value={e.id}>{e.name}</option>
-                  ))
-                }
-              </select>
+                onChange={setParentId}
+                options={[
+                  { value: '', label: 'Nenhuma' },
+                  ...essencias
+                    .filter((e) => (e.type === 'Elemental' || e.type === 'Grande') && e.id !== essencia?.id)
+                    .map((e) => ({ value: e.id, label: e.name })),
+                ]}
+              />
               {parentId && (
                 <div className="mt-3">
                   <label className={lbl}>Liberada pela Essência-mãe a partir do nível</label>
@@ -206,7 +214,7 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
                 className={`p-2 rounded-lg border transition-colors cursor-pointer flex items-center justify-center text-[9px] font-bold ${
                   !icon ? 'border-e-accent bg-e-accent/10 text-e-accent' : 'border-e-border hover:border-e-border2 text-e-faint'
                 }`}>
-                —
+                sem
               </button>
               {STATUS_ICONS.map(({ name: n, Icon }) => (
                 <button key={n} type="button" title={n} onClick={() => setIcon(icon === n ? '' : n)}
@@ -257,30 +265,55 @@ export default function EssenciaModal({ essencia, essencias, skills, onClose, on
             </div>
           </div>
 
-          {/* Bônus de atributos */}
+          {/* Bônus de atributos por nível (acumulado) */}
           <div>
-            <label className={lbl}>Bônus de atributos</label>
+            <div className="flex items-center justify-between mb-1.5">
+              <label className={`${lbl} !mb-0`}>Bônus de atributos por nível</label>
+              {attrs.length > 0 && (
+                <button type="button" onClick={distribuirPadrao} title="Mantém o total e redistribui 25/50/75/100% pelos níveis"
+                  className="flex items-center gap-1 text-[11px] text-e-faint hover:text-e-accent transition-colors cursor-pointer">
+                  <Wand2 size={12} /> Distribuir pelo padrão
+                </button>
+              )}
+            </div>
             <div className="flex flex-col gap-2">
-              {bonuses.map((b, i) => (
-                <div key={i} className="flex items-center gap-2">
-                  <select value={b.key} onChange={(e) => setBonusKey(i, e.target.value)}
-                    className="flex-1 rounded-xl px-3 py-2 bg-e-bg border border-e-border text-sm text-e-text outline-none focus:border-e-border2 transition-colors cursor-pointer">
-                    {ATTRS.map((a) => (
-                      <option key={a.key} value={a.key}>{a.label} — {a.key}</option>
-                    ))}
-                  </select>
-                  <input type="number" value={b.val} onChange={(e) => setBonusVal(i, Number(e.target.value))}
-                    className="!w-20 !text-center" />
-                  <button type="button" onClick={() => removeBonus(i)}
-                    className="p-1.5 rounded-lg text-e-faint hover:text-e-danger hover:bg-e-danger/10 transition-colors cursor-pointer">
-                    <Trash2 size={14} />
-                  </button>
+              {attrs.length > 0 && (
+                <div className="rounded-xl border border-e-border bg-e-bg/60 p-2.5 flex flex-col gap-1.5">
+                  <div className="grid grid-cols-[3rem_repeat(4,1fr)_2.5rem_1.75rem] gap-1.5 items-center text-[10px] font-bold uppercase tracking-widest text-e-faint">
+                    <span />
+                    {[1, 2, 3, 4].map((n) => <span key={n} className="text-center">Nv {n}</span>)}
+                    <span className="text-center">Total</span>
+                    <span />
+                  </div>
+                  {attrs.map((k) => (
+                    <div key={k} className="grid grid-cols-[3rem_repeat(4,1fr)_2.5rem_1.75rem] gap-1.5 items-start">
+                      <span className="text-sm font-semibold text-e-text pt-1.5">{ATTRS.find((a) => a.key === k)?.label ?? k}</span>
+                      {[1, 2, 3, 4].map((n) => (
+                        <div key={n} className="flex flex-col items-center gap-0.5">
+                          <input type="number" value={tabela[n - 1][k] ?? 0} onChange={(e) => setCelula(k, n, Number(e.target.value))}
+                            className="!px-1 !py-1.5 !text-center tabular-nums" aria-label={`${k} nível ${n}`} />
+                          <span className="text-[10px] text-e-faint tabular-nums">= {acumulado(k, n) > 0 ? '+' : ''}{acumulado(k, n)}</span>
+                        </div>
+                      ))}
+                      <span className="text-sm font-semibold text-e-accent text-center pt-1.5 tabular-nums">
+                        {acumulado(k, 4) > 0 ? '+' : ''}{acumulado(k, 4)}
+                      </span>
+                      <button type="button" onClick={() => removeAttr(k)} aria-label="Remover atributo"
+                        className="p-1.5 mt-0.5 rounded-lg text-e-faint hover:text-e-danger hover:bg-e-danger/10 transition-colors cursor-pointer">
+                        <Trash2 size={13} />
+                      </button>
+                    </div>
+                  ))}
+                  <p className="text-[11px] text-e-faint pt-1">
+                    Cada campo é o que o nível soma; embaixo, o total que o jogador tem com a Essência naquele nível.
+                  </p>
                 </div>
-              ))}
-              <button type="button" onClick={addBonus}
-                className="flex items-center justify-center gap-2 py-2 rounded-xl border border-dashed border-e-border text-e-faint hover:border-e-border2 hover:text-e-sub text-sm transition-colors cursor-pointer">
-                <Plus size={13} /> Adicionar atributo
-              </button>
+              )}
+              {attrs.length < ATTRS.length && (
+                <Select variant="action" value="" placeholder="Adicionar atributo"
+                  onChange={(k) => setAttrs((a) => ATTRS.map((x) => x.key).filter((x) => x === k || a.includes(x)))}
+                  options={ATTRS.filter((a) => !attrs.includes(a.key)).map((a) => ({ value: a.key, label: a.label }))} />
+              )}
             </div>
           </div>
 

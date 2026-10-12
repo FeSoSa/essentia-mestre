@@ -9,6 +9,7 @@ import Select from '@/components/ui/Select';
 import type { Essencia, Player } from '@/store/types';
 import { CapacidadeEssencia, NivelEssencia } from '@/components/shared/EssenciaNivel';
 import ProficienciasEditor from '@/components/shared/ProficienciasEditor';
+import { bonusEssenciaNoNivel } from '@/lib/atributos';
 
 const TYPE_COLORS: Record<string, { bg: string; text: string }> = {
   Elemental: { bg: '#d4a84e22', text: '#d4a84e' },
@@ -110,7 +111,7 @@ export default function PlayerEssenciasModal({ player, essencias, onClose }: Pro
                 const ess = essencias.find((e) => e.id === o.essenciaId);
                 if (!ess) return null;
                 const color = TYPE_COLORS[ess.type] ?? { bg: '#71717a22', text: '#71717a' };
-                const bonuses = Object.entries(ess.attributeBonus ?? {}).filter(([, v]) => v !== 0);
+                const bonuses = bonusEssenciaNoNivel(ess, o.nivel ?? 1);
                 return (
                   <div key={o.essenciaId}
                     className="flex items-start gap-3 rounded-xl border p-3 bg-e-bg"

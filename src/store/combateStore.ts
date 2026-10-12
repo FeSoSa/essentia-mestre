@@ -5,7 +5,7 @@ import type { CombateConfig, EnemyAction } from '@/store/types';
 /** Valores usados até a API responder (iguais aos padrões da CombateConfig). */
 const PADRAO: CombateConfig = {
   critMultBase: 1.5, critMultDado: 2, equilibrioSemProficiencia: 6, equilibrioComProficiencia: 5,
-  esPorAcertoBasico: 3, desviosPorCombate: 4,
+  esPorAcertoBasico: 3, desviosPorCombate: 3,
   tiers: [
     { tier: 1, equilibrio: 4, custoBase: 8 }, { tier: 2, equilibrio: 3.5, custoBase: 15 },
     { tier: 3, equilibrio: 3, custoBase: 25 }, { tier: 4, equilibrio: 2.5, custoBase: 40 },
