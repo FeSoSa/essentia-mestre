@@ -504,12 +504,13 @@ export interface EnemyInstance {
   negaCritico?: boolean; negaCriticoRodada?: number | null;
 }
 
-/** Ação proposta no turno automático de um inimigo. */
+/** Ação proposta no turno automático de um inimigo ou aliado. */
 export interface EnemyAction {
   id: string; combatId?: string; rodada: number;
   status: 'PROPOSTA' | 'AGUARDANDO_JOGADOR' | 'CONCLUIDA' | 'PULADA' | 'ERROU';
-  entityId: string; entityKind: 'enemy' | 'boss'; entityName: string;
-  alvoId: string; alvoNome: string;
+  entityId: string; entityKind: 'enemy' | 'boss' | 'ally'; entityName: string;
+  /** player quando um inimigo ataca; enemy/boss quando um aliado ataca */
+  alvoId: string; alvoKind?: 'player' | 'enemy' | 'boss'; alvoNome: string;
   ataqueIdx: number; ataqueNome: string; formula: string;
   d20Acerto: number; modAcerto: number; totalAcerto: number; defAlvo: number; acertou: boolean;
   d20Dano?: number | null; dano?: number | null; custoEs: number;

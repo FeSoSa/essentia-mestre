@@ -186,6 +186,15 @@ export default function Pendencias() {
         {effectRequests.map((r) => <PedidoEfeito key={r.requestId} r={r} />)}
         {allyRequests.map((r) => <PedidoAliados key={r.requestId} r={r} />)}
         {outrasAcoes.map((a) => (
+          a.entityKind === 'ally' ? (
+            <div key={a.id} className="w-[340px] shrink-0 rounded-2xl border border-emerald-500/30 bg-[#18181b] overflow-hidden">
+              <div className="flex items-center gap-2 px-4 py-2.5 border-b border-emerald-500/20 bg-emerald-500/[0.05]">
+                <Bot size={13} className="text-emerald-300" />
+                <span className="text-[10px] font-black uppercase tracking-[0.14em] text-emerald-300">Turno de aliado</span>
+              </div>
+              <AcaoCard key={`${a.id}:${a.alvoId}:${a.ataqueIdx}`} acao={a} />
+            </div>
+          ) :
           <div key={a.id} className="w-[340px] shrink-0 rounded-2xl border border-red-500/30 bg-[#18181b] overflow-hidden">
             <div className="flex items-center gap-2 px-4 py-2.5 border-b border-red-500/20 bg-red-500/[0.05]">
               <Bot size={13} className="text-red-300" />

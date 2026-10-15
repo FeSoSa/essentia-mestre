@@ -158,6 +158,56 @@ function VezOponente({ c }: { c: Combatente }) {
   );
 }
 
+/** Vez de um aliado: o app propõe o ataque contra um inimigo ou boss, igual ao turno dos oponentes. */
+function VezAliado({ c }: { c: Combatente }) {
+  const acoes = useCombateStore((s) => s.acoes);
+  const al = c.aliado;
+  const acao = Object.values(acoes)
+    .filter((a) => a.entityId === c.id)
+    .sort((a, b) => (a.status === 'PROPOSTA' ? -1 : 1) - (b.status === 'PROPOSTA' ? -1 : 1))[0];
+  const ataques = al?.attacks ?? [];
+  const cor = COR_TIPO.aliado;
+
+  return (
+    <Moldura cor={cor}>
+      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] h-full">
+        <div className="p-6 flex flex-col gap-4">
+          <Cabecalho c={c} rotulo="Vez do aliado"
+            extra={al && <div className="flex gap-1.5 flex-wrap"><Pilula cor="#a1a1aa">DEF {al.attributes.defense}</Pilula></div>} />
+          <div className="flex flex-col gap-1.5">
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint">Ataques</span>
+            <div className="flex flex-wrap gap-1.5">
+              {ataques.map((a, i) => (
+                <span key={i} className="text-xs px-2.5 py-1 rounded-lg bg-white/[0.04] border border-white/10 text-e-sub">
+                  <b className="text-e-text font-semibold">{a.name}</b>{a.damage ? ` · ${a.damage}` : ''}
+                </span>
+              ))}
+              {ataques.length === 0 && <span className="text-xs text-e-faint">Sem ataques cadastrados: ajuste a vida dos inimigos à mão.</span>}
+            </div>
+          </div>
+          {!acao && ataques.length > 0 && (
+            <div className="flex gap-2 mt-auto">
+              <Acao tom="sucesso" onClick={() => proporTurno(c.id, 'ally').catch(() => {})}><Bot size={13} /> Calcular turno</Acao>
+            </div>
+          )}
+        </div>
+        <div className="border-l border-white/10 bg-black/20 flex flex-col">
+          <div className="px-4 pt-4 flex items-center gap-2">
+            <Bot size={13} className="text-emerald-300" />
+            <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-sub">Ação proposta</span>
+          </div>
+          {acao ? <AcaoCard key={`${acao.id}:${acao.alvoId}:${acao.ataqueIdx}`} acao={acao} /> : (
+            <div className="flex-1 flex flex-col items-center justify-center gap-2 text-e-faint p-6 text-center">
+              {ataques.length > 0 ? <Hourglass size={22} className="animate-pulse" /> : <Shield size={22} />}
+              <span className="text-xs">{ataques.length > 0 ? 'Calculando a ação…' : 'Nada a calcular.'}</span>
+            </div>
+          )}
+        </div>
+      </div>
+    </Moldura>
+  );
+}
+
 /** Vez de um jogador: estado dele e atalhos. */
 function VezJogador({ c, p }: { c: Combatente; p: Player }) {
   const { setPlayer } = useStore();
@@ -268,9 +318,5 @@ export default function EmFoco({ onIniciativa, onAdicionar }: { onIniciativa: ()
   }
   if (c.tipo === 'jogador' && c.jogador) return <VezJogador c={c} p={c.jogador} />;
   if (c.tipo === 'inimigo' || c.tipo === 'boss') return <VezOponente key={c.id} c={c} />;
-  return (
-    <Moldura cor={COR_TIPO.aliado}>
-      <div className="p-6"><Cabecalho c={c} rotulo="Vez do aliado" /></div>
-    </Moldura>
-  );
+  return <VezAliado key={c.id} c={c} />;
 }

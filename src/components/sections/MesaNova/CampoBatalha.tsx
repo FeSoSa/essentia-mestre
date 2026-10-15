@@ -134,6 +134,11 @@ function CartaoCombatente({ e, players, vez }: { e: Entidade; players: Player[];
       </div>
 
       <div className="mt-auto flex items-center gap-1.5 px-4 py-3 border-t border-white/[0.06]">
+        {e.kind === 'ally' && ataques.length > 0 && !caido && (
+          <Acao tom="sucesso" title="O app calcula alvo, ataque, acerto e dano contra os inimigos" onClick={() => proporTurno(idDe(e), 'ally').catch(() => {})}>
+            <Bot size={13} /> Auto
+          </Acao>
+        )}
         {e.kind !== 'ally' && ataques.length > 0 && !caido && (
           <>
             <Acao tom="perigo" title="O app calcula alvo, ataque, acerto e dano" onClick={() => proporTurno(idDe(e), e.kind as 'enemy' | 'boss').catch(() => {})}>

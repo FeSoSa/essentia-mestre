@@ -3,18 +3,18 @@
 import { useEffect, useRef, useState } from 'react';
 import { Bot, Check, RefreshCw, SkipForward, X, BarChart3, ChevronDown, ChevronUp, Shield, Loader2, ArrowRight, SlidersHorizontal } from 'lucide-react';
 import { api, mensagemErro } from '@/lib/api';
-import { useStore, useActivePlayers, useEnemies, useBosses } from '@/store';
+import { useStore, useActivePlayers, useEnemies, useBosses, useAllies } from '@/store';
 import { useCombateStore } from '@/store/combateStore';
 import Select from '@/components/ui/Select';
-import type { EnemyAction, EnemyAttack, Player } from '@/store/types';
+import type { EnemyAction, Player } from '@/store/types';
 
 interface Relatorio {
   combatId: string;
   porInimigo: { inimigo: string; ataques: number; acertos: number; taxaAcerto: number; desvios: number; danoMedioRolado: number; danoTotalAplicado: number; esGasta: number }[];
 }
 
-/** Propõe o turno de um inimigo/boss; o resultado chega pelo socket (/topic/enemy-action). */
-export async function proporTurno(entityId: string, entityKind: 'enemy' | 'boss') {
+/** Propõe o turno de um inimigo/boss/aliado; o resultado chega pelo socket (/topic/enemy-action). */
+export async function proporTurno(entityId: string, entityKind: 'enemy' | 'boss' | 'ally') {
   await api.post('/master/enemy-turn/propose', { entityId, entityKind });
 }
 
@@ -46,6 +46,7 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
   const players = useActivePlayers();
   const enemies = useEnemies();
   const bosses = useBosses();
+  const allies = useAllies();
   const removerAcao = useCombateStore((s) => s.removerAcao);
   const [alvoId, setAlvoId] = useState(acao.alvoId);
   const [ataqueIdx, setAtaqueIdx] = useState(acao.ataqueIdx);
@@ -53,10 +54,20 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
   const [loading, setLoading] = useState<string | null>(null);
   const [erro, setErro] = useState<string | null>(null);
 
-  const ataques: EnemyAttack[] = acao.entityKind === 'boss'
+  const doAliado = acao.entityKind === 'ally';
+  const ataques: { name: string; damage?: string; custoEs?: number }[] = acao.entityKind === 'boss'
     ? (() => { const b = bosses.find((x) => x.instanceId === acao.entityId); return b?.phases[b.currentPhase]?.attacks ?? []; })()
+    : doAliado ? allies.find((x) => x.id === acao.entityId)?.attacks ?? []
     : enemies.find((x) => x.instanceId === acao.entityId)?.attacks ?? [];
-  const alvo = players.find((p) => p.id === acao.alvoId);
+  // Aliado mira inimigos e bosses; inimigo mira jogadores
+  const oponentes = [
+    ...enemies.map((e) => ({ id: e.instanceId, nome: e.name, def: e.defesa ?? e.attributes.defense, hp: e.hpCurrent, hpMax: e.hpMax })),
+    ...bosses.map((b) => { const f = b.phases[b.currentPhase]; return { id: b.instanceId, nome: b.name, def: f?.defesa ?? f?.attributes.defense ?? 0, hp: b.hpCurrent, hpMax: f?.hpMax ?? b.hpCurrent }; }),
+  ];
+  const jogador = players.find((p) => p.id === acao.alvoId);
+  const alvo = doAliado
+    ? oponentes.find((o) => o.id === acao.alvoId)
+    : jogador && { hp: jogador.hp.current, hpMax: jogador.hp.max };
   const mudou = alvoId !== acao.alvoId || ataqueIdx !== acao.ataqueIdx;
   const proposta = acao.status === 'PROPOSTA';
   const encerrada = acao.status !== 'PROPOSTA' && acao.status !== 'AGUARDANDO_JOGADOR';
@@ -67,10 +78,15 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
     finally { setLoading(null); }
   }
 
-  const alvoOpts = players.map((p) => ({
-    value: p.id,
-    label: `${p.char.name} · DEF ${defDe(p)} · PV ${p.hp.current}/${p.hp.max}`,
-  }));
+  const alvoOpts = doAliado
+    ? oponentes.filter((o) => o.hp > 0 || o.id === acao.alvoId).map((o) => ({
+      value: o.id,
+      label: `${o.nome} · DEF ${o.def} · PV ${o.hp}/${o.hpMax}`,
+    }))
+    : players.map((p) => ({
+      value: p.id,
+      label: `${p.char.name} · DEF ${defDe(p)} · PV ${p.hp.current}/${p.hp.max}`,
+    }));
   const ataqueOpts = ataques.map((a, i) => ({
     value: String(i),
     label: `${a.name}${a.custoEs ? ` · ${a.custoEs} ES` : ''}${a.damage ? ` · ${a.damage}` : ''}`,
@@ -88,15 +104,15 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
     <div className="p-4 flex flex-col gap-3 border-b border-e-border last:border-b-0">
       {/* Quem ataca quem */}
       <div className="flex items-center gap-2">
-        <span className="text-sm font-semibold text-red-300 truncate">{acao.entityName}</span>
+        <span className={`text-sm font-semibold truncate ${doAliado ? 'text-emerald-300' : 'text-red-300'}`}>{acao.entityName}</span>
         <ArrowRight size={13} className="text-e-faint shrink-0" />
-        <span className="text-sm font-semibold text-e-text truncate">{acao.alvoNome}</span>
+        <span className={`text-sm font-semibold truncate ${doAliado ? 'text-red-300' : 'text-e-text'}`}>{acao.alvoNome}</span>
         <span className={`ml-auto text-[10px] font-semibold px-2 py-0.5 rounded-full shrink-0 ${statusChip.cls}`}>{statusChip.txt}</span>
       </div>
       {alvo && (
         <div className="flex items-center gap-2 -mt-1.5">
-          <span className="text-[10px] text-e-faint tabular-nums shrink-0">PV {alvo.hp.current}/{alvo.hp.max}</span>
-          <HpBar atual={alvo.hp.current} max={alvo.hp.max} />
+          <span className="text-[10px] text-e-faint tabular-nums shrink-0">PV {alvo.hp}/{alvo.hpMax}</span>
+          <HpBar atual={alvo.hp} max={alvo.hpMax} />
         </div>
       )}
       <p className="text-xs text-e-sub -mt-1">
@@ -105,7 +121,7 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
 
       {/* Acerto e dano */}
       <div className="grid grid-cols-2 gap-2">
-        <div className={`rounded-xl border p-3 flex flex-col gap-2 ${acao.acertou ? 'border-red-500/40 bg-red-500/5' : 'border-e-border bg-e-bg/50'}`}>
+        <div className={`rounded-xl border p-3 flex flex-col gap-2 ${!acao.acertou ? 'border-e-border bg-e-bg/50' : doAliado ? 'border-emerald-500/40 bg-emerald-500/5' : 'border-red-500/40 bg-red-500/5'}`}>
           <span className="text-[10px] font-bold uppercase tracking-widest text-e-faint">Acerto</span>
           <div className="flex items-center gap-2">
             <Dado valor={acao.d20Acerto} critico={acao.d20Acerto === 20} />
@@ -114,7 +130,7 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
               <span className="text-[10px] text-e-faint flex items-center gap-1"><Shield size={9} /> DEF {acao.defAlvo}</span>
             </div>
           </div>
-          <span className={`text-xs font-bold ${acao.acertou ? 'text-red-400' : 'text-e-sub'}`}>
+          <span className={`text-xs font-bold ${!acao.acertou ? 'text-e-sub' : doAliado ? 'text-emerald-400' : 'text-red-400'}`}>
             {acao.acertou ? 'Acerta' : 'Erra'} ({acao.modAcerto >= 0 ? '+' : '−'}{Math.abs(acao.modAcerto)} de mod)
           </span>
         </div>
@@ -179,7 +195,9 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
           <button type="button" disabled={loading != null || mudou}
             title={mudou ? 'Role de novo com a troca antes de permitir' : ''}
             onClick={() => chamar('permitir', () => api.post(`/master/enemy-turn/${acao.id}/allow`))}
-            className="flex-1 h-9 rounded-lg text-sm font-bold bg-red-500/20 border border-red-500/50 text-red-200 hover:bg-red-500/30 disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5">
+            className={`flex-1 h-9 rounded-lg text-sm font-bold border disabled:opacity-40 cursor-pointer flex items-center justify-center gap-1.5 ${doAliado
+              ? 'bg-emerald-500/20 border-emerald-500/50 text-emerald-200 hover:bg-emerald-500/30'
+              : 'bg-red-500/20 border-red-500/50 text-red-200 hover:bg-red-500/30'}`}>
             {loading === 'permitir' ? <Loader2 size={14} className="animate-spin" /> : <Check size={14} />}
             {acao.acertou ? 'Permitir ataque' : 'Confirmar erro'}
           </button>
@@ -227,23 +245,26 @@ export default function EnemyTurnPanel() {
   const secao = useStore((s) => s.activeSection);
   const enemies = useEnemies();
   const bosses = useBosses();
+  const allies = useAllies();
   const [aberto, setAberto] = useState(true);
   const [relatorio, setRelatorio] = useState(false);
   const ultimoTurno = useRef<string | null>(null);
 
-  // Quando a vez é de um inimigo/boss, propõe a ação automaticamente (uma vez por turno)
+  // Quando a vez é de um inimigo/boss/aliado, propõe a ação automaticamente (uma vez por turno)
   useEffect(() => {
     if (initiative.length === 0) return;
     const entrada = initiative[currentTurn % initiative.length];
     if (!entrada) return;
     const chave = `${currentTurn}:${entrada.playerId}`;
     if (ultimoTurno.current === chave) return;
+    const temOponenteVivo = enemies.some((e) => e.hpCurrent > 0) || bosses.some((b) => b.hpCurrent > 0);
     const kind = enemies.some((e) => e.instanceId === entrada.playerId && e.hpCurrent > 0) ? 'enemy'
-      : bosses.some((b) => b.instanceId === entrada.playerId && b.hpCurrent > 0) ? 'boss' : null;
+      : bosses.some((b) => b.instanceId === entrada.playerId && b.hpCurrent > 0) ? 'boss'
+      : allies.some((a) => a.id === entrada.playerId && a.hpCurrent > 0 && a.attacks.length > 0) && temOponenteVivo ? 'ally' : null;
     if (!kind) return;
     ultimoTurno.current = chave;
     proporTurno(entrada.playerId, kind).catch(() => {});
-  }, [initiative, currentTurn, enemies, bosses]);
+  }, [initiative, currentTurn, enemies, bosses, allies]);
 
   const lista = Object.values(acoes).sort((a, b) => (a.status === 'PROPOSTA' ? -1 : 0) - (b.status === 'PROPOSTA' ? -1 : 0));
   // Na Mesa nova as ações aparecem integradas; aqui só continua a proposta automática
@@ -256,7 +277,7 @@ export default function EnemyTurnPanel() {
       <button type="button" onClick={() => setAberto((v) => !v)}
         className="w-full flex items-center gap-2 px-4 py-3 border-b border-e-border cursor-pointer hover:bg-e-card/40 transition-colors">
         <Bot size={15} className="text-red-400" />
-        <span className="text-sm font-semibold text-e-text">Turno dos inimigos</span>
+        <span className="text-sm font-semibold text-e-text">Turnos automáticos</span>
         {pendentes > 0 && (
           <span className="text-[10px] font-bold px-1.5 py-0.5 rounded-full bg-red-500/20 text-red-300 tabular-nums">{pendentes}</span>
         )}
