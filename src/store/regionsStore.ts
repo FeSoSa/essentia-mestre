@@ -8,7 +8,7 @@ interface RegionsStore {
   regions: Region[];
   loading: boolean;
   fetchAll: () => Promise<void>;
-  addRegion: (r: Omit<Region, 'id'>) => Promise<void>;
+  addRegion: (r: Omit<Region, 'id'>) => Promise<Region>;
   updateRegion: (id: string, r: Omit<Region, 'id'>) => Promise<void>;
   removeRegion: (id: string) => Promise<void>;
 }
@@ -31,6 +31,7 @@ export const useRegionsStore = create<RegionsStore>()((set) => ({
   addRegion: async (r) => {
     const res = await api.post<Region>('/regions', r);
     set((s) => ({ regions: [...s.regions, res.data] }));
+    return res.data;
   },
 
   updateRegion: async (id, r) => {

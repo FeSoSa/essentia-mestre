@@ -3,6 +3,9 @@
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import { proxyUrl } from '@/lib/gdrive';
 
+/** Altura ocupada pelo cabeçalho da aba e pelas margens, acima e abaixo do mapa. */
+const ESPACO_FORA_DO_MAPA = 150;
+
 export interface PosicaoMapa { x: number; y: number }
 
 /** Props para espalhar no elemento que o mestre arrasta (o "pino" de cada item). */
@@ -50,6 +53,9 @@ export default function MapaCanvas<T extends { id: string; x: number; y: number 
   }, [onTamanho]);
   const [draggingId, setDraggingId] = useState<string | null>(null);
   const [dragPreview, setDragPreview] = useState<PosicaoMapa | null>(null);
+  // Proporção natural da imagem: limita a largura para a imagem inteira caber na
+  // altura da tela. A caixa continua com o tamanho exato da imagem.
+  const [proporcao, setProporcao] = useState(16 / 9);
 
   /** Posição relativa ao container do mapa (achado a partir do elemento do evento). */
   function relativePosition(el: Element, clientX: number, clientY: number): PosicaoMapa | null {
@@ -96,10 +102,15 @@ export default function MapaCanvas<T extends { id: string; x: number; y: number 
       ref={caixaRef}
       data-mapa-canvas
       onClick={handleImageClick}
-      className={`relative w-full rounded-xl overflow-hidden border border-e-border select-none ${onCreateAt ? 'cursor-crosshair' : ''}`}
+      style={{ width: `min(100%, calc((100dvh - ${ESPACO_FORA_DO_MAPA}px) * ${proporcao}))` }}
+      className={`relative shrink-0 mx-auto rounded-xl overflow-hidden border border-e-border select-none ${onCreateAt ? 'cursor-crosshair' : ''}`}
     >
       {/* eslint-disable-next-line @next/next/no-img-element */}
-      <img src={proxyUrl(imageUrl)} alt={alt} className="w-full h-auto block pointer-events-none" draggable={false} />
+      <img src={proxyUrl(imageUrl)} alt={alt} className="w-full h-auto block pointer-events-none" draggable={false}
+        onLoad={(e) => {
+          const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+          if (w && h) setProporcao(w / h);
+        }} />
       {fundo && <div className="absolute inset-0 pointer-events-none">{fundo}</div>}
       {items.map((item) => {
         const arrastando = draggingId === item.id;

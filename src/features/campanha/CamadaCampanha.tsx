@@ -8,7 +8,7 @@ import { CheckField } from '@/components/ui/Checkbox';
 import MapaCanvas from '@/components/map/MapaCanvas';
 import { agrupar, posicaoLeque, type Grupo } from '@/components/map/agrupar';
 import { api, mensagemErro } from '@/lib/api';
-import { ROOT_MAP_ID } from '@/lib/map';
+import { ROOT_MAP_ID, temImagemPropria } from '@/lib/map';
 import type { MapMarker, Region } from '@/store/types';
 import { useCampanhaStore } from './campanhaStore';
 import { TIPOS, tipoDe } from './registroTipos';
@@ -71,7 +71,7 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
     const caminho = [mapId];
     let atual = mapId;
     for (let i = 0; i < 10 && atual !== ROOT_MAP_ID; i++) {
-      const pai = todosMarcadores.find((m) => m.regionId === atual);
+      const pai = todosMarcadores.find((m) => m.regionId === atual && temImagemPropria(m));
       if (!pai) { caminho.unshift(ROOT_MAP_ID); break; }
       atual = pai.mapId;
       caminho.unshift(atual);
@@ -182,16 +182,17 @@ export default function CamadaCampanha({ mapStack, setMapStack, currentImage, ma
                 }))}
               </svg>
               {mostrarLocais && markers.map((m) => {
-                const d = dentro.get(m.regionId);
+                const entra = temImagemPropria(m);
+                const d = entra ? dentro.get(m.regionId) : undefined;
                 return (
                   <div key={m.id} className="absolute" style={{ left: `${m.x * 100}%`, top: `${m.y * 100}%` }}>
                     {/* O local é um botão: entra na região para escrever pontos lá dentro */}
-                    <button type="button" aria-label={`Entrar em ${m.label}`} title={`Entrar em ${m.label}`}
-                      onClick={(e) => { e.stopPropagation(); setMapStack([...mapStack, m.regionId]); }}
+                    <button type="button" aria-label={entra ? `Entrar em ${m.label}` : m.label} title={entra ? `Entrar em ${m.label}` : m.label}
+                      onClick={(e) => { e.stopPropagation(); if (entra) setMapStack([...mapStack, m.regionId]); }}
                       className="group pointer-events-auto absolute left-0 top-0 -translate-x-1/2 -translate-y-1/2 w-6 h-6 flex items-center justify-center cursor-pointer hover:z-30">
                       <span className="w-2.5 h-2.5 rounded-full border-2 border-white/70 bg-e-gold/70 group-hover:w-3.5 group-hover:h-3.5 group-hover:bg-e-gold group-hover:border-white transition-all" />
                       <span className="absolute top-6 left-1/2 -translate-x-1/2 hidden group-hover:flex items-center gap-1 text-[10px] text-white bg-black/85 rounded px-1.5 py-0.5 whitespace-nowrap">
-                        {m.label} <LogIn size={10} />
+                        {m.label} {entra && <LogIn size={10} />}
                       </span>
                     </button>
                     {d && (

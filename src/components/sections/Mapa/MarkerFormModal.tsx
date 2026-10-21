@@ -3,10 +3,11 @@
 import { useState } from 'react';
 import { X } from 'lucide-react';
 import Button from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
+import { api } from '@/lib/api';
 import { useMapMarkersStore } from '@/store/mapMarkersStore';
 import { useRegionsStore } from '@/store/regionsStore';
-import type { MapMarker } from '@/store/types';
+import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
+import type { MapMarker, Region } from '@/store/types';
 
 interface Props {
   mapId: string;
@@ -16,21 +17,53 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * Cada marcador pode ter uma imagem própria; com imagem, dá para entrar nele.
+ * Por baixo a imagem continua numa região (é ela que vira o mapId dos pontos de
+ * dentro e é o que o app usa para navegar), mas o mestre cuida disso sozinho:
+ * uma região por marcador.
+ */
 export default function MarkerFormModal({ mapId, x, y, marker, onClose }: Props) {
-  const { regions } = useRegionsStore();
+  const { regions, addRegion, updateRegion } = useRegionsStore();
   const { addMarker, updateMarker } = useMapMarkersStore();
+  // Marcador que aponta para o próprio mapa onde está não tem imagem própria
+  // (era o jeito antigo de criar um ponto sem imagem).
+  const regiaoAtual: Region | undefined =
+    marker && marker.regionId !== marker.mapId ? regions.find((r) => r.id === marker.regionId) : undefined;
   const [label, setLabel] = useState(marker?.label ?? '');
-  const [regionId, setRegionId] = useState(marker?.regionId ?? '');
+  const [imageUrl, setImageUrl] = useState(regiaoAtual?.url ?? '');
   const [description, setDescription] = useState(marker?.description ?? '');
   const [loading, setLoading] = useState(false);
 
+  const normalized = normalizeGdriveUrl(imageUrl);
+
+  /** Região onde fica a imagem deste marcador ('' = sem imagem). */
+  async function regiaoDaImagem(): Promise<string> {
+    if (!normalized) return '';
+    if (!regiaoAtual) {
+      return (await addRegion({ name: label, url: normalized, description: '' })).id;
+    }
+    // Região usada por mais de um marcador (dados antigos): só o dono, o de mesmo
+    // nome, altera ela; os outros ganham uma região nova se trocarem a imagem.
+    const todos = (await api.get<MapMarker[]>('/map-markers')).data;
+    const compartilhada = todos.some((m) => m.id !== marker?.id && m.regionId === regiaoAtual.id && m.mapId !== regiaoAtual.id);
+    const dono = !compartilhada || regiaoAtual.name === marker?.label;
+    if (dono) {
+      if (regiaoAtual.url !== normalized || regiaoAtual.name !== label) {
+        await updateRegion(regiaoAtual.id, { ...regiaoAtual, name: label, url: normalized });
+      }
+      return regiaoAtual.id;
+    }
+    if (regiaoAtual.url === normalized) return regiaoAtual.id;
+    return (await addRegion({ name: label, url: normalized, description: '' })).id;
+  }
+
   async function handleSubmit(e: React.SyntheticEvent<HTMLFormElement>) {
     e.preventDefault();
-    if (!regionId) return;
     setLoading(true);
     try {
       const payload = {
-        mapId, x, y, label, regionId, description,
+        mapId, x, y, label, regionId: await regiaoDaImagem(), description,
         visible: marker?.visible ?? true,
       };
       if (marker) {
@@ -63,13 +96,16 @@ export default function MarkerFormModal({ mapId, x, y, marker, onClose }: Props)
             <input type="text" value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Ex: Cidade de Aldenar" required />
           </div>
           <div>
-            <label className={labelClass}>Região vinculada</label>
-            <Select
-              value={regionId}
-              onChange={setRegionId}
-              options={regions.map((region) => ({ value: region.id, label: region.name }))}
-              placeholder="Selecione uma região"
-            />
+            <label className={labelClass}>Imagem (opcional)</label>
+            <input type="text" value={imageUrl} onChange={(e) => setImageUrl(e.target.value)} placeholder="URL direta ou link do Google Drive" />
+            {normalized ? (
+              <div className="mt-2 rounded-xl overflow-hidden border border-e-border">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={proxyUrl(imageUrl)} alt="preview" className="w-full aspect-video object-contain bg-black block" />
+              </div>
+            ) : (
+              <p className="mt-1.5 text-xs text-e-faint">Com imagem, dá para entrar no marcador e marcar os pontos de dentro.</p>
+            )}
           </div>
           <div>
             <label className={labelClass}>Descrição (opcional)</label>
@@ -77,7 +113,7 @@ export default function MarkerFormModal({ mapId, x, y, marker, onClose }: Props)
           </div>
           <div className="grid grid-cols-2 gap-3 pt-1">
             <Button type="button" variant="ghost"   size="md" className="w-full" onClick={onClose}>Cancelar</Button>
-            <Button type="submit" variant="primary" size="md" className="w-full" disabled={loading || !regionId}>
+            <Button type="submit" variant="primary" size="md" className="w-full" disabled={loading}>
               {loading ? 'Salvando…' : marker ? 'Salvar' : 'Adicionar'}
             </Button>
           </div>
