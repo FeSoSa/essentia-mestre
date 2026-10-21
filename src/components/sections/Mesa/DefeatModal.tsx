@@ -65,7 +65,8 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
     return init;
   });
   const [ouro, setOuro] = useState(() => (goldDrop ? sortearOuro(goldDrop.min, goldDrop.max) : 0));
-  const [ouroDividir, setOuroDividir] = useState(true);
+  const [modoOuro, setModoOuro] = useState<'todos' | 'um' | 'none'>('todos');
+  const ouroDividir = modoOuro === 'todos';
   const [ouroDono, setOuroDono] = useState('');
   const [modoXp, setModoXp] = useState<ModoXp>('all');
   const [xpDono, setXpDono] = useState('');
@@ -88,17 +89,17 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
   const pendencias = useMemo(() => {
     const p: string[] = [];
     if (modoXp === 'specific' && !xpDono) p.push('quem ganha o XP');
-    if (goldDrop && !ouroDividir && !ouroDono) p.push('quem fica com o ouro');
+    if (goldDrop && modoOuro === 'um' && !ouroDono) p.push('quem fica com o ouro');
     if ([...selecionados].some((i) => !donos[i])) p.push('o dono de cada item marcado');
     return p;
-  }, [modoXp, xpDono, goldDrop, ouroDividir, ouroDono, selecionados, donos]);
+  }, [modoXp, xpDono, goldDrop, modoOuro, ouroDono, selecionados, donos]);
 
   // Resumo do que vai ser entregue
   const resumo = [
     enemy.xp > 0 && modoXp !== 'none' && xpNum > 0
       ? modoXp === 'all' ? `${xpNum} XP para cada jogador` : xpDono ? `${xpNum} XP para ${nome(xpDono)}` : null
       : null,
-    goldDrop && ouro > 0
+    goldDrop && modoOuro !== 'none' && ouro > 0
       ? ouroDividir ? `${ouro} Tyd divididos entre todos` : ouroDono ? `${ouro} Tyd para ${nome(ouroDono)}` : null
       : null,
     selecionados.size > 0 ? `${selecionados.size} ite${selecionados.size > 1 ? 'ns' : 'm'}` : null,
@@ -115,7 +116,7 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
           itemId: enemy.drops[i].itemId ?? null,
           playerId: donos[i] ?? '',
         })),
-        goldDrop: goldDrop ? { amount: ouro, distribute: ouroDividir, playerId: ouroDividir ? '' : ouroDono } : null,
+        goldDrop: goldDrop && modoOuro !== 'none' ? { amount: ouro, distribute: ouroDividir, playerId: ouroDividir ? '' : ouroDono } : null,
         distributeXp: modoXp === 'all',
         xpPlayerId: modoXp === 'specific' ? xpDono : null,
         xpAmount: modoXp !== 'none' ? xpNum : 0,
@@ -190,17 +191,19 @@ export default function DefeatModal({ enemy, players, onClose }: Props) {
                 <span className={lbl}>Ouro</span>
                 <span className="ml-auto text-xs text-e-faint">sorteio de {goldDrop.min} a {goldDrop.max} ({goldDrop.tier})</span>
               </div>
-              <div className="flex items-center gap-3">
-                <span className="text-2xl font-black text-e-gold tabular-nums">{ouro}</span>
-                <span className="text-xs text-e-sub">Tyd sorteados</span>
-                <button type="button" onClick={() => setOuro(sortearOuro(goldDrop.min, goldDrop.max))}
-                  className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-e-sub hover:text-e-text border border-e-border hover:border-e-border2 rounded-lg px-2.5 py-1.5 cursor-pointer">
-                  <Dices size={13} /> Sortear de novo
-                </button>
-              </div>
-              <Segmento<'todos' | 'um'> valor={ouroDividir ? 'todos' : 'um'} onChange={(v) => setOuroDividir(v === 'todos')}
-                opcoes={[['todos', 'Dividir entre todos'], ['um', 'Um jogador']]} />
-              {!ouroDividir && <Jogadores players={players} valor={ouroDono} onChange={setOuroDono} cor="gold" />}
+              <Segmento<'todos' | 'um' | 'none'> valor={modoOuro} onChange={setModoOuro}
+                opcoes={[['todos', 'Dividir entre todos'], ['um', 'Um jogador'], ['none', 'Ninguém']]} />
+              {modoOuro !== 'none' && (
+                <div className="flex items-center gap-3">
+                  <span className="text-2xl font-black text-e-gold tabular-nums">{ouro}</span>
+                  <span className="text-xs text-e-sub">Tyd sorteados</span>
+                  <button type="button" onClick={() => setOuro(sortearOuro(goldDrop.min, goldDrop.max))}
+                    className="ml-auto flex items-center gap-1.5 text-xs font-semibold text-e-sub hover:text-e-text border border-e-border hover:border-e-border2 rounded-lg px-2.5 py-1.5 cursor-pointer">
+                    <Dices size={13} /> Sortear de novo
+                  </button>
+                </div>
+              )}
+              {modoOuro === 'um' && <Jogadores players={players} valor={ouroDono} onChange={setOuroDono} cor="gold" />}
             </section>
           )}
 

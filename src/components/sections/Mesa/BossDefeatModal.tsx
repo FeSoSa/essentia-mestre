@@ -58,8 +58,9 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
       const goldAmount = goldDrop ? rollGold() : 0;
       await api.post(`/combat/bosses/${boss.instanceId}/defeat`, {
         drops: [...selectedDrops].map((i) => ({
-          name: boss.drops[i].name,
+          itemName: boss.drops[i].name,
           icon: boss.drops[i].icon,
+          itemId: boss.drops[i].itemId ?? null,
           playerId: dropAssignments[i] ?? '',
         })),
         goldDrop: goldDrop && goldAssignment
@@ -138,7 +139,7 @@ export default function BossDefeatModal({ boss, players, onClose }: Props) {
                 className="w-full text-xs rounded px-2 py-1.5 outline-none"
                 style={selStyle}
               >
-                <option value="">Selecionar jogador…</option>
+                <option value="">Ninguém (sem ouro)</option>
                 {players.map((p) => (
                   <option key={p.id} value={p.id}>{p.char.name}</option>
                 ))}
