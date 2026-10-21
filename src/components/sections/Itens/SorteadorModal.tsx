@@ -1,14 +1,14 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { X, Dices, Send, Check, SlidersHorizontal, RotateCcw, Users } from 'lucide-react';
+import { X, Dices, Send, Check, SlidersHorizontal, RotateCcw, Users, MapPin } from 'lucide-react';
 import { api, mensagemErro } from '@/lib/api';
 import { useActivePlayers } from '@/store';
 import { divisorArma } from '@/store/combateStore';
 import type { AchadoConfig, ClassKit, ItemCatalog } from '@/store/types';
 import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER, rarityColor, type Rarity } from '@/lib/rarity';
 import { siglaAtributo } from '@/lib/atributos';
-import { ACHADO_PADRAO, TIPO_LABEL, chancesAchado, sortearAchado, type Achado, type Chances, type ResultadoSorteio, type TipoAchado } from '@/lib/achado';
+import { ACHADO_PADRAO, TIPO_LABEL, chancesAchado, regioesDoCatalogo, sortearAchado, type Achado, type Chances, type ResultadoSorteio, type TipoAchado } from '@/lib/achado';
 import { Avatar } from '@/components/sections/MesaNova/ui';
 import Button from '@/components/ui/Button';
 import { ItemIcon } from './ItemCard';
@@ -61,6 +61,9 @@ export default function SorteadorModal({ catalogo, onClose }: { catalogo: ItemCa
   const [playerId, setPlayerId] = useState<string | null>(null);
   const [nivelId, setNivelId] = useState('comum');
   const [tipo, setTipo] = useState<TipoAchado>('qualquer');
+  const [regiao, setRegiao] = useState<string | null>(null);
+  // Só aparecem as regiões que já têm item marcado
+  const regioesComItens = useMemo(() => regioesDoCatalogo(catalogo), [catalogo]);
   const [resultado, setResultado] = useState<ResultadoSorteio | null>(null);
   const [vazio, setVazio] = useState(false);
   const [entregando, setEntregando] = useState(false);
@@ -77,7 +80,7 @@ export default function SorteadorModal({ catalogo, onClose }: { catalogo: ItemCa
 
   function sortear() {
     setEntregue(null); setErro(null);
-    const r = sortearAchado({ catalogo, config, nivelId: nivel?.id ?? '', tipo, player, kits });
+    const r = sortearAchado({ catalogo, config, nivelId: nivel?.id ?? '', tipo, player, kits, regiao });
     setResultado(r);
     setVazio(!r);
   }
@@ -106,8 +109,8 @@ export default function SorteadorModal({ catalogo, onClose }: { catalogo: ItemCa
   const rotulo = 'text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint mb-2';
 
   const chances = useMemo(
-    () => (player ? chancesAchado({ catalogo, config, nivelId: nivel?.id ?? '', tipo, player, kits }) : null),
-    [catalogo, config, nivel, tipo, player, kits],
+    () => (player ? chancesAchado({ catalogo, config, nivelId: nivel?.id ?? '', tipo, player, kits, regiao }) : null),
+    [catalogo, config, nivel, tipo, player, kits, regiao],
   );
 
   const e = resultado?.escolhido;
@@ -156,6 +159,25 @@ export default function SorteadorModal({ catalogo, onClose }: { catalogo: ItemCa
                 {player ? 'Considera a classe, os atributos, o nível, o que ele já carrega e o estado de PV e ES.' : 'Sem jogador, o sorteio só segue a raridade e o tipo.'}
               </p>
             </div>
+
+            {regioesComItens.length > 0 && (
+              <div>
+                <p className={rotulo}>Onde</p>
+                <div className="flex flex-wrap gap-1.5">
+                  <button type="button" onClick={() => setRegiao(null)} className={chip(regiao === null)}>Qualquer lugar</button>
+                  {regioesComItens.map((r) => (
+                    <button key={r} type="button" onClick={() => setRegiao(r)} className={chip(regiao === r)}>
+                      <MapPin size={13} /> {r}
+                    </button>
+                  ))}
+                </div>
+                <p className="text-[11px] text-e-faint mt-2">
+                  {regiao
+                    ? `Itens da região têm ${config.pesoRegional ?? ACHADO_PADRAO.pesoRegional}× mais chance que os comuns; itens de outras regiões ficam de fora. O peso muda na aba Níveis.`
+                    : 'Sem região, sai qualquer item do catálogo.'}
+                </p>
+              </div>
+            )}
 
             <div>
               <p className={rotulo}>Nível do achado</p>
@@ -358,6 +380,19 @@ function EditorNiveis({ config, onSalvo }: { config: AchadoConfig; onSalvo: (c: 
             ))}
           </div>
         </div>
+
+        <div>
+          <p className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint mb-1">Itens da região</p>
+          <p className="text-xs text-e-faint mb-3">
+            Com uma região escolhida no sorteio, cada item dela pesa quantas vezes mais que um item comum. 1 = mesma chance.
+          </p>
+          <div className="flex items-center gap-2">
+            <input type="number" min={1} value={rascunho.pesoRegional ?? ACHADO_PADRAO.pesoRegional}
+              onChange={(e) => setRascunho((c) => ({ ...c, pesoRegional: Math.max(1, Number(e.target.value) || 1) }))}
+              style={{ ...num, width: 70 }} />
+            <span className="text-xs text-e-sub">vezes</span>
+          </div>
+        </div>
       </div>
       <div className="flex items-center gap-2 justify-end px-5 py-4 border-t border-white/[0.06] shrink-0">
         {msg && <span className="text-xs text-e-sub mr-auto">{msg}</span>}
@@ -441,7 +476,7 @@ function PainelChances({ chances, nome }: { chances: Chances | null; nome?: stri
 
           {chances.foraDoFiltro > 0 && (
             <p className="text-[11px] text-e-faint">
-              {chances.foraDoFiltro} {chances.foraDoFiltro === 1 ? 'item ficou' : 'itens ficaram'} de fora: pedem nível maior ou ele já tem.
+              {chances.foraDoFiltro} {chances.foraDoFiltro === 1 ? 'item ficou' : 'itens ficaram'} de fora: pedem nível maior, ele já tem ou são de outra região.
             </p>
           )}
         </>

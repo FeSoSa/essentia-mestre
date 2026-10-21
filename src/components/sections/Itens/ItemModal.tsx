@@ -99,6 +99,8 @@ import { createPortal } from "react-dom";
 interface Props {
   item?: ItemCatalog;
   defaultType?: string;
+  /** Regiões do mundo que outros itens já usam (sugestões no campo Regiões). */
+  regioesConhecidas?: string[];
   onClose: () => void;
   onSaved: (i: ItemCatalog) => void;
 }
@@ -568,6 +570,7 @@ const inp =
 export default function ItemModal({
   item,
   defaultType,
+  regioesConhecidas = [],
   onClose,
   onSaved,
 }: Props) {
@@ -592,6 +595,16 @@ export default function ItemModal({
   const [subtype, setSubtype] = useState(item?.subtype ?? "");
   const [twoHanded, setTwoHanded] = useState(item?.twoHanded ?? false);
   const [goldValue, setGoldValue] = useState<number | "">(item?.goldValue ?? "");
+  const [regioes, setRegioes] = useState<string[]>(item?.regioes ?? []);
+  const [unico, setUnico] = useState(item?.unico ?? false);
+  const [novaRegiao, setNovaRegiao] = useState("");
+  // Sugestões: as regiões dos outros itens e as que este item já tem
+  const opcoesRegiao = [...new Set([...regioesConhecidas, ...regioes])].sort((a, b) => a.localeCompare(b, "pt-BR"));
+  function adicionarRegiao() {
+    const r = novaRegiao.trim();
+    if (r && !regioes.includes(r)) setRegioes((prev) => [...prev, r]);
+    setNovaRegiao("");
+  }
 
   // Attribute bonuses — armors pre-populate 'defense'
   const [bonuses, setBonuses] = useState<[string, number][]>(() => {
@@ -755,6 +768,8 @@ export default function ItemModal({
       onUseEffect,
       goldValue: goldValue !== "" ? Number(goldValue) : undefined,
       subtype: isConsumableType && subtype ? subtype as ItemCatalog["subtype"] : undefined,
+      regioes: regioes.length ? regioes : undefined,
+      unico: unico || undefined,
     };
     if (isWeapon) {
       body.weaponType = weaponType;
@@ -855,6 +870,48 @@ export default function ItemModal({
               placeholder="Ex: 50"
             />
           </div>
+
+          {/* Regiões */}
+          <div>
+            <label className={lbl}>Regiões</label>
+            {opcoesRegiao.length > 0 && (
+              <div className="flex gap-2 flex-wrap mb-2">
+                {opcoesRegiao.map((r) => {
+                  const on = regioes.includes(r);
+                  return (
+                    <button
+                      key={r}
+                      type="button"
+                      onClick={() => setRegioes((prev) => (on ? prev.filter((x) => x !== r) : [...prev, r]))}
+                      className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition-colors ${
+                        on
+                          ? "border-e-accent/50 bg-e-accent/10 text-e-accent"
+                          : "border-e-border text-e-faint hover:border-e-border2"
+                      }`}
+                    >
+                      {r}
+                    </button>
+                  );
+                })}
+              </div>
+            )}
+            <div className="flex gap-2">
+              <input
+                value={novaRegiao}
+                onChange={(e) => setNovaRegiao(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") { e.preventDefault(); adicionarRegiao(); } }}
+                className={inp}
+                placeholder="Nova região do mundo, ex: Planalto do Fulgor"
+              />
+              <Button variant="ghost" onClick={adicionarRegiao} disabled={!novaRegiao.trim()}>Adicionar</Button>
+            </div>
+            <p className="text-[11px] text-e-faint mt-1.5">
+              {regioes.length ? "Sai nos sorteios dessas regiões, com mais chance." : "Sem região: item comum, sai em qualquer lugar."}
+            </p>
+          </div>
+
+          <CheckField checked={unico} onChange={setUnico}
+            label="Único (não sai no sorteio)" desc="Item com história: só pela mão do mestre ou por drop fixo de um inimigo." />
 
           {/* Ícone + Nome */}
           <div className="flex gap-3">

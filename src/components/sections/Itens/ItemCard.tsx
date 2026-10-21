@@ -11,7 +11,7 @@ import {
   CircleDollarSign, Club, Coffee, Coins, Compass, Crosshair, Crown, Cuboid,
   Diamond, Dices, Dog, Droplets, Drumstick, Dumbbell, Eye, Feather, Fish,
   Flashlight, Flame, FlaskConical, Footprints, Gem, Hammer, HardHat, Heart,
-  HeartPulse, Hourglass, Key, Lasso, Leaf, Link, Lock, Magnet, Map, Moon,
+  HeartPulse, Hourglass, Key, Lasso, Leaf, Link, Lock, Magnet, Map, MapPin, Moon,
   Music, Package, Pencil, Pickaxe, Pill, Rabbit, Ribbon, Salad, Scroll, Send,
   Shield, ShieldPlus, Shirt, Shovel, Skull, Snowflake, Sparkles, Squirrel,
   Star, Sun, Sword, Swords, Target, Tent, Trash2, TreePine, Trophy, Wand,
@@ -106,11 +106,20 @@ export default function ItemCard({ item, onEdit, onDelete, onSend }: Props) {
         <div className="flex-1 min-w-0 group-hover:pr-20 transition-[padding]">
           <p className="font-semibold text-sm leading-snug line-clamp-2" style={{ color: rColor ?? "#fafafa" }} title={item.name}>{item.name}</p>
           <p className="text-[10px] font-bold uppercase tracking-wider mt-0.5 flex items-center gap-1.5 flex-wrap">
-            {item.rarity && <span style={{ color: RARITY_COLORS[item.rarity as Rarity] ?? "#71717a" }}>{RARITY_LABELS[item.rarity as Rarity] ?? item.rarity}</span>}
-            {item.subtype && SUBTYPE_BADGE[item.subtype] && (
-              <span style={{ color: SUBTYPE_BADGE[item.subtype].color }}>· {SUBTYPE_BADGE[item.subtype].label}</span>
-            )}
+            {/* O ponto só separa: item sem raridade não começa com "·" */}
+            {[
+              item.rarity && { cor: RARITY_COLORS[item.rarity as Rarity] ?? "#71717a", texto: RARITY_LABELS[item.rarity as Rarity] ?? item.rarity },
+              item.subtype && SUBTYPE_BADGE[item.subtype] && { cor: SUBTYPE_BADGE[item.subtype].color, texto: SUBTYPE_BADGE[item.subtype].label },
+              item.unico && { cor: "#d4a84e", texto: "Único" },
+            ].filter((x): x is { cor: string; texto: string } => !!x).map((x, k) => (
+              <span key={x.texto} style={{ color: x.cor }}>{k > 0 && "· "}{x.texto}</span>
+            ))}
           </p>
+          {!!item.regioes?.length && (
+            <p className="text-[10px] text-e-faint mt-0.5 flex items-center gap-1 truncate" title={item.regioes.join(", ")}>
+              <MapPin size={10} className="shrink-0" /> {item.regioes.join(", ")}
+            </p>
+          )}
         </div>
       </div>
 

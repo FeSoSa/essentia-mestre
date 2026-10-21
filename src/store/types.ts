@@ -353,7 +353,12 @@ export interface CombateConfig {
 
 /** Nível de achado do sorteador: peso de cada raridade (chaves de Rarity). */
 export interface NivelAchado { id: string; nome: string; pesos: Record<string, number>; }
-export interface AchadoConfig { niveis: NivelAchado[]; pesosTipo: Record<string, number>; }
+export interface AchadoConfig {
+  niveis: NivelAchado[];
+  pesosTipo: Record<string, number>;
+  /** Com uma região escolhida: quantas vezes um item da região pesa mais que um comum. */
+  pesoRegional?: number;
+}
 
 /** Dificuldade do gerador de encontros: perigo = % do PV do grupo perdido em média (simulado). */
 export interface DificuldadeEncontro { id: string; nome: string; perigo: number; }
@@ -390,6 +395,8 @@ export interface ItemCatalog {
   onUseEffect?: OnUseEffect;
   goldValue?: number;
   subtype?: 'consumivel' | 'drop' | 'chave' | 'misc';
+  regioes?: string[];            // nomes de região do mundo (não as regiões do Mapa); vazio = comum (sai em qualquer lugar)
+  unico?: boolean;               // item com história: só sai pela mão do mestre ou drop fixo, nunca no sorteio
 }
 
 export interface ShopItem { itemId: string; stockLimit?: number; }

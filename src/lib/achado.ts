@@ -23,6 +23,7 @@ export const ACHADO_PADRAO: AchadoConfig = {
     { id: 'tesouro', nome: 'Tesouro', pesos: { branco: 0,  verde: 5,  azul: 25, roxo: 35, amarelo: 28, rosa: 7 } },
   ],
   pesosTipo: { arma: 25, armadura: 20, acessorio: 15, consumivel: 30, material: 10 },
+  pesoRegional: 8,
 };
 
 export interface Achado {
@@ -53,6 +54,7 @@ const ATTR_NOME: Record<string, string> = {
 const PESO_ARMADURA = ['leve', 'média', 'pesada'];
 
 export function tipoDoItem(i: ItemCatalog): Exclude<TipoAchado, 'qualquer'> | null {
+  if (i.unico) return null; // itens únicos só saem pela mão do mestre ou por drop fixo
   if (i.type === 'weapon') return 'arma';
   if (i.type === 'armor') return 'armadura';
   if (i.type === 'accessory') return 'acessorio';
@@ -62,6 +64,23 @@ export function tipoDoItem(i: ItemCatalog): Exclude<TipoAchado, 'qualquer'> | nu
 }
 
 const raridade = (i: ItemCatalog): Rarity => (RARITY_ORDER.includes(i.rarity as Rarity) ? i.rarity as Rarity : 'branco');
+
+/** Valor do filtro de região que pega só os itens comuns (sem região). */
+export const REGIAO_COMUM = '__comum__';
+
+/** O item pertence ao filtro? REGIAO_COMUM pega os sem região; um nome pega os marcados com ela. */
+export function daRegiao(i: ItemCatalog, regiao: string): boolean {
+  if (regiao === REGIAO_COMUM) return !i.regioes?.length;
+  return !!i.regioes?.includes(regiao);
+}
+
+/** Regiões do mundo que algum item do catálogo já usa, em ordem alfabética. */
+export function regioesDoCatalogo(catalogo: ItemCatalog[]): string[] {
+  return [...new Set(catalogo.flatMap((i) => i.regioes ?? []))].sort((a, b) => a.localeCompare(b, 'pt-BR'));
+}
+
+/** No sorteio de uma região, saem os itens dela e os comuns; os de outras regiões ficam de fora. */
+const cabeNaRegiao = (i: ItemCatalog, regiao?: string | null) => !regiao || !i.regioes?.length || i.regioes.includes(regiao);
 
 function sortearPeso<T>(opcoes: { valor: T; peso: number }[]): T | null {
   const total = opcoes.reduce((s, o) => s + Math.max(0, o.peso), 0);
@@ -180,6 +199,8 @@ interface OpcoesAchado {
   tipo: TipoAchado;
   player?: Player | null;
   kits?: ClassKit[];
+  /** Região do mundo onde o grupo está (null = qualquer lugar). */
+  regiao?: string | null;
 }
 
 interface Avaliado { item: ItemCatalog; peso: number; motivos: string[] }
@@ -188,6 +209,7 @@ interface Avaliado { item: ItemCatalog; peso: number; motivos: string[] }
 function preparar(opts: OpcoesAchado) {
   const { catalogo, config, player } = opts;
   const nivel = config.niveis.find((n) => n.id === opts.nivelId) ?? config.niveis[0];
+  const pesoRegional = Math.max(1, config.pesoRegional ?? ACHADO_PADRAO.pesoRegional ?? 1);
 
   const ctx: Contexto | null = player ? {
     player,
@@ -206,6 +228,7 @@ function preparar(opts: OpcoesAchado) {
   /** Itens que servem para o tipo, já filtrados pelo jogador. */
   const doTipo = (tipo: Exclude<TipoAchado, 'qualquer'>) => catalogo.filter((i) => {
     if (tipoDoItem(i) !== tipo) return false;
+    if (!cabeNaRegiao(i, opts.regiao)) return false;
     if (ctx) {
       if ((i.requirements?.level ?? 0) > ctx.player.char.level) return false;
       // Equipamento repetido não serve; consumível e material podem repetir
@@ -225,7 +248,11 @@ function preparar(opts: OpcoesAchado) {
       if (candidatos.length > 0) {
         return {
           final: RARITY_ORDER[k],
-          avaliados: candidatos.map((item) => ({ item, ...(ctx ? avaliar(item, tipo, ctx) : { peso: 1, motivos: [] }) })),
+          avaliados: candidatos.map((item) => {
+            const a = ctx ? avaliar(item, tipo, ctx) : { peso: 1, motivos: [] };
+            if (opts.regiao && item.regioes?.includes(opts.regiao)) return { item, peso: a.peso * pesoRegional, motivos: ['Item da região', ...a.motivos] };
+            return { item, ...a };
+          }),
         };
       }
     }
