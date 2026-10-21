@@ -14,6 +14,7 @@ import Classes from '@/components/sections/Classes';
 import Racas from '@/components/sections/Racas';
 import Essencias from '@/components/sections/Essencias';
 import Loja from '@/components/sections/Loja';
+import Mundo from '@/components/sections/Mundo';
 
 export default function MainContent() {
   const active = useStore((s) => s.activeSection);
@@ -33,6 +34,7 @@ export default function MainContent() {
       <div className={active === 'racas'       ? 'flex-1 overflow-y-auto' : 'hidden'}><Racas /></div>
       <div className={active === 'log'         ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><Log /></div>
       <div className={active === 'loja'        ? 'flex-1 overflow-y-auto' : 'hidden'}><Loja /></div>
+      <div className={active === 'mundo'       ? 'flex-1 min-h-0 flex flex-col' : 'hidden'}><Mundo /></div>
     </main>
   );
 }

@@ -1,4 +1,4 @@
-export type SectionId = 'mesa' | 'mapa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja';
+export type SectionId = 'mesa' | 'mapa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja' | 'mundo';
 
 export interface Race {
   id: string;

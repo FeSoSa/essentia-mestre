@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag, Map } from 'lucide-react';
+import { LayoutDashboard, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag, Map, Globe } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useStore, useActivePlayers } from '@/store';
 import type { SectionId } from '@/store/types';
@@ -32,6 +32,7 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
   {
     titulo: 'Compêndio',
     itens: [
+      { id: 'mundo',       label: 'Mundo',       Icon: Globe },
       { id: 'itens',       label: 'Itens',       Icon: Package },
       { id: 'essencias',   label: 'Essências',   Icon: Sparkles },
       { id: 'habilidades', label: 'Habilidades', Icon: Wand2 },
