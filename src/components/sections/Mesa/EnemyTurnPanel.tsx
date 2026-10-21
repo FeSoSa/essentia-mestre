@@ -246,9 +246,17 @@ export default function EnemyTurnPanel() {
   const enemies = useEnemies();
   const bosses = useBosses();
   const allies = useAllies();
-  const [aberto, setAberto] = useState(true);
+  // Fora da Mesa começa recolhido: só uma faixa com a contagem, sem cobrir a aba
+  const [aberto, setAberto] = useState(false);
   const [relatorio, setRelatorio] = useState(false);
   const ultimoTurno = useRef<string | null>(null);
+
+  // Combate encerrado (iniciativa vazia): as ações daquele combate não valem mais
+  useEffect(() => {
+    if (initiative.length > 0) return;
+    ultimoTurno.current = null;
+    if (Object.keys(useCombateStore.getState().acoes).length > 0) useCombateStore.setState({ acoes: {} });
+  }, [initiative.length]);
 
   // Quando a vez é de um inimigo/boss/aliado, propõe a ação automaticamente (uma vez por turno)
   useEffect(() => {
@@ -266,11 +274,14 @@ export default function EnemyTurnPanel() {
     proporTurno(entrada.playerId, kind).catch(() => {});
   }, [initiative, currentTurn, enemies, bosses, allies]);
 
-  const lista = Object.values(acoes).sort((a, b) => (a.status === 'PROPOSTA' ? -1 : 0) - (b.status === 'PROPOSTA' ? -1 : 0));
+  // Fora da Mesa só aparece o que ainda espera decisão; as concluídas ficam na Mesa
+  const lista = Object.values(acoes)
+    .filter((a) => a.status === 'PROPOSTA' || a.status === 'AGUARDANDO_JOGADOR')
+    .sort((a, b) => (a.status === 'PROPOSTA' ? -1 : 0) - (b.status === 'PROPOSTA' ? -1 : 0));
   // Na Mesa nova as ações aparecem integradas; aqui só continua a proposta automática
-  if (secao === 'mesa') return null;
-  const pendentes = lista.filter((a) => a.status === 'PROPOSTA' || a.status === 'AGUARDANDO_JOGADOR').length;
-  if (lista.length === 0 && !relatorio) return null;
+  if (secao === 'mesa' || initiative.length === 0) return null;
+  const pendentes = lista.length;
+  if (pendentes === 0) return null;
 
   return (
     <div className="fixed bottom-4 right-4 z-50 w-[360px] max-w-[calc(100vw-2rem)] bg-e-surface border border-red-500/40 rounded-2xl shadow-2xl overflow-hidden">
