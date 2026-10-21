@@ -192,6 +192,7 @@ export interface Player {
   sobrecargaAtiva?: boolean;
   sobrecargaNivel?: number;
   desviosRestantes?: number;
+  sorte?: number;                 // d6 de sorte da campanha inteira; não volta, só o mestre concede
   customBars?: CustomBar[];
   inventorySize?: number;
   perfil?: Perfil;                // aba Personagem: história e traços (mestre) + anotações (jogador)

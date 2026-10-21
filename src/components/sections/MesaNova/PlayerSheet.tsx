@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { X, CircleDollarSign, Sparkle, ScrollText, Backpack, Sparkles, Star, Gem, Flame, Swords, Moon } from 'lucide-react';
+import { X, CircleDollarSign, Sparkle, ScrollText, Backpack, Sparkles, Star, Gem, Flame, Swords, Moon, Clover } from 'lucide-react';
 import { api, mensagemErro } from '@/lib/api';
 import { useStore } from '@/store';
 import { useCombateStore, divisorArma } from '@/store/combateStore';
@@ -107,6 +107,11 @@ export default function PlayerSheet({ player, essencias, onClose }: { player: Pl
   async function darXp(amount: number) {
     if (amount <= 0) return;
     try { setPlayer((await api.put<Player>('/master/exp', { playerId: player.id, amount })).data); } catch {}
+  }
+
+  /** Sorte: recompensa rara, o mestre dá ou tira 1 por vez. */
+  async function ajustarSorte(delta: number) {
+    try { setPlayer((await api.put<Player>(`/master/players/${player.id}/sorte`, { delta })).data); } catch {}
   }
 
   async function ajustarOuro(delta: number) {
@@ -224,7 +229,7 @@ export default function PlayerSheet({ player, essencias, onClose }: { player: Pl
                 {player.pressao && <Recurso nome="Pressão" atual={player.pressao.current} max={player.pressao.max} cor="#f97316" onAjuste={(d) => ajustar('pressao', d)} menos="Gastar" mais="Ganhar" />}
               </div>
 
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-4 gap-2">
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col items-center gap-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint">DEF</span>
                   <span className="text-2xl font-black text-e-text tabular-nums leading-none">{attrs.defense}</span>
@@ -240,6 +245,16 @@ export default function PlayerSheet({ player, essencias, onClose }: { player: Pl
                 <div className="rounded-xl bg-white/[0.03] border border-white/[0.06] p-3 flex flex-col items-center gap-0.5">
                   <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-faint">Iniciativa</span>
                   <span className="text-2xl font-black text-e-text tabular-nums leading-none">+{Math.floor(mod(attrs.agility) / 2)}</span>
+                </div>
+                <div className="rounded-xl bg-amber-400/[0.06] border border-amber-400/30 p-3 flex flex-col items-center gap-1" title="Sorte: 1d6 somado a um d20, não volta com o tempo">
+                  <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-amber-300 flex items-center gap-1"><Clover size={11} />Sorte</span>
+                  <div className="flex items-center gap-2">
+                    <button type="button" onClick={() => ajustarSorte(-1)} disabled={(player.sorte ?? 0) <= 0}
+                      className="w-6 h-6 rounded-md border border-white/10 text-e-sub hover:text-e-text disabled:opacity-30" aria-label="Tirar 1 sorte">−</button>
+                    <span className="text-2xl font-black text-amber-300 tabular-nums leading-none">{player.sorte ?? 0}</span>
+                    <button type="button" onClick={() => ajustarSorte(1)}
+                      className="w-6 h-6 rounded-md border border-amber-400/40 text-amber-300 hover:bg-amber-400/10" aria-label="Dar 1 sorte">+</button>
+                  </div>
                 </div>
               </div>
               <p className="text-xs text-e-sub -mt-3">{regraDesvio(eq.armor?.armorWeight)}{eq.armor?.negaCritico ? ' · nega 1 crítico por rodada' : ''}</p>
