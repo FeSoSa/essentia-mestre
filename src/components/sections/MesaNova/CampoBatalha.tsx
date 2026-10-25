@@ -16,7 +16,7 @@ import { Avatar, Barra, Pilula, Secao, Acao, corVida } from './ui';
 import AjusteRapido from './AjusteRapido';
 import { COR_TIPO, useCombatentes } from './combatentes';
 
-type Entidade =
+export type Entidade =
   | { kind: 'enemy'; data: EnemyInstance }
   | { kind: 'boss'; data: BossInstance }
   | { kind: 'ally'; data: CombatAlly };
@@ -72,7 +72,7 @@ function DetalhesEntidade({ e, players, onClose }: { e: Entidade; players: Playe
 }
 
 /** Card de um combatente no campo (inimigo, boss ou aliado). */
-function CartaoCombatente({ e, players, vez }: { e: Entidade; players: Player[]; vez: boolean }) {
+export function CartaoCombatente({ e, players, vez }: { e: Entidade; players: Player[]; vez: boolean }) {
   const [modal, setModal] = useState<'atacar' | 'detalhes' | 'derrotar' | null>(null);
   const d = e.data;
   const tipo = e.kind === 'enemy' ? 'inimigo' : e.kind === 'boss' ? 'boss' : 'aliado';

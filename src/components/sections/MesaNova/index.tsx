@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import { Dices, ChevronRight, Zap, Square, Loader2, Moon } from 'lucide-react';
+import { Dices, ChevronRight, Zap, Square, Loader2, Moon, LayoutGrid, LayoutDashboard, PanelRightClose, PanelRightOpen, Maximize2, Minimize2 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore, useFastAction } from '@/store';
 import { useMesaStore } from '@/store/mesaStore';
@@ -16,8 +16,11 @@ import GrupoBox from './GrupoBox';
 import EmFoco from './EmFoco';
 import Pendencias from './Pendencias';
 import CampoBatalha from './CampoBatalha';
+import Tabuleiro from './Tabuleiro';
+import PainelTabuleiro from './PainelTabuleiro';
+import { useSincronizarTabuleiro } from './sincronizar';
 import PlayerSheet from './PlayerSheet';
-import { useCombatentes } from './combatentes';
+import { useCombatentes, type Combatente } from './combatentes';
 
 type Modal = 'acao' | 'inimigo' | 'boss' | 'aliado' | 'iniciativa' | null;
 
@@ -30,13 +33,38 @@ type Modal = 'acao' | 'inimigo' | 'boss' | 'aliado' | 'iniciativa' | null;
 export default function MesaNova() {
   const fastAction = useFastAction();
   const { setPlayers, setCurrentTurn, setInitiative } = useStore();
-  const { selecionado, selecionar, foraDoCombate, carregar } = useMesaStore();
+  const { selecionado, selecionar, foraDoCombate, carregar, modo, trocarModo } = useMesaStore();
   const { players, enemies, bosses, allies, emCombate } = useCombatentes();
   const [avancando, setAvancando] = useState(false);
   const [modal, setModal] = useState<Modal>(null);
   const [essencias, setEssencias] = useState<Essencia[]>([]);
+  const [selecionadoTab, setSelecionadoTab] = useState<string | null>(null);
+  const [painelAberto, setPainelAberto] = useState(true);
+  const [telaCheia, setTelaCheia] = useState(false);
+
+  useEffect(() => {
+    const aoMudar = () => setTelaCheia(!!document.fullscreenElement);
+    document.addEventListener('fullscreenchange', aoMudar);
+    return () => document.removeEventListener('fullscreenchange', aoMudar);
+  }, []);
+
+  function alternarTelaCheia() {
+    if (document.fullscreenElement) document.exitFullscreen().catch(() => {});
+    else document.documentElement.requestFullscreen().catch(() => {});
+  }
+
+  /** Clique numa peça seleciona e mostra no painel; dois cliques no jogador abrem a ficha. */
+  function clicarPeca(c: Combatente) {
+    setSelecionadoTab(c.id);
+    setPainelAberto(true);
+  }
+
+  function abrirPeca(c: Combatente) {
+    if (c.tipo === 'jogador') selecionar(c.id);
+  }
 
   useEffect(() => { carregar(); }, [carregar]);
+  useSincronizarTabuleiro();
   useEffect(() => { api.get<Player[]>('/master/players').then((r) => setPlayers(r.data)).catch(() => {}); }, [setPlayers]);
   useEffect(() => { api.get<Essencia[]>('/master/essencias').then((r) => setEssencias(r.data)).catch(() => {}); }, []);
 
@@ -76,6 +104,19 @@ export default function MesaNova() {
           )}
         </div>
         <div className="flex items-center gap-2 shrink-0">
+          <div className="h-10 p-1 rounded-xl border border-white/10 flex items-center gap-1">
+            {([['painel', LayoutDashboard, 'Painel'], ['tabuleiro', LayoutGrid, 'Tabuleiro']] as const).map(([m, I, rotulo]) => (
+              <button key={m} type="button" onClick={() => trocarModo(m)}
+                className={`h-full px-2.5 rounded-lg text-xs font-semibold flex items-center gap-1.5 cursor-pointer transition-colors ${
+                  modo === m ? 'bg-white/10 text-e-text' : 'text-e-faint hover:text-e-sub'}`}>
+                <I size={13} /> {rotulo}
+              </button>
+            ))}
+          </div>
+          <button type="button" onClick={alternarTelaCheia} title={telaCheia ? 'Sair da tela cheia' : 'Tela cheia'}
+            className="h-10 w-10 rounded-xl border border-white/10 text-e-sub hover:text-e-text hover:bg-white/5 flex items-center justify-center cursor-pointer transition-colors">
+            {telaCheia ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
+          </button>
           <button type="button" title="Fim do dia: zera o Escudo de todos os jogadores"
             onClick={async () => {
               if (!confirm('Fim do dia: zerar o Escudo de todos os jogadores?')) return;
@@ -111,6 +152,23 @@ export default function MesaNova() {
         </div>
       </header>
 
+      {modo === 'tabuleiro' ? (
+        <div className="flex-1 min-h-0 flex">
+          <div className="flex-1 min-w-0 flex flex-col p-4">
+            <Tabuleiro selecionadoId={selecionadoTab} onSelecionar={clicarPeca} onAbrir={abrirPeca} onAdicionar={adicionar}
+              extras={
+                <button type="button" onClick={() => setPainelAberto((v) => !v)} title={painelAberto ? 'Esconder painel' : 'Mostrar painel'}
+                  className="h-8 w-8 rounded-lg border border-white/10 text-e-sub hover:text-e-text hover:bg-white/5 flex items-center justify-center cursor-pointer">
+                  {painelAberto ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+                </button>
+              } />
+          </div>
+          {painelAberto && (
+            <PainelTabuleiro selecionadoId={selecionadoTab} onFecharSelecionado={() => setSelecionadoTab(null)}
+              onIniciativa={() => setModal('iniciativa')} onAdicionar={adicionar} />
+          )}
+        </div>
+      ) : (
       <div className="flex-1 min-h-0 overflow-y-auto">
         <div className="w-full px-6 2xl:px-8 py-6 flex flex-col gap-8">
           <div className="grid grid-cols-1 lg:grid-cols-[320px_minmax(0,1fr)] 2xl:grid-cols-[360px_minmax(0,1fr)] gap-5 items-start">
@@ -121,6 +179,7 @@ export default function MesaNova() {
           <CampoBatalha onAdicionar={adicionar} />
         </div>
       </div>
+      )}
 
       {aberto && <PlayerSheet key={aberto.id} player={aberto} essencias={essencias} onClose={() => selecionar(null)} />}
 

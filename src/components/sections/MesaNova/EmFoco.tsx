@@ -24,7 +24,7 @@ function regraDesvio(peso?: string): string {
 
 function Moldura({ cor, children }: { cor: string; children: React.ReactNode }) {
   return (
-    <div className="relative rounded-2xl border bg-[#18181b] overflow-hidden h-full"
+    <div className="@container relative rounded-2xl border bg-[#18181b] overflow-hidden h-full"
       style={{ borderColor: cor + '40', backgroundImage: `radial-gradient(120% 140% at 0% 0%, ${cor}14 0%, transparent 55%)` }}>
       {children}
     </div>
@@ -41,7 +41,7 @@ function Cabecalho({ c, rotulo, extra }: { c: Combatente; rotulo: string; extra?
         <span className="text-[10px] font-black uppercase tracking-[0.18em]" style={{ color: cor }}>{rotulo}</span>
         <h2 className="text-2xl font-bold text-e-text leading-tight truncate">{c.nome}</h2>
         <div className="flex items-center gap-2">
-          <div className="w-48"><Barra atual={c.hp} max={c.hpMax} cor={corVida(pct)} altura={7} /></div>
+          <div className="w-48 min-w-0 shrink"><Barra atual={c.hp} max={c.hpMax} cor={corVida(pct)} altura={7} /></div>
           <span className="text-sm font-bold tabular-nums" style={{ color: corVida(pct) }}>{c.hp}</span>
           <span className="text-xs text-e-faint tabular-nums">/ {c.hpMax} PV</span>
         </div>
@@ -69,7 +69,7 @@ function Preparar({ onIniciativa, onAdicionar }: { onIniciativa: () => void; onA
           <span className="text-[10px] font-black uppercase tracking-[0.18em] text-e-accent">Fora de combate</span>
           <h2 className="text-2xl font-bold text-e-text mt-1">Preparar encontro</h2>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 @xl:grid-cols-3 gap-3">
           {passos.map((p) => (
             <div key={p.n} className={`rounded-xl border p-3.5 flex flex-col gap-1.5 ${p.ok ? 'border-e-accent/30 bg-e-accent/[0.05]' : 'border-white/10 bg-white/[0.02]'}`}>
               <span className={`w-6 h-6 rounded-full text-xs font-black flex items-center justify-center ${p.ok ? 'bg-e-accent text-black' : 'bg-white/10 text-e-sub'}`}>{p.n}</span>
@@ -111,7 +111,7 @@ function VezOponente({ c }: { c: Combatente }) {
 
   return (
     <Moldura cor={cor}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] h-full">
+      <div className="grid grid-cols-1 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)] @6xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] h-full">
         <div className="p-6 flex flex-col gap-4">
           <Cabecalho c={c} rotulo={c.tipo === 'boss' ? `Vez do boss${fase ? ` · fase ${b!.currentPhase + 1}` : ''}` : 'Vez do inimigo'}
             extra={
@@ -136,7 +136,7 @@ function VezOponente({ c }: { c: Combatente }) {
             {!acao && <Acao tom="perigo" onClick={() => proporTurno(c.id, c.tipo === 'boss' ? 'boss' : 'enemy').catch(() => {})}><Bot size={13} /> Calcular turno</Acao>}
           </div>
         </div>
-        <div className="border-l border-white/10 bg-black/20 flex flex-col">
+        <div className="border-t @3xl:border-t-0 @3xl:border-l border-white/10 bg-black/20 flex flex-col">
           <div className="px-4 pt-4 flex items-center gap-2">
             <Bot size={13} className="text-red-300" />
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-sub">Ação proposta</span>
@@ -170,7 +170,7 @@ function VezAliado({ c }: { c: Combatente }) {
 
   return (
     <Moldura cor={cor}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,360px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] h-full">
+      <div className="grid grid-cols-1 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,360px)] @6xl:grid-cols-[minmax(0,1fr)_minmax(0,440px)] h-full">
         <div className="p-6 flex flex-col gap-4">
           <Cabecalho c={c} rotulo="Vez do aliado"
             extra={al && <div className="flex gap-1.5 flex-wrap"><Pilula cor="#a1a1aa">DEF {al.attributes.defense}</Pilula></div>} />
@@ -191,7 +191,7 @@ function VezAliado({ c }: { c: Combatente }) {
             </div>
           )}
         </div>
-        <div className="border-l border-white/10 bg-black/20 flex flex-col">
+        <div className="border-t @3xl:border-t-0 @3xl:border-l border-white/10 bg-black/20 flex flex-col">
           <div className="px-4 pt-4 flex items-center gap-2">
             <Bot size={13} className="text-emerald-300" />
             <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-sub">Ação proposta</span>
@@ -231,12 +231,12 @@ function VezJogador({ c, p }: { c: Combatente; p: Player }) {
 
   return (
     <Moldura cor={COR_TIPO.jogador}>
-      <div className="grid grid-cols-[minmax(0,1fr)_minmax(0,300px)] 2xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)] h-full">
+      <div className="grid grid-cols-1 @3xl:grid-cols-[minmax(0,1fr)_minmax(0,300px)] @6xl:grid-cols-[minmax(0,1fr)_minmax(0,420px)] h-full">
         <div className="p-6 flex flex-col gap-4">
           <Cabecalho c={c} rotulo="Vez do jogador"
             extra={
               <div className="flex items-center gap-2 flex-wrap">
-                <div className="w-48"><Barra atual={p.flow.current} max={p.flow.max} cor="#4a9fe0" altura={5} /></div>
+                <div className="w-48 min-w-0 shrink"><Barra atual={p.flow.current} max={p.flow.max} cor="#4a9fe0" altura={5} /></div>
                 <span className="text-xs text-[#4a9fe0] font-bold tabular-nums">{p.flow.current}</span>
                 <span className="text-[11px] text-e-faint tabular-nums">/ {p.flow.max} ES</span>
               </div>
@@ -280,7 +280,7 @@ function VezJogador({ c, p }: { c: Combatente; p: Player }) {
             <Acao className="self-end" onClick={() => selecionar(p.id)}><ScrollText size={13} /> Abrir ficha</Acao>
           </div>
         </div>
-        <div className="border-l border-white/10 bg-black/20 p-4 flex flex-col gap-2 overflow-y-auto">
+        <div className="border-t @3xl:border-t-0 @3xl:border-l border-white/10 bg-black/20 p-4 flex flex-col gap-2 overflow-y-auto">
           <span className="text-[10px] font-bold uppercase tracking-[0.14em] text-e-sub">Habilidades</span>
           {p.slots.filter((s) => s.skillId).map((s) => {
             const e = porId.get(s.skillId!);

@@ -6,6 +6,7 @@ export interface Race {
   starterAttributes: PlayerAttributes;
   inventorySize?: number;
   tracosDano?: TracoDano[];
+  deslocamento?: number;          // casas por turno no tabuleiro da Mesa (padrão 6)
 }
 
 export type { TracoDano, DegrauAplicado } from '@/lib/tiposDano';

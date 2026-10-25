@@ -205,7 +205,7 @@ function PedidoDescoberta({ d }: { d: Descoberta }) {
   );
 }
 
-export default function Pendencias() {
+export default function Pendencias({ vertical }: { vertical?: boolean }) {
   const { damageRequests, effectRequests, sobrecargaRequests, allyRequests } = useStore();
   const pendentes = useTiposDano((s) => s.descobertas).flatMap((e) => e.descobertas).filter((d) => !d.liberada);
   const contraAtaques = Object.values(useCombateStore((s) => s.acoes)).filter((a) => a.status === 'ERROU' && a.contraAtaqueSkill && !a.contraAtaque);
@@ -218,7 +218,7 @@ export default function Pendencias() {
 
   return (
     <Secao titulo="Esperando você" contagem={total}>
-      <div className="flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]">
+      <div className={vertical ? 'flex flex-col gap-3 [&>*]:w-full!' : 'flex gap-3 overflow-x-auto pb-2 [scrollbar-width:thin]'}>
         {damageRequests.map((r) => <PedidoDano key={r.requestId} r={r} />)}
         {sobrecargaRequests.map((r) => <PedidoSobrecarga key={r.playerId} r={r} />)}
         {effectRequests.map((r) => <PedidoEfeito key={r.requestId} r={r} />)}

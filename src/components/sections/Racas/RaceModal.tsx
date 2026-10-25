@@ -37,13 +37,14 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
     }
   );
   const [inventorySize, setInventorySize] = useState(String(race?.inventorySize ?? 18));
+  const [deslocamento, setDeslocamento] = useState(String(race?.deslocamento ?? 6));
   const [tracosDano, setTracosDano] = useState<TracoDano[]>(race?.tracosDano ?? []);
   const [loading, setLoading] = useState(false);
 
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
-    const body = { name: name.trim(), starterAttributes: attrs, inventorySize: Number(inventorySize) || 18, tracosDano };
+    const body = { name: name.trim(), starterAttributes: attrs, inventorySize: Number(inventorySize) || 18, tracosDano, deslocamento: Math.max(0, Number(deslocamento) || 0) };
     try {
       const res = editing
         ? await api.put<Race>(`/master/races/${race!.id}`, body)
@@ -71,14 +72,25 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
               className={inp} placeholder="ex: Humano, Elfo, Anão…" />
           </div>
 
-          <div>
-            <label className={lbl}>Slots de inventário</label>
-            <input
-              type="number" min={1} max={64}
-              value={inventorySize}
-              onChange={(e) => setInventorySize(e.target.value)}
-              className={`${inp} text-center`}
-            />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={lbl}>Slots de inventário</label>
+              <input
+                type="number" min={1} max={64}
+                value={inventorySize}
+                onChange={(e) => setInventorySize(e.target.value)}
+                className={`${inp} text-center`}
+              />
+            </div>
+            <div>
+              <label className={lbl} title="Quantas casas a raça anda por turno no tabuleiro da Mesa">Deslocamento <span className="normal-case font-normal">(casas)</span></label>
+              <input
+                type="number" min={0} max={30}
+                value={deslocamento}
+                onChange={(e) => setDeslocamento(e.target.value)}
+                className={`${inp} text-center`}
+              />
+            </div>
           </div>
 
           <div>

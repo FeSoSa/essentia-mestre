@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react';
 import { Plus, Pencil, Trash2 } from 'lucide-react';
 import { api } from '@/lib/api';
+import { useTabuleiroStore } from '@/store/tabuleiroStore';
 import SectionHeader, { Page } from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import RaceModal from './RaceModal';
@@ -31,12 +32,15 @@ export default function Racas() {
       const idx = prev.findIndex((x) => x.id === r.id);
       return idx >= 0 ? prev.map((x, i) => (i === idx ? r : x)) : [...prev, r];
     });
+    // Deslocamento novo já vale no tabuleiro da Mesa
+    useTabuleiroStore.getState().carregarRacas();
   }
 
   async function handleDelete(r: Race) {
     if (!confirm(`Deletar raça "${r.name}"?`)) return;
     await api.delete(`/master/races/${r.id}`).catch(() => {});
     setRaces((prev) => prev.filter((x) => x.id !== r.id));
+    useTabuleiroStore.getState().carregarRacas();
   }
 
   return (
@@ -62,6 +66,7 @@ export default function Racas() {
             <div key={r.id} onClick={() => setEditing(r)} className="group bg-e-surface border border-white/[0.07] rounded-2xl p-4 flex flex-col gap-3 cursor-pointer transition-colors hover:border-white/20 hover:bg-[#1c1c20]">
               <div className="flex items-center justify-between">
                 <span className="font-semibold text-e-text">{r.name}</span>
+                <span className="ml-2 mr-auto text-[11px] text-e-faint tabular-nums" title="Casas por turno no tabuleiro">{r.deslocamento ?? 6} casas</span>
                 <div className="flex gap-0.5 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>
                   <button type="button" title="Editar" onClick={() => setEditing(r)}
                     className="p-1.5 cursor-pointer rounded-lg text-e-faint hover:text-e-text hover:bg-e-card transition-colors">

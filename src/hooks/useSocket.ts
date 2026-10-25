@@ -8,6 +8,7 @@ import { useCombateStore } from '@/store/combateStore';
 import { useMaestriaStore } from '@/lib/maestria';
 import { useCampanhaStore } from '@/features/campanha/campanhaStore';
 import { useTiposDano, type BestiarioEntrada } from '@/lib/tiposDano';
+import { useTabuleiroStore } from '@/store/tabuleiroStore';
 import type { CampanhaSnapshot } from '@/features/campanha/types';
 import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, AllyEffectApprovalRequest, CombatAlly, Note, CombateConfig, EnemyAction, MaestriaConfig } from '@/store/types';
 
@@ -140,6 +141,17 @@ export function useSocket() {
       client.subscribe('/topic/notes', (msg) => {
         const notes: Note[] = JSON.parse(msg.body);
         setNotes(notes);
+      });
+
+      // A API guarda quanto a peça da vez já andou
+      client.subscribe('/topic/tabuleiro', (msg) => {
+        useTabuleiroStore.getState().receberMovimento(JSON.parse(msg.body).movimento ?? null);
+      });
+
+      // Jogador moveu a própria peça pelo app; o resto do tabuleiro sai daqui
+      client.subscribe('/topic/tabuleiro/movimento', (msg) => {
+        const { id, x, y } = JSON.parse(msg.body) as { id: string; x: number; y: number };
+        useTabuleiroStore.getState().mover(id, { x, y });
       });
 
       // Campanha: arquivos da pasta mudaram (painel, Claude ou outro editor)
