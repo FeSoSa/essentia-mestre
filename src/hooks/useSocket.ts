@@ -7,6 +7,7 @@ import { useStore } from '@/store';
 import { useCombateStore } from '@/store/combateStore';
 import { useMaestriaStore } from '@/lib/maestria';
 import { useCampanhaStore } from '@/features/campanha/campanhaStore';
+import { useTiposDano, type BestiarioEntrada } from '@/lib/tiposDano';
 import type { CampanhaSnapshot } from '@/features/campanha/types';
 import type { Player, LogEntry, FastAction, InitiativeEntry, ImageEntry, EnemyInstance, BossInstance, SobrecargaRequest, DamageApprovalRequest, EffectApprovalRequest, AllyEffectApprovalRequest, CombatAlly, Note, CombateConfig, EnemyAction, MaestriaConfig } from '@/store/types';
 
@@ -128,6 +129,12 @@ export function useSocket() {
       client.subscribe('/topic/enemy-action', (msg) => {
         useCombateStore.getState().upsertAcao(JSON.parse(msg.body) as EnemyAction);
       });
+
+      // Bestiário do grupo: descoberta nova (pendente) ou liberada/descartada
+      client.subscribe('/topic/descobertas-mestre', (msg) => {
+        useTiposDano.getState().setDescobertas(JSON.parse(msg.body) as BestiarioEntrada[]);
+      });
+      useTiposDano.getState().carregarDescobertas();
 
       // Notas fixas
       client.subscribe('/topic/notes', (msg) => {

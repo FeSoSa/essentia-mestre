@@ -33,6 +33,11 @@ export interface Skill {
   }[];
   cooldownTurns: number;
   ultimate: boolean;
+  tiposDano?: string[];            // 1 a 2 tipos de dano; vazio = herda da arma só no dano da arma
+  bonusAcerto?: number | null;     // +X no acerto desta skill
+  exclusivaCom?: string | null;    // id da skill que não equipa junto com esta (uma ou outra)
+  ignoraDef?: boolean;             // acerta sempre: o app pula a rolagem de acerto
+  contraAtaque?: boolean;          // equipada: inimigo que errar este jogador abre um contra-ataque para o mestre liberar
   passive?: boolean;
   actionType?: string;
   pressaoDice?: boolean;
@@ -58,6 +63,8 @@ interface Props {
   weapons: ItemCatalog[];
   onEdit: () => void;
   onDelete: () => void;
+  /** Nomes das skills que não equipam junto com esta (nos dois sentidos). */
+  exclusivas?: string[];
 }
 
 const TYPE_COLOR: Record<string, string> = {
@@ -115,7 +122,7 @@ function dmgDisplay(d: NonNullable<Skill['damage']>, tier?: number | null): stri
   return parts.join(' + ') || 'sem dano';
 }
 
-export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete }: Props) {
+export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete, exclusivas = [] }: Props) {
   const color    = TYPE_COLOR[skill.type] ?? '#71717a';
   const catLabel = categoryLabel(skill, essencias);
   const req      = skill.requirements;
@@ -138,6 +145,15 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
             {skill.ultimate && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-amber-400/20 text-amber-400 shrink-0">ult</span>
             )}
+            {skill.contraAtaque && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-yellow-500/20 text-yellow-300 shrink-0">contra-ataque</span>
+            )}
+            {skill.ignoraDef && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-rose-500/20 text-rose-300 shrink-0">ignora DEF</span>
+            )}
+            {skill.cooldownTurns >= 99 && (
+              <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-sky-500/20 text-sky-300 shrink-0">1x por combate</span>
+            )}
             {skill.pressaoDice && (
               <span className="text-[9px] font-bold px-1.5 py-0.5 rounded uppercase tracking-wider bg-orange-500/20 text-orange-400 shrink-0">pressão</span>
             )}
@@ -154,6 +170,9 @@ export default function SkillCard({ skill, essencias, weapons, onEdit, onDelete 
             </span>
             <span className="text-[10px] text-e-sub font-medium">· {catLabel}</span>
           </div>
+          {exclusivas.length > 0 && (
+            <p className="text-[10px] text-violet-300 mt-1">Não equipa junto com {exclusivas.join(', ')}</p>
+          )}
         </div>
 
         <div className="flex gap-0.5 shrink-0 opacity-0 group-hover:opacity-100 focus-within:opacity-100 transition-opacity" onClick={(e) => e.stopPropagation()}>

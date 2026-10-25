@@ -7,9 +7,9 @@ import { proxyUrl } from '@/lib/gdrive';
 import type { AllyAttack, AllyTemplate, BossImmunity } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import Button from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
-import EmojiPicker from '@/components/ui/EmojiPicker';
-import Checkbox from '@/components/ui/Checkbox';
+import TiposDanoPicker from '@/components/shared/TiposDanoPicker';
+import TracosDanoEditor from '@/components/shared/TracosDanoEditor';
+import type { TracoDano } from '@/lib/tiposDano';
 
 interface Props {
   template?: AllyTemplate;
@@ -25,11 +25,6 @@ const lbl      = 'text-[10px] font-bold uppercase tracking-widest mb-1.5 block';
 const inp      = 'w-full text-sm rounded-xl px-3 py-2 border outline-none transition-colors placeholder:opacity-40';
 const smallInp = 'text-sm rounded-xl px-2 py-2 border outline-none transition-colors';
 const secFirst = 'flex flex-col gap-3 mt-4';
-
-const IMMUNITY_KIND_OPTS = [
-  { value: 'total',   label: 'Total'   },
-  { value: 'partial', label: 'Parcial' },
-];
 
 type Tab = 'base' | 'combate' | 'extras';
 
@@ -50,7 +45,9 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
   const [basicAttr,       setBasicAttr]       = useState<string>(rawAttacks[0]?.damageAttribute ?? 'FOR');
   const [basicEquilibrio, setBasicEquilibrio] = useState<number>(rawAttacks[0]?.equilibrio ?? 4);
   const [skillAttacks,    setSkillAttacks]    = useState<AllyAttack[]>(rawAttacks.slice(1, 6));
-  const [immunities,  setImmunities]  = useState<BossImmunity[]>(template?.immunities ?? []);
+  const [immunities]  = useState<BossImmunity[]>(template?.immunities ?? []);
+  const [tracosDano,  setTracosDano]  = useState<TracoDano[]>(template?.tracosDano ?? []);
+  const [basicTipos,  setBasicTipos]  = useState<string[]>(template?.attacks?.[0]?.tiposDano ?? []);
   const [desc,        setDesc]        = useState(template?.desc        ?? '');
   const [notes,       setNotes]       = useState(template?.notes       ?? '');
   const [loading,     setLoading]     = useState(false);
@@ -79,22 +76,13 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
     setSkillAttacks((a) => a.map((x, j) => j === i ? { ...x, skillId: undefined, skillName: undefined, name: '', damage: '' } : x));
   }
 
-  function addImmunity() {
-    setImmunities((p) => [...p, { type: '', icon: '🛡️', kind: 'total' }]);
-  }
-  function updateImmunity<K extends keyof BossImmunity>(i: number, f: K, v: BossImmunity[K]) {
-    setImmunities((p) => p.map((x, j) => j === i ? { ...x, [f]: v } : x));
-  }
-  function toggleFlag(i: number, on: boolean) {
-    setImmunities((p) => p.map((x, j) => j === i ? { ...x, isFlag: on, type: on ? '' : x.type } : x));
-  }
 
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
     const basicFormula = [basicDmgBase > 0 ? String(basicDmgBase) : null, `d20×${basicAttr}/${basicEquilibrio}`].filter(Boolean).join(' + ');
     const allAttacks: AllyAttack[] = [
-      { name: 'Ataque Básico', damage: basicFormula, damageBase: basicDmgBase, damageAttribute: basicAttr, equilibrio: basicEquilibrio },
+      { name: 'Ataque Básico', damage: basicFormula, damageBase: basicDmgBase, damageAttribute: basicAttr, equilibrio: basicEquilibrio, tiposDano: basicTipos },
       ...skillAttacks.filter((a) => a.skillId),
     ];
     const body = {
@@ -102,7 +90,7 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
       portraitUrl: portraitUrl || null,
       attributes: { strength: str, agility: agi, intelligence: int_, defense: def },
       attacks: allAttacks,
-      immunities, desc, notes,
+      immunities, tracosDano, desc, notes,
     };
     try {
       const res = editing
@@ -229,6 +217,13 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
             <p className="text-[10px] font-mono opacity-50">
               ⚔ {[basicDmgBase > 0 ? String(basicDmgBase) : null, `d20×${basicAttr}/${basicEquilibrio}`].filter(Boolean).join(' + ')}
             </p>
+            <TiposDanoPicker value={basicTipos} onChange={setBasicTipos} vazio="Tipo de dano: nenhum (Neutro)" />
+          </div>
+
+          {/* Fraquezas e resistências */}
+          <div className="flex flex-col gap-3 mt-5 pt-5 border-t" style={aBorder}>
+            <p className="text-[9px] font-bold uppercase tracking-widest" style={aLabel}>Fraquezas e resistências</p>
+            <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
           </div>
 
           {/* Habilidades */}
@@ -291,55 +286,6 @@ export default function AllyTemplateModal({ template, onClose, onSaved }: Props)
         {/* ── ABA EXTRAS ── */}
         {tab === 'extras' && <>
           <div className={secFirst}>
-            <div className="flex items-center justify-between">
-              <p className="text-[9px] font-bold uppercase tracking-widest" style={aLabel}>Imunidades</p>
-              <button onClick={addImmunity}
-                className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity">
-                <Plus size={12} /> Adicionar
-              </button>
-            </div>
-            {immunities.map((im, i) => (
-              <div key={i} className="flex flex-col gap-1.5">
-                <div className="flex gap-2 items-center">
-                  <EmojiPicker value={im.icon} onChange={(v) => updateImmunity(i, 'icon', v)} size="sm" />
-                  {!im.isFlag && (
-                    <Select
-                      value={im.kind ?? 'total'}
-                      onChange={(v) => updateImmunity(i, 'kind', v as 'total' | 'partial')}
-                      options={IMMUNITY_KIND_OPTS}
-                      className="w-28 shrink-0"
-                    />
-                  )}
-                  {im.isFlag ? (
-                    <span className="flex-1 text-xs opacity-50 italic">Imunidade genérica (sem tipo)</span>
-                  ) : (
-                    <input value={im.type}
-                      onChange={(e) => updateImmunity(i, 'type', e.target.value)}
-                      className={inp} style={aBg}
-                      placeholder={im.kind === 'partial' ? 'Label (ex: Espadas)' : 'Tipo (ex: Veneno)'} />
-                  )}
-                  <button onClick={() => setImmunities((p) => p.filter((_, j) => j !== i))}
-                    className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-1.5 ml-11 cursor-pointer" onClick={() => toggleFlag(i, !im.isFlag)}>
-                  <Checkbox checked={!!im.isFlag} onChange={(v) => toggleFlag(i, v)} color="default" />
-                  <span className="text-[10px] opacity-50 select-none">Imunidade genérica (sem tipo nomeado)</span>
-                </div>
-                {im.kind === 'partial' && !im.isFlag && (
-                  <input
-                    value={(im.sources ?? []).join(', ')}
-                    onChange={(e) => updateImmunity(i, 'sources', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-                    className={`ml-11 ${inp}`} style={aBg}
-                    placeholder="Fontes (ex: espada, Essência do Fogo)" />
-                )}
-              </div>
-            ))}
-            {immunities.length === 0 && <p className="text-xs opacity-50 italic">Nenhuma imunidade.</p>}
-          </div>
-
-          <div className="flex flex-col gap-3 mt-5 pt-5 border-t" style={aBorder}>
             <label className={lbl} style={aLabel}>Descrição <span className="normal-case font-normal">(visível ao jogador)</span></label>
             <textarea value={desc} onChange={(e) => setDesc(e.target.value)} rows={2}
               className={`resize-none ${inp}`} style={aBg} placeholder="Aparência, comportamento…" />

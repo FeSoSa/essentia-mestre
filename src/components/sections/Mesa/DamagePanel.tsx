@@ -5,6 +5,8 @@ import { Sword, Check, X } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore } from '@/store';
 import { getStatusIcon } from '@/lib/statusIcons';
+import { DegrauBadge } from '@/components/shared/TracosDanoEditor';
+import { DEGRAUS } from '@/lib/tiposDano';
 
 export default function DamagePanel() {
   const requests         = useStore((s) => s.damageRequests);
@@ -77,6 +79,11 @@ export default function DamagePanel() {
                 {req.critico && (
                   <p className="text-xs font-bold text-e-gold mt-0.5">
                     CRÍTICO{req.danoSemCritico != null ? ` (sem crítico: ${req.danoSemCritico})` : ''}
+                  </p>
+                )}
+                {req.degrau && req.degrau.degrau !== 'NEUTRO' && (
+                  <p className="text-[11px] text-e-faint mt-1 flex items-center gap-1.5">
+                    <DegrauBadge degrau={req.degrau} /> fica {Math.floor(req.damage * DEGRAUS[req.degrau.degrau].mult + 1e-9)}
                   </p>
                 )}
                 {req.ataqueBasico && <p className="text-[10px] text-e-sub mt-0.5">Ataque básico: recupera ES ao aprovar</p>}

@@ -43,6 +43,7 @@ function CatalogTab({ onClose }: { onClose: () => void }) {
           portraitUrl: selected.portraitUrl ?? null,
           attributes: selected.attributes,
           attacks: selected.attacks,
+          tracosDano: selected.tracosDano ?? [],
           desc: selected.desc,
           notes: '',
         },

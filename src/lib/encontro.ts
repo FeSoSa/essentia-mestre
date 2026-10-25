@@ -411,7 +411,7 @@ export function instanciaDe(i: Inimigo, xpRef: number): EnemyInstance {
     instanceId: '', templateId: i.inventado ? undefined : t.id, name: t.name, type: i.inventado ? 'Genérico' : t.type,
     icon: t.icon, imageUrl: t.imageUrl,
     hpCurrent: pv, hpMax: pv,
-    attributes: t.attributes, attacks: ataques, drops: t.drops, immunities: t.immunities ?? [],
+    attributes: t.attributes, attacks: ataques, drops: t.drops, immunities: t.immunities ?? [], tracosDano: t.tracosDano ?? [],
     xp: xpDe(i, xpRef),
     desc: t.desc, notes: t.notes, defesa: t.defesa, modAcerto: t.modAcerto,
     esMax: t.esMax ?? 0, negaCritico: t.negaCritico ?? false,

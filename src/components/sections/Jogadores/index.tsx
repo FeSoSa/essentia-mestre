@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { Plus, Pencil, Star, RefreshCw, RotateCcw, Trash2, Copy, Check, ChevronDown, X, Sparkles } from 'lucide-react';
+import { Plus, Pencil, Star, RefreshCw, RotateCcw, Trash2, Copy, Check, ChevronDown, X, Sparkles, Download } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useStore, usePlayers } from '@/store';
 import Button from '@/components/ui/Button';
@@ -152,6 +152,34 @@ function PlayerRow({ p, onExp, onEdit, onEssencias, onToggle, toggling, onDelete
   const [copiado, setCopiado] = useState(false);
   const pct = p.hp.max > 0 ? p.hp.current / p.hp.max : 0;
 
+  // Mesmo formato do snapshot do app do jogador (lib/offline.ts): o jogador importa no login
+  const [exportando, setExportando] = useState(false);
+  async function exportarOffline() {
+    setExportando(true);
+    try {
+      const [player, skillTree, essencias, combate, maestria] = await Promise.all([
+        api.post('/auth/login', { code: p.code }).then((r) => r.data).catch(() => p),
+        api.get(`/players/${p.id}/skill-tree`).then((r) => r.data),
+        api.get('/master/essencias').then((r) => r.data),
+        api.get('/config/combate').then((r) => r.data).catch(() => undefined),
+        api.get('/config/maestria').then((r) => r.data).catch(() => undefined),
+      ]);
+      const agora = new Date();
+      const snap = { versao: 1, geradoEm: agora.toISOString(), origem: 'arquivo', player, skillTree, essencias, combate, maestria };
+      const url = URL.createObjectURL(new Blob([JSON.stringify(snap)], { type: 'application/json' }));
+      const a = document.createElement('a');
+      const nome = p.char.name.normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/\W+/g, '-').toLowerCase();
+      a.href = url;
+      a.download = `essentia-${nome}-${agora.toISOString().slice(0, 10)}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert('Não deu para exportar a ficha. O servidor está ligado?');
+    } finally {
+      setExportando(false);
+    }
+  }
+
   function copiar() {
     navigator.clipboard?.writeText(p.code).then(() => { setCopiado(true); setTimeout(() => setCopiado(false), 1200); }).catch(() => {});
   }
@@ -191,6 +219,9 @@ function PlayerRow({ p, onExp, onEdit, onEssencias, onToggle, toggling, onDelete
         <button type="button" onClick={onEssencias} title="Essências e proficiências"
           className={`${icone} ${p.essencia && p.essencia.excedente > 0 ? '!text-red-400' : ''}`}>
           <Sparkles size={15} />
+        </button>
+        <button type="button" onClick={exportarOffline} disabled={exportando} title="Exportar ficha offline (arquivo para o jogador ver as skills longe do servidor)" className={icone}>
+          <Download size={15} />
         </button>
         <button type="button" title="Recalcular PV, ES e Éter a partir dos atributos" className={icone}
           onClick={async () => { try { await api.post(`/master/players/${p.id}/recalculate`); } catch {} }}>

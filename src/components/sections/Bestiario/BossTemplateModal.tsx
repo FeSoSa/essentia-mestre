@@ -5,9 +5,8 @@ import PhaseEditor, {
   EMPTY_ATTRS,
 } from "@/components/sections/Mesa/PhaseEditor";
 import Button from "@/components/ui/Button";
-import Checkbox, { CheckField } from "@/components/ui/Checkbox";
+import { CheckField } from "@/components/ui/Checkbox";
 import EmojiPicker from "@/components/ui/EmojiPicker";
-import Select from "@/components/ui/Select";
 import { api } from "@/lib/api";
 import { normalizeGdriveUrl, proxyUrl } from "@/lib/gdrive";
 import type {
@@ -23,6 +22,8 @@ import type {
 } from "@/store/types";
 import { Coins, Plus, Trash2, X } from "lucide-react";
 import { useEffect, useState } from "react";
+import TracosDanoEditor from "@/components/shared/TracosDanoEditor";
+import type { TracoDano } from "@/lib/tiposDano";
 
 interface Props {
   template?: BossTemplate;
@@ -40,11 +41,6 @@ const sec = "flex flex-col gap-3 mt-5 pt-5 border-t border-e-boss-border/40";
 const secFirst = "flex flex-col gap-3 mt-4";
 const secLabel =
   "text-[9px] font-bold uppercase tracking-widest text-e-boss-text/50";
-
-const IMMUNITY_KIND_OPTS = [
-  { value: "total", label: "Total" },
-  { value: "partial", label: "Parcial" },
-];
 
 const GOLD_TIER_OPTS: { value: GoldDropTier; label: string }[] = [
   { value: "pobre", label: "🪙 Pobre" },
@@ -75,6 +71,7 @@ export default function BossTemplateModal({
   const [imageUrl, setImageUrl] = useState(template?.imageUrl ?? "");
   const [xp, setXp] = useState(template?.xp ?? 500);
   const [negaCritico, setNegaCritico] = useState(template?.negaCritico ?? false);
+  const [tracosDano, setTracosDano] = useState<TracoDano[]>(template?.tracosDano ?? []);
   const [notes, setNotes] = useState(template?.notes ?? "");
 
   const initPhase = (n: number, hp: number): BossPhase => ({
@@ -89,10 +86,10 @@ export default function BossTemplateModal({
   const [phases, setPhases] = useState<BossPhase[]>(
     template?.phases ?? [initPhase(1, 100)],
   );
-  const [immunities, setImmunities] = useState<BossImmunity[]>(
+  const [immunities] = useState<BossImmunity[]>(
     template?.immunities ?? [],
   );
-  const [resistances, setResistances] = useState<BossResistance[]>(
+  const [resistances] = useState<BossResistance[]>(
     template?.resistances ?? [],
   );
   const [drops, setDrops] = useState<EnemyDrop[]>(
@@ -169,24 +166,6 @@ export default function BossTemplateModal({
     );
   }
 
-  function addImmunity() {
-    setImmunities((p) => [...p, { type: "", icon: "🛡️", kind: "total" }]);
-  }
-  function updateImmunity<K extends keyof BossImmunity>(
-    i: number,
-    f: K,
-    v: BossImmunity[K],
-  ) {
-    setImmunities((p) => p.map((x, j) => (j === i ? { ...x, [f]: v } : x)));
-  }
-  function toggleFlag(i: number, on: boolean) {
-    setImmunities((p) =>
-      p.map((x, j) =>
-        j === i ? { ...x, isFlag: on, type: on ? "" : x.type } : x,
-      ),
-    );
-  }
-
   async function save() {
     if (!name.trim() || phases.length < 1) return;
     setLoading(true);
@@ -208,6 +187,7 @@ export default function BossTemplateModal({
       xp,
       notes,
       negaCritico,
+      tracosDano,
     };
     try {
       const res = editing
@@ -358,158 +338,10 @@ export default function BossTemplateModal({
           {tab === "defesas" && (
             <>
               <div className={secFirst}>
-                <div className="flex items-center justify-between">
-                  <p className={secLabel}>Imunidades</p>
-                  <button
-                    onClick={addImmunity}
-                    className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    <Plus size={12} /> Adicionar
-                  </button>
-                </div>
-                {immunities.map((im, i) => (
-                  <div key={i} className="flex flex-col gap-1.5">
-                    <div className="flex gap-2 items-center">
-                      <EmojiPicker
-                        value={im.icon}
-                        onChange={(v) => updateImmunity(i, "icon", v)}
-                        size="sm"
-                      />
-                      {!im.isFlag && (
-                        <Select
-                          value={im.kind ?? "total"}
-                          onChange={(v) =>
-                            updateImmunity(i, "kind", v as "total" | "partial")
-                          }
-                          options={IMMUNITY_KIND_OPTS}
-                          className="w-28 shrink-0"
-                        />
-                      )}
-                      {im.isFlag ? (
-                        <span className="flex-1 text-xs opacity-50 italic">
-                          Imunidade genérica (sem tipo)
-                        </span>
-                      ) : (
-                        <input
-                          value={im.type}
-                          onChange={(e) =>
-                            updateImmunity(i, "type", e.target.value)
-                          }
-                          className={inp}
-                          placeholder={
-                            im.kind === "partial"
-                              ? "Label (ex: Espadas)"
-                              : "Tipo (ex: Veneno)"
-                          }
-                        />
-                      )}
-                      <button
-                        onClick={() =>
-                          setImmunities((p) => p.filter((_, j) => j !== i))
-                        }
-                        className="opacity-40 hover:opacity-80 shrink-0 transition-opacity"
-                      >
-                        <Trash2 size={13} />
-                      </button>
-                    </div>
-                    <div
-                      className="flex items-center gap-1.5 ml-11 cursor-pointer"
-                      onClick={() => toggleFlag(i, !im.isFlag)}
-                    >
-                      <Checkbox
-                        checked={!!im.isFlag}
-                        onChange={(v) => toggleFlag(i, v)}
-                        color="amber"
-                      />
-                      <span className="text-[10px] opacity-50 select-none">
-                        Imunidade genérica (sem tipo nomeado)
-                      </span>
-                    </div>
-                    {im.kind === "partial" && !im.isFlag && (
-                      <input
-                        value={(im.sources ?? []).join(", ")}
-                        onChange={(e) =>
-                          updateImmunity(
-                            i,
-                            "sources",
-                            e.target.value
-                              .split(",")
-                              .map((s) => s.trim())
-                              .filter(Boolean),
-                          )
-                        }
-                        className={`ml-11 ${inp}`}
-                        placeholder="Fontes (ex: espada, Essência do Fogo)"
-                      />
-                    )}
-                  </div>
-                ))}
-                {immunities.length === 0 && (
-                  <p className="text-xs opacity-50 italic">
-                    Nenhuma imunidade.
-                  </p>
-                )}
+                <p className={secLabel}>Fraquezas e resistências</p>
+                <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
               </div>
 
-              <div className={sec}>
-                <div className="flex items-center justify-between">
-                  <p className={secLabel}>Resistências</p>
-                  <button
-                    onClick={() =>
-                      setResistances((p) => [...p, { type: "", reduction: 50 }])
-                    }
-                    className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100 transition-opacity"
-                  >
-                    <Plus size={12} /> Adicionar
-                  </button>
-                </div>
-                {resistances.map((r, i) => (
-                  <div key={i} className="flex gap-2 items-center">
-                    <input
-                      value={r.type}
-                      onChange={(e) =>
-                        setResistances((p) =>
-                          p.map((x, j) =>
-                            j === i ? { ...x, type: e.target.value } : x,
-                          ),
-                        )
-                      }
-                      className={inp}
-                      placeholder="Tipo (ex: Fogo)"
-                    />
-                    <input
-                      type="number"
-                      value={r.reduction}
-                      onChange={(e) =>
-                        setResistances((p) =>
-                          p.map((x, j) =>
-                            j === i
-                              ? { ...x, reduction: Number(e.target.value) }
-                              : x,
-                          ),
-                        )
-                      }
-                      className={`w-16 text-center ${smallInp}`}
-                      min={1}
-                      max={100}
-                    />
-                    <span className="text-xs opacity-50 shrink-0">%</span>
-                    <button
-                      onClick={() =>
-                        setResistances((p) => p.filter((_, j) => j !== i))
-                      }
-                      className="opacity-40 hover:opacity-80 shrink-0 transition-opacity"
-                    >
-                      <Trash2 size={13} />
-                    </button>
-                  </div>
-                ))}
-                {resistances.length === 0 && (
-                  <p className="text-xs opacity-50 italic">
-                    Nenhuma resistência.
-                  </p>
-                )}
-              </div>
             </>
           )}
 

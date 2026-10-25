@@ -4,6 +4,8 @@ import { useState } from 'react';
 import { api } from '@/lib/api';
 import type { Race, PlayerAttributes } from '@/store/types';
 import Button from '@/components/ui/Button';
+import TracosDanoEditor from '@/components/shared/TracosDanoEditor';
+import type { TracoDano } from '@/lib/tiposDano';
 
 interface Props {
   race?: Race;
@@ -35,12 +37,13 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
     }
   );
   const [inventorySize, setInventorySize] = useState(String(race?.inventorySize ?? 18));
+  const [tracosDano, setTracosDano] = useState<TracoDano[]>(race?.tracosDano ?? []);
   const [loading, setLoading] = useState(false);
 
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
-    const body = { name: name.trim(), starterAttributes: attrs, inventorySize: Number(inventorySize) || 18 };
+    const body = { name: name.trim(), starterAttributes: attrs, inventorySize: Number(inventorySize) || 18, tracosDano };
     try {
       const res = editing
         ? await api.put<Race>(`/master/races/${race!.id}`, body)
@@ -95,6 +98,11 @@ export default function RaceModal({ race, onClose, onSaved }: Props) {
                 </div>
               ))}
             </div>
+          </div>
+
+          <div>
+            <label className={lbl}>Fraquezas e resistências <span className="normal-case font-normal">(vencem as da armadura)</span></label>
+            <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
           </div>
 
           <div className="flex gap-2 justify-end pt-1 border-t border-e-border">

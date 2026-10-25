@@ -2,16 +2,18 @@
 
 import { useState, useEffect } from 'react';
 import { Plus, Trash2, X, Coins } from 'lucide-react';
-import Checkbox, { CheckField } from '@/components/ui/Checkbox';
+import { CheckField } from '@/components/ui/Checkbox';
 import { api } from '@/lib/api';
 import type { EnemyTemplate, EnemyAttack, EnemyDrop, BossImmunity, GoldDrop, GoldDropTier, ItemCatalog } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import Button from '@/components/ui/Button';
-import Select from '@/components/ui/Select';
 import EmojiPicker from '@/components/ui/EmojiPicker';
 import { ItemIcon } from '@/components/sections/Itens/ItemCard';
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
 import { COR_DIF, ORDEM_DIFICULDADE, NOME_DIFICULDADE } from '@/lib/encontro';
+import TiposDanoPicker from '@/components/shared/TiposDanoPicker';
+import TracosDanoEditor from '@/components/shared/TracosDanoEditor';
+import type { TracoDano } from '@/lib/tiposDano';
 
 interface Props {
   template?: EnemyTemplate;
@@ -25,11 +27,6 @@ const smallInp = 'text-sm rounded-xl px-2 py-2 bg-e-bg border border-e-border te
 const sec      = 'flex flex-col gap-3 mt-5 pt-5 border-t border-e-border';
 const secFirst = 'flex flex-col gap-3 mt-4';
 const secLabel = 'text-[9px] font-bold uppercase tracking-widest text-e-faint';
-
-const IMMUNITY_KIND_OPTS = [
-  { value: 'total',   label: 'Total'   },
-  { value: 'partial', label: 'Parcial' },
-];
 
 const GOLD_TIER_OPTS: { value: GoldDropTier; label: string }[] = [
   { value: 'pobre',    label: '🪙 Pobre'    },
@@ -75,12 +72,14 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
   const [basicDmgBase,   setBasicDmgBase]   = useState<number>(rawBasic.damageBase ?? 0);
   const [basicAttr,      setBasicAttr]      = useState<string>(rawBasic.damageAttribute ?? 'FOR');
   const [basicEquilibrio,setBasicEquilibrio] = useState<number>(rawBasic.equilibrio ?? 4);
+  const [basicTipos,     setBasicTipos]     = useState<string[]>(rawBasic.tiposDano ?? []);
+  const [tracosDano,     setTracosDano]     = useState<TracoDano[]>(template?.tracosDano ?? []);
   const [skillAttacks, setSkillAttacks] = useState<EnemyAttack[]>(rawAttacks.slice(1, 6));
   const [drops,      setDrops]      = useState<EnemyDrop[]>(template?.drops        ?? []);
   const [goldDrop,   setGoldDrop]   = useState<GoldDrop | null>(
     template?.drops.find((d) => d.goldDrop)?.goldDrop ?? null
   );
-  const [immunities, setImmunities] = useState<BossImmunity[]>(template?.immunities ?? []);
+  const [immunities] = useState<BossImmunity[]>(template?.immunities ?? []);
   const [loading, setLoading] = useState(false);
   const [skills, setSkills] = useState<Skill[]>([]);
   const [skillSearch, setSkillSearch] = useState<Record<number, string>>({});
@@ -107,6 +106,9 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
       : x
     ));
     setSkillSearch((s) => ({ ...s, [i]: '' }));
+  }
+  function setTiposAtaque(i: number, tiposDano: string[]) {
+    setSkillAttacks((a) => a.map((x, j) => j === i ? { ...x, tiposDano } : x));
   }
   function unlinkSkill(i: number) {
     setSkillAttacks((a) => a.map((x, j) => j === i ? { ...x, skillId: undefined, skillName: undefined, name: '', damage: '' } : x));
@@ -143,17 +145,6 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
     setGoldDrop((g) => g ? { ...g, tier, ...GOLD_TIER_DEFAULTS[tier] } : null);
   }
 
-  // Immunities
-  function addImmunity() {
-    setImmunities((p) => [...p, { type: '', icon: '🛡️', kind: 'total' }]);
-  }
-  function updateImmunity<K extends keyof BossImmunity>(i: number, f: K, v: BossImmunity[K]) {
-    setImmunities((p) => p.map((x, j) => j === i ? { ...x, [f]: v } : x));
-  }
-  function toggleFlag(i: number, on: boolean) {
-    setImmunities((p) => p.map((x, j) => j === i ? { ...x, isFlag: on, type: on ? '' : x.type } : x));
-  }
-
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
@@ -167,7 +158,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
     }
 
     const basicDamageFormula = [basicDmgBase > 0 ? String(basicDmgBase) : null, `d20×${basicAttr}/${basicEquilibrio}`].filter(Boolean).join(' + ');
-    const basicAttackEntry: EnemyAttack = { name: 'Ataque Básico', damage: basicDamageFormula, damageBase: basicDmgBase, damageAttribute: basicAttr, equilibrio: basicEquilibrio };
+    const basicAttackEntry: EnemyAttack = { name: 'Ataque Básico', damage: basicDamageFormula, damageBase: basicDmgBase, damageAttribute: basicAttr, equilibrio: basicEquilibrio, tiposDano: basicTipos };
 
     const allAttacks = [
       basicAttackEntry,
@@ -180,7 +171,7 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
       attributes: { strength: str, agility: agi, intelligence: int_, defense: def },
       attacks: allAttacks,
       drops: allDrops,
-      immunities, xp, desc, notes,
+      immunities, tracosDano, xp, desc, notes,
       defesa: defesa !== '' ? Number(defesa) : undefined,
       modAcerto: modAcerto !== '' ? Number(modAcerto) : undefined,
       esMax, negaCritico,
@@ -310,6 +301,16 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
             <p className="text-xs font-mono text-e-faint mt-1">
               ⚔ {[basicDmgBase > 0 ? String(basicDmgBase) : null, `d20×${basicAttr}/${basicEquilibrio}`].filter(Boolean).join(' + ')}
             </p>
+            <div>
+              <label className={lbl}>Tipo de dano (até 2)</label>
+              <TiposDanoPicker value={basicTipos} onChange={setBasicTipos} vazio="Sem tipo (Neutro contra todos)" />
+            </div>
+          </div>
+
+          {/* Fraquezas e resistências */}
+          <div className={sec}>
+            <p className={secLabel}>Fraquezas e resistências</p>
+            <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
           </div>
 
           {/* Habilidades do catálogo */}
@@ -341,7 +342,13 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
                         <Trash2 size={12} />
                       </button>
                     </div>
-                  ) : (
+                  ) : null}
+                  {atk.skillId && (
+                    <div className="pl-3">
+                      <TiposDanoPicker value={atk.tiposDano ?? []} onChange={(v) => setTiposAtaque(i, v)} vazio="Tipo: herda da skill" />
+                    </div>
+                  )}
+                  {atk.skillId ? null : (
                     <div className="flex gap-2 items-center">
                       <div className="relative flex-1">
                         <input
@@ -491,54 +498,6 @@ export default function EnemyTemplateModal({ template, onClose, onSaved }: Props
             ) : (
               <p className="text-xs text-e-faint italic">Nenhum drop de gold.</p>
             )}
-          </div>
-
-          {/* Immunities */}
-          <div className={sec}>
-            <div className="flex items-center justify-between">
-              <p className={secLabel}>Imunidades</p>
-              <button onClick={addImmunity}
-                className="text-xs flex items-center gap-1 text-e-sub hover:text-e-text transition-colors">
-                <Plus size={12} /> Adicionar
-              </button>
-            </div>
-            {immunities.map((im, i) => (
-              <div key={i} className="flex flex-col gap-1.5">
-                <div className="flex gap-2 items-center">
-                  <EmojiPicker value={im.icon} onChange={(v) => updateImmunity(i, 'icon', v)} size="sm" />
-                  {!im.isFlag && (
-                    <Select
-                      value={im.kind ?? 'total'}
-                      onChange={(v) => updateImmunity(i, 'kind', v as 'total' | 'partial')}
-                      options={IMMUNITY_KIND_OPTS}
-                      className="w-28 shrink-0"
-                    />
-                  )}
-                  {im.isFlag ? (
-                    <span className="flex-1 text-xs text-e-faint italic">Imunidade genérica (sem tipo)</span>
-                  ) : (
-                    <input value={im.type}
-                      onChange={(e) => updateImmunity(i, 'type', e.target.value)}
-                      className={inp} placeholder={im.kind === 'partial' ? 'Label (ex: Espadas)' : 'Tipo (ex: Veneno)'} />
-                  )}
-                  <button onClick={() => setImmunities((p) => p.filter((_, j) => j !== i))}
-                    className="opacity-40 hover:opacity-80 shrink-0 transition-opacity">
-                    <Trash2 size={13} />
-                  </button>
-                </div>
-                <div className="flex items-center gap-1.5 ml-11 cursor-pointer" onClick={() => toggleFlag(i, !im.isFlag)}>
-                  <Checkbox checked={!!im.isFlag} onChange={(v) => toggleFlag(i, v)} color="default" />
-                  <span className="text-[10px] text-e-faint select-none">Imunidade genérica (sem tipo nomeado)</span>
-                </div>
-                {im.kind === 'partial' && !im.isFlag && (
-                  <input
-                    value={(im.sources ?? []).join(', ')}
-                    onChange={(e) => updateImmunity(i, 'sources', e.target.value.split(',').map((s) => s.trim()).filter(Boolean))}
-                    className={`ml-11 ${inp}`} placeholder="Fontes (ex: espada, Essência do Fogo)" />
-                )}
-              </div>
-            ))}
-            {immunities.length === 0 && <p className="text-xs text-e-faint italic">Nenhuma imunidade.</p>}
           </div>
 
           <div className={sec}>

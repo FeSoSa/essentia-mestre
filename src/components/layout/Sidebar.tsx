@@ -1,6 +1,6 @@
 'use client';
 
-import { LayoutDashboard, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag, Map, Globe } from 'lucide-react';
+import { LayoutDashboard, ImageIcon, Users, ScrollText, BookOpen, Package, Archive, Wand2, GraduationCap, Sparkles, Dna, ShoppingBag, Map, Globe, Swords } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import { useStore, useActivePlayers } from '@/store';
 import type { SectionId } from '@/store/types';
@@ -39,6 +39,7 @@ const GRUPOS: { titulo: string; itens: Item[] }[] = [
       { id: 'bestiario',   label: 'Bestiário',   Icon: BookOpen },
       { id: 'classes',     label: 'Classes',     Icon: GraduationCap },
       { id: 'racas',       label: 'Raças',       Icon: Dna },
+      { id: 'tiposDano',   label: 'Dano',        Icon: Swords },
     ],
   },
 ];

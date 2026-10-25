@@ -146,6 +146,10 @@ export default function Habilidades() {
 
   const busca = (s: Skill) => !search || s.name.toLowerCase().includes(search.toLowerCase());
   const tabSkills = skills.filter((s) => filterTab(s, tab));
+  /** Skills que não equipam junto com esta, nos dois sentidos (A aponta para B ou B aponta para A). */
+  const exclusivasDe = (s: Skill) => skills
+    .filter((o) => o.id !== s.id && (o.id === s.exclusivaCom || o.exclusivaCom === s.id))
+    .map((o) => o.name);
   const visible = tabSkills
     .filter(busca)
     .filter((s) => !filterClass || s.skillClass === filterClass)
@@ -241,6 +245,7 @@ export default function Habilidades() {
               weapons={weapons}
               onEdit={() => setEditing(s)}
               onDelete={() => handleDelete(s)}
+              exclusivas={exclusivasDe(s)}
             />
           ))}
         </div>
@@ -251,6 +256,7 @@ export default function Habilidades() {
           essencias={essencias}
           classes={classNames}
           weapons={weapons}
+          todasSkills={skills}
           onClose={() => setShowNew(false)}
           onSaved={handleSaved}
         />
@@ -262,6 +268,7 @@ export default function Habilidades() {
           essencias={essencias}
           classes={classNames}
           weapons={weapons}
+          todasSkills={skills}
           onClose={() => setEditing(undefined)}
           onSaved={handleSaved}
         />

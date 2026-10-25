@@ -103,7 +103,7 @@ export function instanciaDeChefe(t: BossTemplate): BossInstance {
   return {
     instanceId: '', templateId: t.id, name: t.name, icon: t.icon, imageUrl: t.imageUrl,
     phases: t.phases, currentPhase: 0, hpCurrent: t.phases[0]?.hpMax ?? 0,
-    immunities: t.immunities, resistances: t.resistances, drops: t.drops, xp: t.xp,
+    immunities: t.immunities, resistances: t.resistances, tracosDano: t.tracosDano, drops: t.drops, xp: t.xp,
     specialReward: t.specialReward, notes: '',
   };
 }

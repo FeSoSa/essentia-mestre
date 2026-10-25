@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import SectionHeader, { Page } from '@/components/ui/SectionHeader';
 import Button from '@/components/ui/Button';
 import RaceModal from './RaceModal';
+import { TracosDanoChips } from '@/components/shared/TracosDanoEditor';
 import type { Race, PlayerAttributes } from '@/store/types';
 
 // 10 é a base: acima destaca em verde, abaixo em vermelho
@@ -80,6 +81,7 @@ export default function Racas() {
                   </div>
                 ))}
               </div>
+              <TracosDanoChips value={r.tracosDano} />
             </div>
           ))}
         </div>

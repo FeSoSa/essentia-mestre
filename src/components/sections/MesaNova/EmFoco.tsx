@@ -291,7 +291,9 @@ function VezJogador({ c, p }: { c: Combatente; p: Player }) {
                   <p className="text-sm text-e-text truncate">{e?.skill.name ?? '…'}</p>
                   {e?.maestria && <p className="text-[10px] text-e-gold/80 truncate">{maestriaResumo(e.maestria)}</p>}
                 </div>
-                {pronta
+                {s.type === 'passive'
+                  ? <span className="text-[10px] font-bold text-violet-300">PASSIVA</span>
+                  : pronta
                   ? <span className="text-[10px] font-bold text-emerald-400">PRONTA</span>
                   : <span className="text-[10px] font-bold text-sky-300 tabular-nums">{s.cooldownRemaining} turno{s.cooldownRemaining > 1 ? 's' : ''}</span>}
               </div>

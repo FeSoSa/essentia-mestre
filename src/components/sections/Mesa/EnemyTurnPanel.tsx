@@ -7,6 +7,7 @@ import { useStore, useActivePlayers, useEnemies, useBosses, useAllies } from '@/
 import { useCombateStore } from '@/store/combateStore';
 import Select from '@/components/ui/Select';
 import type { EnemyAction, Player } from '@/store/types';
+import { DegrauBadge } from '@/components/shared/TracosDanoEditor';
 
 interface Relatorio {
   combatId: string;
@@ -142,6 +143,7 @@ export function AcaoCard({ acao }: { acao: EnemyAction }) {
               <span className="text-2xl font-black tabular-nums text-red-400 leading-none">{acao.dano}</span>
             </div>
           ) : <span className="text-2xl font-black text-e-faint leading-none">0</span>}
+          {acao.acertou && !acao.desviou && <DegrauBadge degrau={acao.degrau} />}
           {acao.status === 'CONCLUIDA' && (
             <span className="text-xs text-e-text">
               {acao.desviou ? 'Desviou: sem dano' : `Aplicado: ${acao.danoAplicado}`}

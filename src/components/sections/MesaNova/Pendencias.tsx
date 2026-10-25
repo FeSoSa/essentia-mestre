@@ -1,14 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { Check, X, Sword, Sparkles, Flame, Loader2, ArrowRight, Bot, HeartHandshake, ShieldAlert } from 'lucide-react';
+import { Check, X, Sword, Swords, Sparkles, Flame, Loader2, ArrowRight, Bot, HeartHandshake, ShieldAlert, BookOpen } from 'lucide-react';
 import { useStore } from '@/store';
 import { useCombateStore } from '@/store/combateStore';
 import { pedidos, SOBRECARGA_NIVEIS } from '@/lib/pedidos';
-import { mensagemErro } from '@/lib/api';
+import { api, mensagemErro } from '@/lib/api';
 import { getStatusIcon } from '@/lib/statusIcons';
+import { DegrauBadge } from '@/components/shared/TracosDanoEditor';
+import { DEGRAUS, useTiposDano, type Descoberta } from '@/lib/tiposDano';
 import { AcaoCard } from '@/components/sections/Mesa/EnemyTurnPanel';
-import type { AllyEffectApprovalRequest, DamageApprovalRequest, EffectApprovalRequest, SobrecargaRequest } from '@/store/types';
+import type { AllyEffectApprovalRequest, DamageApprovalRequest, EffectApprovalRequest, EnemyAction, SobrecargaRequest } from '@/store/types';
 import { Secao } from './ui';
 import { useCombatentes } from './combatentes';
 
@@ -69,6 +71,12 @@ function PedidoDano({ r }: { r: DamageApprovalRequest }) {
         {r.critico && <span className="ml-auto text-[10px] font-black uppercase tracking-wider text-e-gold">Crítico</span>}
       </div>
       {r.critico && r.danoSemCritico != null && <span className="text-[11px] text-e-faint -mt-1.5">sem crítico seria {r.danoSemCritico}</span>}
+      {r.degrau && r.degrau.degrau !== 'NEUTRO' && (
+        <div className="flex items-center gap-2 -mt-0.5">
+          <DegrauBadge degrau={r.degrau} />
+          <span className="text-[11px] text-e-faint">fica {Math.floor(r.damage * DEGRAUS[r.degrau.degrau].mult + 1e-9)}</span>
+        </div>
+      )}
       {(r.onHitEffects?.length ?? 0) > 0 && <span className="text-[11px] text-purple-300">+ {r.onHitEffects!.map((e) => e.name).join(', ')}</span>}
       <Botoes onSim={() => pedidos.aprovarDano(r)} onNao={() => pedidos.rejeitarDano(r)} />
     </Cartao>
@@ -169,13 +177,43 @@ function PedidoSobrecarga({ r }: { r: SobrecargaRequest }) {
 }
 
 /** Tudo que espera uma decisão do mestre, numa faixa só. */
+/** Inimigo errou quem tem skill de contra-ataque: o mestre libera (o app destrava um ataque básico) ou ignora. */
+function PedidoContraAtaque({ a }: { a: EnemyAction }) {
+  const decidir = async (liberar: boolean) => {
+    useCombateStore.getState().upsertAcao((await api.post<EnemyAction>(`/master/enemy-turn/${a.id}/contra-ataque`, { liberar })).data);
+  };
+  return (
+    <Cartao cor="#e0b354" Icon={Swords} titulo="Contra-ataque">
+      <div className="text-sm"><span className="font-semibold text-e-text">{a.entityName}</span> <span className="text-e-sub">errou</span> <span className="font-semibold text-e-text">{a.alvoNome}</span></div>
+      <span className="text-[11px] text-e-faint">{a.alvoNome} tem {a.contraAtaqueSkill}. Liberar destrava um ataque básico contra {a.entityName} no app, mesmo fora da vez. Se o ataque foi à distância e não vale, ignore.</span>
+      <Botoes simTxt="Liberar" naoTxt="Ignorar" onSim={() => decidir(true)} onNao={() => decidir(false)} />
+    </Cartao>
+  );
+}
+
+/** Fraqueza que um golpe acabou de revelar: só chega aos jogadores se o mestre liberar. */
+function PedidoDescoberta({ d }: { d: Descoberta }) {
+  const { liberarDescoberta, apagarDescoberta } = useTiposDano();
+  return (
+    <Cartao cor="#a78bfa" Icon={BookOpen} titulo="Descoberta">
+      <div className="text-sm"><span className="font-semibold text-e-text">{d.criaturaNome}</span></div>
+      <DegrauBadge degrau={{ degrau: d.degrau, tipoNome: d.tipoNome }} />
+      {d.degrau === 'NEUTRO' && <span className="text-[11px] text-e-sub -mt-1.5">{d.tipoNome}: normal</span>}
+      <span className="text-[11px] text-e-faint">Descoberto por {d.playerName}. Liberar mostra no Bestiário dos jogadores.</span>
+      <Botoes simTxt="Liberar" naoTxt="Descartar" onSim={() => liberarDescoberta(d.id, true)} onNao={() => apagarDescoberta(d.id)} />
+    </Cartao>
+  );
+}
+
 export default function Pendencias() {
   const { damageRequests, effectRequests, sobrecargaRequests, allyRequests } = useStore();
+  const pendentes = useTiposDano((s) => s.descobertas).flatMap((e) => e.descobertas).filter((d) => !d.liberada);
+  const contraAtaques = Object.values(useCombateStore((s) => s.acoes)).filter((a) => a.status === 'ERROU' && a.contraAtaqueSkill && !a.contraAtaque);
   const acoes = useCombateStore((s) => s.acoes);
   const { vezId } = useCombatentes();
   // Ações de inimigo: a da vez aparece no painel central; aqui ficam as demais em aberto
   const outrasAcoes = Object.values(acoes).filter((a) => a.entityId !== vezId && (a.status === 'PROPOSTA' || a.status === 'AGUARDANDO_JOGADOR'));
-  const total = damageRequests.length + effectRequests.length + allyRequests.length + sobrecargaRequests.length + outrasAcoes.length;
+  const total = damageRequests.length + effectRequests.length + allyRequests.length + sobrecargaRequests.length + outrasAcoes.length + pendentes.length + contraAtaques.length;
   if (total === 0) return null;
 
   return (
@@ -185,6 +223,8 @@ export default function Pendencias() {
         {sobrecargaRequests.map((r) => <PedidoSobrecarga key={r.playerId} r={r} />)}
         {effectRequests.map((r) => <PedidoEfeito key={r.requestId} r={r} />)}
         {allyRequests.map((r) => <PedidoAliados key={r.requestId} r={r} />)}
+        {contraAtaques.map((a) => <PedidoContraAtaque key={a.id} a={a} />)}
+        {pendentes.map((d) => <PedidoDescoberta key={d.id} d={d} />)}
         {outrasAcoes.map((a) => (
           a.entityKind === 'ally' ? (
             <div key={a.id} className="w-[340px] shrink-0 rounded-2xl border border-emerald-500/30 bg-[#18181b] overflow-hidden">

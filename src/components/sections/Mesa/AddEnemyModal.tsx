@@ -38,6 +38,7 @@ function instanceFromTemplate(t: EnemyTemplate): EnemyInstance {
     attacks: t.attacks,
     drops: t.drops,
     immunities: t.immunities ?? [],
+    tracosDano: t.tracosDano ?? [],
     xp: t.xp,
     desc: t.desc,
     notes: t.notes,
@@ -199,19 +200,6 @@ function CatalogTab({ onClose }: { onClose: () => void }) {
               )}
             </div>
           )}
-          {(selected.immunities?.length ?? 0) > 0 && (
-            <div className="flex gap-1 flex-wrap">
-              {selected.immunities!.map((im, i) => (
-                <span
-                  key={i}
-                  className="text-xs px-1.5 py-0.5 rounded"
-                  style={{ background: "#1e1616", color: "#9a7070" }}
-                >
-                  {im.isFlag ? "🛡️ Imune" : `${im.icon} ${im.type}`}
-                </span>
-              ))}
-            </div>
-          )}
         </div>
       )}
 
@@ -239,6 +227,7 @@ function instanceFromBossTemplate(t: BossTemplate): BossInstance {
     currentPhase: 0,
     hpCurrent: t.phases[0]?.hpMax ?? 0,
     immunities: t.immunities,
+    tracosDano: t.tracosDano,
     resistances: t.resistances,
     drops: t.drops,
     xp: t.xp,

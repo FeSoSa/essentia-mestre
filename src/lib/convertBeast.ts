@@ -8,6 +8,7 @@ export function enemyToAllyTemplate(t: EnemyTemplate): Omit<AllyTemplate, 'id'> 
     attributes: t.attributes,
     attacks: t.attacks,
     immunities: t.immunities,
+    tracosDano: t.tracosDano,
     desc: t.desc,
     notes: t.notes,
   };
@@ -23,6 +24,7 @@ export function allyToEnemyTemplate(t: AllyTemplate): Omit<EnemyTemplate, 'id'> 
     attacks: t.attacks,
     drops: [],
     immunities: t.immunities,
+    tracosDano: t.tracosDano,
     xp: 0,
     desc: t.desc,
     notes: t.notes,

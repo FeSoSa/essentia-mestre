@@ -27,6 +27,14 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   const [grupoMaestria, setGrupoMaestria] = useState<string>(skill?.grupoMaestria ?? '');
   const [cooldown,      setCooldown]      = useState(String(skill?.cooldownTurns ?? 0));
   const [critThreshold, setCritThreshold] = useState(String((skill as any)?.critThreshold ?? ''));
+  // +X no acerto desta skill: o app do jogador soma sozinho
+  const [bonusAcerto, setBonusAcerto] = useState(String(skill?.bonusAcerto ?? ''));
+  // Skill que não pode ser equipada junto com esta (ex.: evolução que substitui a T1)
+  const [exclusivaCom, setExclusivaCom] = useState(skill?.exclusivaCom ?? '');
+  // Acerta sempre: o app do jogador pula a rolagem de acerto
+  const [ignoraDef, setIgnoraDef] = useState<boolean>(skill?.ignoraDef ?? false);
+  // Equipada: quando um inimigo erra este jogador, o mestre pode liberar um contra-ataque
+  const [contraAtaque, setContraAtaque] = useState<boolean>(skill?.contraAtaque ?? false);
   const [ultimate,    setUltimate]    = useState(skill?.ultimate ?? false);
   const [passive,     setPassive]     = useState((skill as any)?.passive ?? false);
   const [pressaoDice, setPressaoDice] = useState((skill as any)?.pressaoDice ?? false);
@@ -81,6 +89,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
   );
 
   const [efeitos, setEfeitos] = useState<Efeito[]>(skill?.efeitos ?? []);
+  const [tiposDano, setTiposDano] = useState<string[]>(skill?.tiposDano ?? []);
 
   // Em quem a skill é usada; sem valor salvo, deduz do que ela faz (dano = inimigos)
   const [alvo, setAlvoState] = useState<'USUARIO' | 'INIMIGOS' | 'ALIADOS'>(
@@ -184,7 +193,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
 
     const body: Omit<Skill, 'id'> & {
       id?: string; passive?: boolean; pressaoDice?: boolean;
-      weaponTypes?: string[]; critThreshold?: number;
+      weaponTypes?: string[]; critThreshold?: number; bonusAcerto?: number; exclusivaCom?: string; ignoraDef?: boolean; contraAtaque?: boolean;
       damageSource?: 'formula' | 'weapon'; weaponSlot?: 'mainHand' | 'offHand';
       weaponDamageModifiers?: Skill['weaponDamageModifiers'];
     } = {
@@ -205,6 +214,10 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       efeitos,
       cooldownTurns: Number(cooldown) || 0,
       critThreshold: critThreshold !== '' ? Number(critThreshold) : undefined,
+      bonusAcerto: bonusAcerto !== '' && Number(bonusAcerto) !== 0 ? Number(bonusAcerto) : undefined,
+      exclusivaCom: exclusivaCom || undefined,
+      ignoraDef: ignoraDef && !passive,
+      contraAtaque,
       costs: costs.map((c) => ({
         type: c.type,
         value:      c.value      !== '' ? Number(c.value)      : undefined,
@@ -221,6 +234,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
       weaponDamageModifiers: hasDamage && damageSource === 'weapon' && weaponDamageModifiers.length > 0
         ? weaponDamageModifiers
         : undefined,
+      tiposDano: hasDamage ? tiposDano : [],
       requirements,
     };
 
@@ -249,7 +263,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     passive, togglePassive, ultimate, setUltimate,
     pressaoDice, setPressaoDice,
     // turn
-    actionType, setActionType, cooldown, setCooldown, critThreshold, setCritThreshold,
+    actionType, setActionType, cooldown, setCooldown, critThreshold, setCritThreshold, bonusAcerto, setBonusAcerto, exclusivaCom, setExclusivaCom, ignoraDef, setIgnoraDef, contraAtaque, setContraAtaque,
     // costs
     costs, addCost, removeCost, updateCost,
     // damage
@@ -258,6 +272,7 @@ export function useSkillForm(skill: Skill | undefined, essencias: Essencia[]) {
     equilibrioEfetivo, buildFormula,
     damageSource, setDamageSource, weaponSlot, setWeaponSlot,
     weaponDamageModifiers, addWeaponDamageModifier, removeWeaponDamageModifier, updateWeaponDamageModifier,
+    tiposDano, setTiposDano,
     // multi-target
     alvo, setAlvo,
     hasMultiTarget, setHasMultiTarget, multiMaxTargets, setMultiMaxTargets,

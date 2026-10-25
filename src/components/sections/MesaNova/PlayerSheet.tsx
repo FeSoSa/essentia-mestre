@@ -317,7 +317,8 @@ export default function PlayerSheet({ player, essencias, onClose }: { player: Pl
                         {e?.maestria && <p className="text-[11px] text-e-gold/80 truncate">{maestriaResumo(e.maestria)}</p>}
                         {e?.bloqueio && <p className="text-[11px] text-red-300 truncate">Bloqueada: {e.bloqueio}</p>}
                       </div>
-                      {pronta ? <span className="text-[10px] font-black text-emerald-400">PRONTA</span>
+                      {s.type === 'passive' ? <span className="text-[10px] font-black text-violet-300">PASSIVA</span>
+                        : pronta ? <span className="text-[10px] font-black text-emerald-400">PRONTA</span>
                         : <span className="text-[10px] font-black text-sky-300 tabular-nums">{s.cooldownRemaining}T</span>}
                     </div>
                   );

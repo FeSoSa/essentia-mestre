@@ -8,16 +8,18 @@ import Button from '@/components/ui/Button';
 import EnemyTemplateList from './EnemyTemplateList';
 import BossTemplateList from './BossTemplateList';
 import AllyTemplateList from './AllyTemplateList';
+import DescobertasList from './DescobertasList';
 
-type Tab = 'inimigos' | 'bosses' | 'aliados';
+type Tab = 'inimigos' | 'bosses' | 'aliados' | 'descobertas';
 
 const TAB_LABELS: Record<Tab, string> = {
   inimigos: 'Inimigos',
   bosses: 'Bosses',
   aliados: 'Aliados',
+  descobertas: 'Descobertas do grupo',
 };
 
-const NOVO: Record<Tab, string> = { inimigos: 'Novo inimigo', bosses: 'Novo boss', aliados: 'Novo aliado' };
+const NOVO: Record<Exclude<Tab, 'descobertas'>, string> = { inimigos: 'Novo inimigo', bosses: 'Novo boss', aliados: 'Novo aliado' };
 
 export default function Bestiario() {
   const [tab, setTab] = useState<Tab>('inimigos');
@@ -32,7 +34,7 @@ export default function Bestiario() {
       <SectionHeader
         title="Bestiário"
         subtitle="Modelos de inimigos, bosses e aliados. Clique num card para editar."
-        action={<Button variant="primary" onClick={() => setNovo((n) => n + 1)}><Plus size={15} /> {NOVO[tab]}</Button>}
+        action={tab !== 'descobertas' && <Button variant="primary" onClick={() => setNovo((n) => n + 1)}><Plus size={15} /> {NOVO[tab]}</Button>}
       />
 
       <div className="flex items-center gap-3 mb-6 flex-wrap">
@@ -44,6 +46,7 @@ export default function Bestiario() {
       {tab === 'inimigos' && <EnemyTemplateList search={search} novo={novo} onCopied={() => trocar('aliados')} />}
       {tab === 'bosses'   && <BossTemplateList search={search} novo={novo} />}
       {tab === 'aliados'  && <AllyTemplateList search={search} novo={novo} onCopied={() => trocar('inimigos')} />}
+      {tab === 'descobertas' && <DescobertasList search={search} />}
     </Page>
   );
 }

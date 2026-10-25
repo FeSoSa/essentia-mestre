@@ -1,11 +1,15 @@
-export type SectionId = 'mesa' | 'mapa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja' | 'mundo';
+export type SectionId = 'mesa' | 'mapa' | 'imagens' | 'jogadores' | 'inventario' | 'itens' | 'essencias' | 'bestiario' | 'habilidades' | 'classes' | 'racas' | 'log' | 'loja' | 'mundo' | 'tiposDano';
 
 export interface Race {
   id: string;
   name: string;
   starterAttributes: PlayerAttributes;
   inventorySize?: number;
+  tracosDano?: TracoDano[];
 }
+
+export type { TracoDano, DegrauAplicado } from '@/lib/tiposDano';
+import type { TracoDano, DegrauAplicado } from '@/lib/tiposDano';
 
 /* ── Backend models ─────────────────────────────────────────── */
 
@@ -25,7 +29,7 @@ export interface PlayerAttributes {
 }
 
 export interface Slot {
-  id: string; type: 'class' | 'free' | 'human_bonus';
+  id: string; type: 'class' | 'free' | 'human_bonus' | 'passive';   // passive: só passiva, e só ali ela vale
   skillId?: string; cooldownRemaining: number;
   toggleActive?: boolean;
 }
@@ -101,6 +105,7 @@ export interface WeaponEquip {
   attributeBonus?: Record<string, number>;
   rarity?: string;
   margemCritico?: number;
+  catalogId?: string; tiposDano?: string[];
 }
 export interface ArmorEquip {
   id: string; name: string; damageReduction: number;
@@ -108,6 +113,7 @@ export interface ArmorEquip {
   armorWeight?: string;
   rarity?: string;
   negaCritico?: boolean;
+  catalogId?: string; tracosDano?: TracoDano[];
 }
 export interface AccessoryEquip {
   id: string; name: string; attributeBonus?: Record<string, number>;
@@ -218,6 +224,8 @@ export interface DamageApprovalRequest {
   critico?: boolean;
   danoSemCritico?: number;
   ataqueBasico?: boolean;
+  /** Prévia da fraqueza/resistência do alvo; o servidor recalcula ao aprovar. */
+  degrau?: DegrauAplicado | null;
 }
 
 /** Skill usada em aliados: o jogador escolheu quem recebe; o mestre aprova. */
@@ -398,6 +406,8 @@ export interface ItemCatalog {
   subtype?: 'consumivel' | 'drop' | 'chave' | 'misc';
   regioes?: string[];            // nomes de região do mundo (não as regiões do Mapa); vazio = comum (sai em qualquer lugar)
   unico?: boolean;               // item com história: só sai pela mão do mestre ou drop fixo, nunca no sorteio
+  tiposDano?: string[];          // arma: 1 a 2 tipos de dano
+  tracosDano?: TracoDano[];      // armadura de corpo: fraquezas, resistências e imunidades
 }
 
 export interface ShopItem { itemId: string; stockLimit?: number; }
@@ -413,6 +423,7 @@ export interface EnemyAttack {
   skillId?: string;
   skillName?: string;
   custoEs?: number;
+  tiposDano?: string[];
 }
 
 export type GoldDropTier = 'pobre' | 'comum' | 'rico' | 'tesouro';
@@ -452,6 +463,7 @@ export interface BossTemplate {
   phases: BossPhase[]; immunities: BossImmunity[]; resistances: BossResistance[];
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
   negaCritico?: boolean;
+  tracosDano?: TracoDano[];
 }
 
 export interface BossInstance {
@@ -462,6 +474,7 @@ export interface BossInstance {
   drops: EnemyDrop[]; xp: number; specialReward?: BossReward; notes: string;
   statusEffects?: StatusEffect[];
   esCurrent?: number | null; negaCritico?: boolean; negaCriticoRodada?: number | null;
+  tracosDano?: TracoDano[];
 }
 
 export interface AllyAttributes { strength: number; agility: number; intelligence: number; defense: number; }
@@ -469,6 +482,7 @@ export interface AllyAttack {
   name: string; damage: string;
   damageBase?: number; damageAttribute?: string; equilibrio?: number;
   skillId?: string; skillName?: string;
+  tiposDano?: string[];
 }
 
 export interface AllyTemplate {
@@ -476,6 +490,7 @@ export interface AllyTemplate {
   hpMax: number; portraitUrl?: string;
   attributes: AllyAttributes; attacks: AllyAttack[];
   immunities?: BossImmunity[];
+  tracosDano?: TracoDano[];
   desc: string; notes: string;
 }
 
@@ -484,6 +499,7 @@ export interface CombatAlly {
   hpCurrent: number; hpMax: number; portraitUrl?: string;
   attributes: AllyAttributes; attacks: AllyAttack[];
   immunities?: BossImmunity[];
+  tracosDano?: TracoDano[];
   statusEffects?: StatusEffect[];
   desc: string; notes: string;
 }
@@ -497,6 +513,7 @@ export interface EnemyTemplate {
   defesa?: number; modAcerto?: number; esMax?: number; negaCritico?: boolean;
   /** Declarada pelo mestre (facil, medio, dificil, mortal): o gerador de encontros respeita. */
   dificuldade?: string;
+  tracosDano?: TracoDano[];
 }
 
 export interface EnemyInstance {
@@ -510,6 +527,7 @@ export interface EnemyInstance {
   xp: number; desc: string; notes: string;
   defesa?: number; modAcerto?: number; esMax?: number; esCurrent?: number | null;
   negaCritico?: boolean; negaCriticoRodada?: number | null;
+  tracosDano?: TracoDano[];
 }
 
 /** Ação proposta no turno automático de um inimigo ou aliado. */
@@ -524,4 +542,10 @@ export interface EnemyAction {
   d20Dano?: number | null; dano?: number | null; custoEs: number;
   desviou?: boolean | null; desvioRoll?: number | null; desvioTotal?: number | null;
   danoAplicado?: number | null; decisaoMestre?: string | null; trocas: number;
+  tiposDano?: string[];
+  /** Inimigo errou um jogador com skill de contra-ataque: nome da skill; contraAtaque = LIBERADO | IGNORADO (vazio = aguardando). */
+  contraAtaqueSkill?: string | null;
+  contraAtaque?: string | null;
+  /** Fraqueza/resistência do alvo (prévia na proposta, definitiva quando o golpe entra). */
+  degrau?: DegrauAplicado | null;
 }

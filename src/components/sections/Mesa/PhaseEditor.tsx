@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { BossPhase, BossAbility, BossAttributes, EnemyAttack } from '@/store/types';
 import type { Skill } from '@/components/sections/Habilidades/SkillCard';
 import Checkbox from '@/components/ui/Checkbox';
+import TiposDanoPicker from '@/components/shared/TiposDanoPicker';
 
 export const EMPTY_ATTRS: BossAttributes = {
   strength: 10, agility: 10, intelligence: 10, resistance: 10,
@@ -47,7 +48,7 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
   const basicAtk   = phase.attacks[0] ?? { name: 'Ataque Básico', damage: '', damageBase: 0, damageAttribute: 'FOR', equilibrio: 4 };
   const skillAtks  = phase.attacks.slice(1, 6);
 
-  function setBasicField(field: keyof EnemyAttack, val: string | number) {
+  function setBasicField(field: keyof EnemyAttack, val: string | number | string[]) {
     const base = { ...basicAtk, [field]: val };
     const formula = [base.damageBase && base.damageBase > 0 ? String(base.damageBase) : null, `d20×${base.damageAttribute}/${base.equilibrio}`].filter(Boolean).join(' + ');
     const updated = { ...base, damage: formula };
@@ -201,6 +202,7 @@ export default function PhaseEditor({ phase, index, total, onChange, onRemove }:
         <p className="text-[10px] font-mono opacity-50">
           ⚔ {[(basicAtk.damageBase ?? 0) > 0 ? String(basicAtk.damageBase) : null, `d20×${basicAtk.damageAttribute ?? 'FOR'}/${basicAtk.equilibrio ?? 4}`].filter(Boolean).join(' + ')}
         </p>
+        <TiposDanoPicker value={basicAtk.tiposDano ?? []} onChange={(v) => setBasicField('tiposDano', v)} vazio="Tipo de dano: nenhum (Neutro)" />
       </div>
 
       {/* Habilidades */}

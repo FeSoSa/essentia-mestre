@@ -2,7 +2,10 @@
 
 import Button from "@/components/ui/Button";
 import { CheckField } from '@/components/ui/Checkbox';
-import { api } from "@/lib/api";
+import { api, mensagemErro } from "@/lib/api";
+import TiposDanoPicker from "@/components/shared/TiposDanoPicker";
+import TracosDanoEditor from "@/components/shared/TracosDanoEditor";
+import type { TracoDano } from "@/lib/tiposDano";
 import { normalizeGdriveUrl, proxyUrl } from "@/lib/gdrive";
 import { RARITY_COLORS, RARITY_LABELS, RARITY_ORDER } from "@/lib/rarity";
 import type { AutoEffect, ItemCatalog, ItemRequirements, OnUseEffect } from "@/store/types";
@@ -597,6 +600,9 @@ export default function ItemModal({
   const [goldValue, setGoldValue] = useState<number | "">(item?.goldValue ?? "");
   const [regioes, setRegioes] = useState<string[]>(item?.regioes ?? []);
   const [unico, setUnico] = useState(item?.unico ?? false);
+  const [tiposDano, setTiposDano] = useState<string[]>(item?.tiposDano ?? []);
+  const [tracosDano, setTracosDano] = useState<TracoDano[]>(item?.tracosDano ?? []);
+  const [erroSalvar, setErroSalvar] = useState<string | null>(null);
   const [novaRegiao, setNovaRegiao] = useState("");
   // Sugestões: as regiões dos outros itens e as que este item já tem
   const opcoesRegiao = [...new Set([...regioesConhecidas, ...regioes])].sort((a, b) => a.localeCompare(b, "pt-BR"));
@@ -704,6 +710,7 @@ export default function ItemModal({
   async function save() {
     if (!name.trim()) return;
     setLoading(true);
+    setErroSalvar(null);
     const attrBonus =
       bonuses.length > 0 ? Object.fromEntries(bonuses) : undefined;
     const requirements: ItemRequirements | undefined =
@@ -779,11 +786,13 @@ export default function ItemModal({
       body.properties = properties || undefined;
       body.twoHanded = twoHanded || undefined;
       body.margemCritico = margemCritico;
+      body.tiposDano = tiposDano.length ? tiposDano : undefined;
     }
     if (type === "armor") {
       body.damageReduction = attrBonus?.defense ?? 0;
       body.armorWeight = armorWeight || undefined;
       body.negaCritico = negaCritico || undefined;
+      body.tracosDano = tracosDano.length ? tracosDano : undefined;
     }
     try {
       const res = editing
@@ -791,7 +800,8 @@ export default function ItemModal({
         : await api.post<ItemCatalog>("/items", body);
       onSaved(res.data);
       onClose();
-    } catch {
+    } catch (e) {
+      setErroSalvar(mensagemErro(e, "Não foi possível salvar"));
       setLoading(false);
     }
   }
@@ -1022,6 +1032,13 @@ export default function ItemModal({
             </>
           )}
 
+          {isWeapon && (
+            <div>
+              <label className={lbl}>Tipo de dano (até 2)</label>
+              <TiposDanoPicker value={tiposDano} onChange={setTiposDano} vazio="Sem tipo (Neutro contra todos)" />
+            </div>
+          )}
+
           {/* ── Equip slot ── */}
           {isWeapon && (
             <div>
@@ -1095,6 +1112,12 @@ export default function ItemModal({
               </div>
               <CheckField checked={negaCritico} onChange={setNegaCritico} className="mt-3"
                 label="Nega um acerto crítico por rodada" desc="Ex: Manto do Vento" />
+            </div>
+          )}
+          {type === "armor" && (
+            <div>
+              <label className={lbl}>Fraquezas e resistências</label>
+              <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
             </div>
           )}
 
@@ -1563,6 +1586,7 @@ export default function ItemModal({
             </div>
           )}
 
+          {erroSalvar && <p className="text-xs text-e-danger text-right">{erroSalvar}</p>}
           <div className="flex gap-2 justify-end pt-1">
             <Button
               variant="ghost"

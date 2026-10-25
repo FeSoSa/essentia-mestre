@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import type { BossTemplate } from '@/store/types';
 import BossTemplateModal from './BossTemplateModal';
 import { normalizeGdriveUrl, proxyUrl } from '@/lib/gdrive';
+import { TracosDanoChips } from "@/components/shared/TracosDanoEditor";
 
 export default function BossTemplateList({ search = "", novo = 0 }: { search?: string; novo?: number }) {
   const [templates, setTemplates] = useState<BossTemplate[]>([]);
@@ -98,21 +99,7 @@ export default function BossTemplateList({ search = "", novo = 0 }: { search?: s
                 ))}
               </div>
 
-              {/* Immunities + resistances */}
-              {(t.immunities.length > 0 || t.resistances.length > 0) && (
-                <div className="flex gap-1 flex-wrap">
-                  {t.immunities.map((im, i) => (
-                    <span key={`im${i}`} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#2a2410', color: '#f0e8d0' }}>
-                      {im.icon} {im.type}
-                    </span>
-                  ))}
-                  {t.resistances.map((r, i) => (
-                    <span key={`r${i}`} className="text-[11px] px-1.5 py-0.5 rounded" style={{ background: '#2a2410', color: '#c8a050' }}>
-                      {r.type} −{r.reduction}%
-                    </span>
-                  ))}
-                </div>
-              )}
+              <TracosDanoChips value={t.tracosDano} />
 
               {/* Special reward */}
               {t.specialReward && (

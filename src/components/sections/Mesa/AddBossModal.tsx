@@ -2,14 +2,16 @@
 
 import { useEffect, useState } from 'react';
 import { CheckField } from '@/components/ui/Checkbox';
-import { Plus, Trash2, Crown } from 'lucide-react';
+import { Plus, Crown } from 'lucide-react';
 import { api } from '@/lib/api';
 import type {
   BossInstance, BossPhase, BossTemplate,
-  BossImmunity, BossResistance, BossReward, BossAttributes,
+  BossReward, BossAttributes,
 } from '@/store/types';
 import Button from '@/components/ui/Button';
 import PhaseEditor, { EMPTY_ATTRS } from './PhaseEditor';
+import TracosDanoEditor from '@/components/shared/TracosDanoEditor';
+import type { TracoDano } from '@/lib/tiposDano';
 
 interface Props { onClose: () => void; }
 
@@ -44,6 +46,7 @@ function BossCatalogTab({ onClose }: { onClose: () => void }) {
       currentPhase: 0,
       hpCurrent: t.phases[0]?.hpMax ?? 0,
       immunities: t.immunities,
+      tracosDano: t.tracosDano,
       resistances: t.resistances,
       drops: t.drops,
       xp: t.xp,
@@ -116,8 +119,7 @@ function CreateBossTab({ onClose }: { onClose: () => void }) {
     { phaseNumber: 1, name: '', hpMax: 100, attributes: { ...EMPTY_ATTRS }, attacks: [], specialAbility: undefined },
   ]);
 
-  const [immunities, setImmunities]   = useState<BossImmunity[]>([]);
-  const [resistances, setResistances] = useState<BossResistance[]>([]);
+  const [tracosDano, setTracosDano]   = useState<TracoDano[]>([]);
   const [hasReward, setHasReward]     = useState(false);
   const [reward, setReward]           = useState<BossReward>({ type: 'essencia', referenceId: '', name: '', desc: '' });
 
@@ -135,28 +137,6 @@ function CreateBossTab({ onClose }: { onClose: () => void }) {
     setPhases((prev) => prev.filter((_, j) => j !== i).map((p, j) => ({ ...p, phaseNumber: j + 1 })));
   }
 
-  /* immunities */
-  function addImmunity() {
-    setImmunities((p) => [...p, { type: '', icon: '🛡️', kind: 'total' }]);
-  }
-  function updateImmunity(i: number, field: keyof BossImmunity, val: string) {
-    setImmunities((p) => p.map((x, j) => j === i ? { ...x, [field]: val } : x));
-  }
-  function removeImmunity(i: number) {
-    setImmunities((p) => p.filter((_, j) => j !== i));
-  }
-
-  /* resistances */
-  function addResistance() {
-    setResistances((p) => [...p, { type: '', reduction: 50 }]);
-  }
-  function updateResistance(i: number, field: keyof BossResistance, val: string | number) {
-    setResistances((p) => p.map((x, j) => j === i ? { ...x, [field]: val } : x));
-  }
-  function removeResistance(i: number) {
-    setResistances((p) => p.filter((_, j) => j !== i));
-  }
-
   async function addToCombat() {
     if (!name.trim() || phases.length < 1) return;
     setLoading(true);
@@ -168,8 +148,9 @@ function CreateBossTab({ onClose }: { onClose: () => void }) {
       phases,
       currentPhase: 0,
       hpCurrent: phases[0].hpMax,
-      immunities,
-      resistances,
+      immunities: [],
+      resistances: [],
+      tracosDano,
       drops: [],
       xp,
       specialReward: hasReward && reward.name.trim() ? reward : undefined,
@@ -225,70 +206,10 @@ function CreateBossTab({ onClose }: { onClose: () => void }) {
           ))}
         </div>
 
-        {/* Immunities */}
+        {/* Fraquezas e resistências */}
         <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Imunidades</p>
-            <button onClick={addImmunity} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
-              <Plus size={12} /> Adicionar
-            </button>
-          </div>
-          {immunities.map((im, i) => (
-            <div key={i} className="flex gap-2">
-              <input
-                value={im.icon}
-                onChange={(e) => updateImmunity(i, 'icon', e.target.value)}
-                className="w-10 text-center text-base rounded outline-none"
-                style={inputStyle}
-                maxLength={2}
-              />
-              <input
-                value={im.type}
-                onChange={(e) => updateImmunity(i, 'type', e.target.value)}
-                className={`flex-1 ${inputCls}`}
-                style={inputStyle}
-                placeholder="Tipo (ex: Veneno)"
-              />
-              <button onClick={() => removeImmunity(i)} className="opacity-40 hover:opacity-80 shrink-0">
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
-        </div>
-
-        {/* Resistances */}
-        <div className="flex flex-col gap-2">
-          <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: '#7a7050' }}>Resistências</p>
-            <button onClick={addResistance} className="text-xs flex items-center gap-1 opacity-60 hover:opacity-100">
-              <Plus size={12} /> Adicionar
-            </button>
-          </div>
-          {resistances.map((r, i) => (
-            <div key={i} className="flex gap-2 items-center">
-              <input
-                value={r.type}
-                onChange={(e) => updateResistance(i, 'type', e.target.value)}
-                className={`flex-1 ${inputCls}`}
-                style={inputStyle}
-                placeholder="Tipo (ex: Fogo)"
-              />
-              <div className="flex items-center gap-1 shrink-0">
-                <input
-                  type="number"
-                  value={r.reduction}
-                  onChange={(e) => updateResistance(i, 'reduction', Number(e.target.value))}
-                  className={`w-16 text-center ${inputCls}`}
-                  style={inputStyle}
-                  min={1} max={100}
-                />
-                <span className="text-xs" style={{ color: '#7a7050' }}>%</span>
-              </div>
-              <button onClick={() => removeResistance(i)} className="opacity-40 hover:opacity-80 shrink-0">
-                <Trash2 size={13} />
-              </button>
-            </div>
-          ))}
+          <p className="text-xs font-semibold uppercase tracking-wider" style={{ color: "#7a7050" }}>Fraquezas e resistências</p>
+          <TracosDanoEditor value={tracosDano} onChange={setTracosDano} />
         </div>
 
         {/* XP */}

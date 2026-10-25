@@ -9,6 +9,8 @@ import Checkbox from '@/components/ui/Checkbox';
 import { useSkillForm } from './useSkillForm';
 import { COST_OPTS } from '@/lib/costOptions';
 import EfeitosEditor from './EfeitosEditor';
+import TiposDanoPicker from '@/components/shared/TiposDanoPicker';
+import Select from '@/components/ui/Select';
 import { fmtEquilibrio } from '@/store/combateStore';
 
 interface Props {
@@ -16,6 +18,8 @@ interface Props {
   essencias: Essencia[];
   classes: string[];
   weapons: ItemCatalog[];
+  /** Todas as skills, para escolher a que não equipa junto com esta. */
+  todasSkills: Skill[];
   onClose: () => void;
   onSaved: (s: Skill) => void;
 }
@@ -102,7 +106,7 @@ function Dropdown<T extends string>({ value, onChange, options, placeholder }: {
 
 type TabId = 'base' | 'turno' | 'combate' | 'maestria' | 'efeitos';
 
-export default function SkillModal({ skill, essencias, classes, weapons, onClose, onSaved }: Props) {
+export default function SkillModal({ skill, essencias, classes, weapons, todasSkills, onClose, onSaved }: Props) {
   const f = useSkillForm(skill, essencias);
   const [tab, setTab] = useState<TabId>('base');
 
@@ -317,11 +321,16 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                   { key: 'passive',  label: 'Passiva',      sub: 'Sem custo ativo',             active: f.passive,     color: 'teal',   disabled: false },
                   { key: 'ultimate', label: 'Ultimate',     sub: 'Habilidade de poder máximo',  active: f.ultimate,    color: 'amber',  disabled: false },
                   { key: 'pressao',  label: 'Pressão Dice', sub: 'd20 + pontos de Pressão',     active: f.pressaoDice, color: 'orange', disabled: f.passive },
+                  { key: 'ignoraDef', label: 'Ignora toda DEF', sub: 'Acerta sempre, sem rolar acerto', active: f.ignoraDef, color: 'rose', disabled: f.passive },
+                  { key: 'fimCombate', label: 'Recarga no fim do combate', sub: 'Uma vez por combate', active: Number(f.cooldown) >= 99, color: 'sky', disabled: f.passive },
+                  { key: 'contra', label: 'Contra-ataque', sub: 'Inimigo que errar abre um contra-ataque', active: f.contraAtaque, color: 'amber', disabled: false },
                 ] as const).map(({ key, label, sub, active, color, disabled }) => {
                   const colors: Record<string, string> = {
                     teal:   active ? 'border-teal-500/60   bg-teal-500/10   text-teal-300'   : '',
                     amber:  active ? 'border-amber-500/60  bg-amber-500/10  text-amber-300'  : '',
                     orange: active ? 'border-orange-500/60 bg-orange-500/10 text-orange-300' : '',
+                    rose:   active ? 'border-rose-500/60   bg-rose-500/10   text-rose-300'   : '',
+                    sky:    active ? 'border-sky-500/60    bg-sky-500/10    text-sky-300'    : '',
                   };
                   return (
                     <button key={key} type="button" disabled={disabled}
@@ -329,6 +338,10 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                         if (key === 'passive')  { f.togglePassive(); if (!f.passive) setTab('base'); }
                         if (key === 'ultimate') f.setUltimate((v: boolean) => !v);
                         if (key === 'pressao')  f.setPressaoDice((v: boolean) => !v);
+                        if (key === 'ignoraDef') f.setIgnoraDef((v: boolean) => !v);
+                        if (key === 'contra') f.setContraAtaque((v: boolean) => !v);
+                        // Recarga 999: a recarga zera sozinha quando o combate termina
+                        if (key === 'fimCombate') f.setCooldown(Number(f.cooldown) >= 99 ? '0' : '999');
                       }}
                       className={`flex flex-col items-start gap-0.5 px-3 py-2.5 rounded-xl border transition-colors text-left
                         ${disabled ? 'opacity-30 cursor-not-allowed border-e-border' : active ? colors[color] : 'border-e-border bg-e-bg text-e-faint hover:border-e-border2'}`}>
@@ -340,6 +353,23 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
               </div>
             </div>
           )}
+          {/* ── Não equipa junto com (vale também para passivas, por isso fica na Base) ── */}
+          <div className={sec}>
+            <div>
+              <label className={lbl}>Não equipa junto com <span className="normal-case font-normal">(uma ou outra: o slot recusa as duas juntas)</span></label>
+              <Select value={f.exclusivaCom} onChange={f.setExclusivaCom} placeholder="Nenhuma"
+                options={[{ value: '', label: 'Nenhuma' }, ...todasSkills
+                  .filter((s) => s.id !== skill?.id)
+                  .sort((a, b) => a.name.localeCompare(b.name, 'pt-BR'))
+                  .map((s) => ({ value: s.id, label: `${s.name}${s.tier ? ` · T${s.tier}` : ''}${s.skillClass ? ` · ${s.skillClass}` : ''}` }))]} />
+              {(() => {
+                const apontam = todasSkills.filter((s) => skill && s.exclusivaCom === skill.id).map((s) => s.name);
+                return apontam.length > 0
+                  ? <p className="text-[11px] text-violet-300 mt-1.5">Também não equipa junto com {apontam.join(', ')} (marcado na outra skill).</p>
+                  : null;
+              })()}
+            </div>
+          </div>
         </>}
 
         {/* ══════════════════════════════════════════════════════════════ */}
@@ -369,14 +399,22 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
             <div className="flex gap-3 flex-wrap">
               <div className="w-36">
                 <label className={lbl}>Cooldown (turnos)</label>
-                <input type="number" min={0} value={f.cooldown}
-                  onChange={(e) => f.setCooldown(e.target.value)} className={`text-center ${inp}`} />
+                {Number(f.cooldown) >= 99
+                  ? <p className="text-sm text-sky-300 py-2">Fim do combate</p>
+                  : <input type="number" min={0} value={f.cooldown}
+                      onChange={(e) => f.setCooldown(e.target.value)} className={`text-center ${inp}`} />}
               </div>
               <div className="w-36">
                 <label className={lbl}>Crítico mínimo</label>
                 <input type="number" min={1} max={20} value={f.critThreshold}
                   onChange={(e) => f.setCritThreshold(e.target.value)}
                   placeholder="arma" className={`text-center ${inp}`} />
+              </div>
+              <div className="w-36">
+                <label className={lbl}>Bônus de acerto</label>
+                <input type="number" value={f.bonusAcerto}
+                  onChange={(e) => f.setBonusAcerto(e.target.value)}
+                  placeholder="0" className={`text-center ${inp}`} />
               </div>
             </div>
           </div>
@@ -445,6 +483,12 @@ export default function SkillModal({ skill, essencias, classes, weapons, onClose
                         {s === 'formula' ? 'Fórmula' : 'Arma equipada'}
                       </button>
                     ))}
+                  </div>
+
+                  <div>
+                    <label className={lbl}>Tipo de dano <span className="normal-case font-normal">(até 2, ex: Fogo numa skill de fogo; {f.damageSource === 'weapon'
+                      ? 'se deixar vazio, usa o da arma equipada' : 'se deixar vazio, o golpe fica sem tipo e sai Neutro'})</span></label>
+                    <TiposDanoPicker value={f.tiposDano} onChange={f.setTiposDano} vazio="Nenhum escolhido" />
                   </div>
 
                   {f.damageSource === 'formula' ? <>
